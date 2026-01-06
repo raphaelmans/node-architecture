@@ -15,59 +15,59 @@
 ## Logger Configuration
 
 ```typescript
-// shared/infra/logger/index.ts
+// lib/shared/infra/logger/index.ts
 
-import pino from 'pino';
+import pino from "pino";
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL ?? (isProduction ? 'info' : 'debug'),
+  level: process.env.LOG_LEVEL ?? (isProduction ? "info" : "debug"),
 
   // Pretty print in development
   transport: isProduction
     ? undefined
     : {
-        target: 'pino-pretty',
+        target: "pino-pretty",
         options: {
           colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
+          translateTime: "SYS:standard",
+          ignore: "pid,hostname",
         },
       },
 
   // Redact sensitive fields
   redact: {
     paths: [
-      'password',
-      'passwordHash',
-      'token',
-      'accessToken',
-      'refreshToken',
-      'authorization',
-      'cookie',
-      'creditCard',
-      'cardNumber',
-      'cvv',
-      'ssn',
-      '*.password',
-      '*.passwordHash',
-      '*.token',
-      '*.accessToken',
-      '*.refreshToken',
-      '*.authorization',
-      '*.creditCard',
-      '*.cardNumber',
-      '*.cvv',
-      '*.ssn',
+      "password",
+      "passwordHash",
+      "token",
+      "accessToken",
+      "refreshToken",
+      "authorization",
+      "cookie",
+      "creditCard",
+      "cardNumber",
+      "cvv",
+      "ssn",
+      "*.password",
+      "*.passwordHash",
+      "*.token",
+      "*.accessToken",
+      "*.refreshToken",
+      "*.authorization",
+      "*.creditCard",
+      "*.cardNumber",
+      "*.cvv",
+      "*.ssn",
     ],
-    censor: '[REDACTED]',
+    censor: "[REDACTED]",
   },
 
   // Base context for all logs
   base: {
     env: process.env.NODE_ENV,
-    service: process.env.SERVICE_NAME ?? 'api',
+    service: process.env.SERVICE_NAME ?? "api",
   },
 });
 
@@ -79,7 +79,7 @@ export type Logger = typeof logger;
 Create a child logger with request context for correlation.
 
 ```typescript
-// shared/infra/logger/index.ts
+// lib/shared/infra/logger/index.ts
 
 export interface RequestLogContext {
   requestId: string;
@@ -99,91 +99,95 @@ export function createRequestLogger(ctx: RequestLogContext) {
 const log = createRequestLogger({
   requestId: ctx.requestId,
   userId: ctx.userId,
-  method: 'POST',
-  path: '/api/users',
+  method: "POST",
+  path: "/api/users",
 });
 
-log.info('Processing request');
+log.info("Processing request");
 // Output: { "requestId": "abc-123", "userId": "usr-456", "method": "POST", "path": "/api/users", "msg": "Processing request" }
 ```
 
 ## Log Levels
 
-| Level | When to Use | Examples |
-|-------|-------------|----------|
-| `error` | Unexpected failures, unhandled exceptions | Unknown errors, system failures |
-| `warn` | Expected errors, recoverable issues | Known application errors, deprecations |
-| `info` | Request lifecycle, business events | Request start/end, user created |
-| `debug` | Development details, verbose data | Input/output bodies, intermediate state |
+| Level   | When to Use                               | Examples                                |
+| ------- | ----------------------------------------- | --------------------------------------- |
+| `error` | Unexpected failures, unhandled exceptions | Unknown errors, system failures         |
+| `warn`  | Expected errors, recoverable issues       | Known application errors, deprecations  |
+| `info`  | Request lifecycle, business events        | Request start/end, user created         |
+| `debug` | Development details, verbose data         | Input/output bodies, intermediate state |
 
 ```typescript
-log.error({ err }, 'Unexpected database failure');
-log.warn({ code: 'USER_NOT_FOUND', userId }, 'User not found');
-log.info({ userId: user.id }, 'User created');
-log.debug({ input }, 'Request input');
+log.error({ err }, "Unexpected database failure");
+log.warn({ code: "USER_NOT_FOUND", userId }, "User not found");
+log.info({ userId: user.id }, "User created");
+log.debug({ input }, "Request input");
 ```
 
 ## What to Log by Layer
 
-| Layer | Log | Level |
-|-------|-----|-------|
-| Router/Middleware | Request start, end, duration, status | `info` |
-| Router/Middleware | Request input (in development) | `debug` |
-| Error Handler | Known application errors | `warn` |
-| Error Handler | Unknown/unexpected errors | `error` |
-| Services | Significant business events | `info` |
-| Repositories | Nothing | — |
+| Layer             | Log                                  | Level   |
+| ----------------- | ------------------------------------ | ------- |
+| Router/Middleware | Request start, end, duration, status | `info`  |
+| Router/Middleware | Request input (in development)       | `debug` |
+| Error Handler     | Known application errors             | `warn`  |
+| Error Handler     | Unknown/unexpected errors            | `error` |
+| Services          | Significant business events          | `info`  |
+| Repositories      | Nothing                              | —       |
 
 ## Request Lifecycle Logging
 
 ### tRPC Middleware
 
 ```typescript
-// shared/infra/trpc/middleware/logger.middleware.ts
+// lib/shared/infra/trpc/middleware/logger.middleware.ts
 
-import { middleware } from '../trpc';
-import { createRequestLogger } from '@/shared/infra/logger';
+import { middleware } from "../trpc";
+import { createRequestLogger } from "@/lib/shared/infra/logger";
 
-export const loggerMiddleware = middleware(async ({ ctx, next, path, type }) => {
-  const start = Date.now();
+export const loggerMiddleware = middleware(
+  async ({ ctx, next, path, type }) => {
+    const start = Date.now();
 
-  const log = createRequestLogger({
-    requestId: ctx.requestId,
-    userId: ctx.userId ?? undefined,
-    method: type,
-    path,
-  });
+    const log = createRequestLogger({
+      requestId: ctx.requestId,
+      userId: ctx.userId ?? undefined,
+      method: type,
+      path,
+    });
 
-  log.info('Request started');
+    log.info("Request started");
 
-  // Log input at debug level only
-  if (process.env.NODE_ENV !== 'production') {
-    log.debug({ input: ctx.input }, 'Request input');
-  }
+    // Log input at debug level only
+    if (process.env.NODE_ENV !== "production") {
+      log.debug({ input: ctx.input }, "Request input");
+    }
 
-  try {
-    const result = await next({ ctx: { ...ctx, log } });
-    const duration = Date.now() - start;
+    try {
+      const result = await next({ ctx: { ...ctx, log } });
+      const duration = Date.now() - start;
 
-    log.info({ duration, status: 'success' }, 'Request completed');
+      log.info({ duration, status: "success" }, "Request completed");
 
-    return result;
-  } catch (error) {
-    const duration = Date.now() - start;
+      return result;
+    } catch (error) {
+      const duration = Date.now() - start;
 
-    log.info({ duration, status: 'error' }, 'Request failed');
+      log.info({ duration, status: "error" }, "Request failed");
 
-    throw error;
-  }
-});
+      throw error;
+    }
+  },
+);
 ```
 
 ### Apply to Procedures
 
 ```typescript
-// shared/infra/trpc/trpc.ts
+// lib/shared/infra/trpc/trpc.ts
 
-const t = initTRPC.context<Context>().create({ /* ... */ });
+const t = initTRPC.context<Context>().create({
+  /* ... */
+});
 
 const loggedProcedure = t.procedure.use(loggerMiddleware);
 
@@ -196,9 +200,9 @@ export const protectedProcedure = loggedProcedure.use(authMiddleware);
 Log significant business events in services.
 
 ```typescript
-// modules/user/services/user.service.ts
+// lib/modules/user/services/user.service.ts
 
-import { logger } from '@/shared/infra/logger';
+import { logger } from "@/lib/shared/infra/logger";
 
 export class UserService implements IUserService {
   async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
@@ -206,12 +210,12 @@ export class UserService implements IUserService {
 
     // Business event: user created
     logger.info(
-      { 
-        event: 'user.created', 
-        userId: user.id, 
+      {
+        event: "user.created",
+        userId: user.id,
         email: user.email,
       },
-      'User created',
+      "User created",
     );
 
     return user;
@@ -222,11 +226,11 @@ export class UserService implements IUserService {
 
     // Business event: user deleted
     logger.info(
-      { 
-        event: 'user.deleted', 
+      {
+        event: "user.deleted",
         userId: id,
       },
-      'User deleted',
+      "User deleted",
     );
   }
 }
@@ -242,16 +246,16 @@ Use past tense, dot-separated format:
 
 **Examples:**
 
-| Event | Description |
-|-------|-------------|
-| `user.created` | New user registered |
-| `user.updated` | User profile updated |
-| `user.deleted` | User account deleted |
-| `workspace.created` | New workspace created |
-| `workspace.member.added` | Member added to workspace |
+| Event                      | Description                   |
+| -------------------------- | ----------------------------- |
+| `user.created`             | New user registered           |
+| `user.updated`             | User profile updated          |
+| `user.deleted`             | User account deleted          |
+| `workspace.created`        | New workspace created         |
+| `workspace.member.added`   | Member added to workspace     |
 | `workspace.member.removed` | Member removed from workspace |
-| `payment.processed` | Payment completed |
-| `payment.failed` | Payment failed |
+| `payment.processed`        | Payment completed             |
+| `payment.failed`           | Payment failed                |
 
 ## Error Logging
 
@@ -275,7 +279,7 @@ logger.error(
     err: error,
     requestId,
   },
-  'Unexpected error',
+  "Unexpected error",
 );
 ```
 
@@ -286,12 +290,12 @@ logger.error(
 Generate UUID at the tRPC context creation.
 
 ```typescript
-// shared/infra/trpc/context.ts
+// lib/shared/infra/trpc/context.ts
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from "crypto";
 
 export async function createContext({ req }: { req: Request }) {
-  const requestId = req.headers.get('x-request-id') ?? randomUUID();
+  const requestId = req.headers.get("x-request-id") ?? randomUUID();
 
   return {
     requestId,
@@ -313,17 +317,17 @@ Pino's `redact` option handles common sensitive fields automatically.
 For cases where you need to log objects that might contain sensitive data:
 
 ```typescript
-// shared/utils/sanitize.ts
+// lib/shared/utils/sanitize.ts
 
 const SENSITIVE_KEYS = [
-  'password',
-  'token',
-  'authorization',
-  'creditcard',
-  'cardnumber',
-  'cvv',
-  'ssn',
-  'secret',
+  "password",
+  "token",
+  "authorization",
+  "creditcard",
+  "cardnumber",
+  "cvv",
+  "ssn",
+  "secret",
 ];
 
 export function sanitize<T extends Record<string, unknown>>(obj: T): T {
@@ -332,7 +336,7 @@ export function sanitize<T extends Record<string, unknown>>(obj: T): T {
   for (const key of Object.keys(result)) {
     const lowerKey = key.toLowerCase();
     if (SENSITIVE_KEYS.some((sensitive) => lowerKey.includes(sensitive))) {
-      (result as Record<string, unknown>)[key] = '[REDACTED]';
+      (result as Record<string, unknown>)[key] = "[REDACTED]";
     }
   }
 
@@ -343,7 +347,7 @@ export function sanitize<T extends Record<string, unknown>>(obj: T): T {
 **Usage:**
 
 ```typescript
-log.debug({ data: sanitize(requestBody) }, 'Processing data');
+log.debug({ data: sanitize(requestBody) }, "Processing data");
 ```
 
 ## Log Output Examples
@@ -390,7 +394,7 @@ When ready for full observability, extend with:
 // Future: Add tracing context
 export interface RequestContext {
   requestId: string;
-  traceId: string;    // W3C Trace Context
+  traceId: string; // W3C Trace Context
   spanId: string;
   tx?: TransactionContext;
 }

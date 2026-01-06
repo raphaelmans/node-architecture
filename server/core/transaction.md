@@ -12,19 +12,19 @@
 
 ## Key Components
 
-| Component | Location | Responsibility |
-|-----------|----------|----------------|
-| `TransactionContext` | `shared/kernel/transaction.ts` | Type alias for transaction client |
-| `TransactionManager` | `shared/kernel/transaction.ts` | Abstract interface |
-| `RequestContext` | `shared/kernel/context.ts` | Carries transaction through call stack |
-| `DrizzleTransactionManager` | `shared/infra/db/transaction.ts` | Drizzle implementation |
+| Component                   | Location                             | Responsibility                         |
+| --------------------------- | ------------------------------------ | -------------------------------------- |
+| `TransactionContext`        | `lib/shared/kernel/transaction.ts`   | Type alias for transaction client      |
+| `TransactionManager`        | `lib/shared/kernel/transaction.ts`   | Abstract interface                     |
+| `RequestContext`            | `lib/shared/kernel/context.ts`       | Carries transaction through call stack |
+| `DrizzleTransactionManager` | `lib/shared/infra/db/transaction.ts` | Drizzle implementation                 |
 
 ## Kernel Abstractions
 
 These types belong in the kernel because they're framework-agnostic contracts used across all layers.
 
 ```typescript
-// shared/kernel/transaction.ts
+// lib/shared/kernel/transaction.ts
 
 /**
  * TransactionContext represents an active database transaction.
@@ -39,7 +39,7 @@ export type TransactionContext = unknown;
 export interface TransactionManager {
   /**
    * Executes the given function within a transaction.
-   * 
+   *
    * - If the function completes successfully, the transaction is committed
    * - If the function throws, the transaction is rolled back
    * - The transaction context (tx) should be passed to repositories via RequestContext
@@ -53,9 +53,9 @@ export interface TransactionManager {
 The `RequestContext` carries the transaction context through the call stack.
 
 ```typescript
-// shared/kernel/context.ts
+// lib/shared/kernel/context.ts
 
-import type { TransactionContext } from './transaction';
+import type { TransactionContext } from "./transaction";
 
 /**
  * RequestContext is passed through layers to provide:
@@ -68,12 +68,12 @@ export interface RequestContext {
    * Repositories use this to participate in the transaction.
    */
   tx?: TransactionContext;
-  
+
   /**
    * Request ID for correlation in logs and error responses.
    */
   requestId?: string;
-  
+
   // Future extensions:
   // traceId?: string;
   // spanId?: string;
@@ -85,10 +85,10 @@ export interface RequestContext {
 ### Type Definitions
 
 ```typescript
-// shared/infra/db/types.ts
+// lib/shared/infra/db/types.ts
 
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from './schema';
+import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import * as schema from "./schema";
 
 /**
  * The main Drizzle database client type.
@@ -99,17 +99,20 @@ export type DbClient = NodePgDatabase<typeof schema>;
  * Drizzle transaction type - this is what gets passed to repositories.
  */
 export type DrizzleTransaction = Parameters<
-  Parameters<DbClient['transaction']>[0]
+  Parameters<DbClient["transaction"]>[0]
 >[0];
 ```
 
 ### Transaction Manager Implementation
 
 ```typescript
-// shared/infra/db/transaction.ts
+// lib/shared/infra/db/transaction.ts
 
-import type { TransactionManager, TransactionContext } from '@/shared/kernel/transaction';
-import type { DbClient, DrizzleTransaction } from './types';
+import type {
+  TransactionManager,
+  TransactionContext,
+} from "@/lib/shared/kernel/transaction";
+import type { DbClient, DrizzleTransaction } from "./types";
 
 /**
  * Drizzle-specific implementation of TransactionManager.
@@ -128,12 +131,12 @@ export class DrizzleTransactionManager implements TransactionManager {
 ### Database Client Setup
 
 ```typescript
-// shared/infra/db/drizzle.ts
+// lib/shared/infra/db/drizzle.ts
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as schema from './schema';
-import type { DbClient } from './types';
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "./schema";
+import type { DbClient } from "./types";
 
 /**
  * Global singleton for database pool (survives serverless warm starts).
@@ -160,11 +163,11 @@ export const db: DbClient = drizzle(createPool(), { schema });
 ## Container Integration
 
 ```typescript
-// shared/infra/container.ts
+// lib/shared/infra/container.ts
 
-import { db } from './db/drizzle';
-import { DrizzleTransactionManager } from './db/transaction';
-import type { TransactionManager } from '@/shared/kernel/transaction';
+import { db } from "./db/drizzle";
+import { DrizzleTransactionManager } from "./db/transaction";
+import type { TransactionManager } from "@/lib/shared/kernel/transaction";
 
 export interface Container {
   db: DbClient;
@@ -191,12 +194,12 @@ export function getContainer(): Container {
 Repositories accept optional `RequestContext` and use the transaction if provided.
 
 ```typescript
-// modules/user/repositories/user.repository.ts
+// lib/modules/user/repositories/user.repository.ts
 
-import { eq } from 'drizzle-orm';
-import { users, User, UserInsert } from '@/shared/infra/db/schema';
-import type { RequestContext } from '@/shared/kernel/context';
-import type { DbClient, DrizzleTransaction } from '@/shared/infra/db/types';
+import { eq } from "drizzle-orm";
+import { users, User, UserInsert } from "@/lib/shared/infra/db/schema";
+import type { RequestContext } from "@/lib/shared/kernel/context";
+import type { DbClient, DrizzleTransaction } from "@/lib/shared/infra/db/types";
 
 export class UserRepository {
   constructor(private db: DbClient) {}
@@ -212,17 +215,14 @@ export class UserRepository {
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
-    
+
     return result[0] ?? null;
   }
 
   async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
     const client = this.getClient(ctx);
-    const result = await client
-      .insert(users)
-      .values(data)
-      .returning();
-    
+    const result = await client.insert(users).values(data).returning();
+
     return result[0];
   }
 }
@@ -233,13 +233,13 @@ export class UserRepository {
 Services accept optional `RequestContext`. If provided with a transaction, they participate in it. Otherwise, they own their own transaction.
 
 ```typescript
-// modules/user/services/user.service.ts
+// lib/modules/user/services/user.service.ts
 
-import type { TransactionManager } from '@/shared/kernel/transaction';
-import type { RequestContext } from '@/shared/kernel/context';
-import { ConflictError } from '@/shared/kernel/errors';
-import { User, UserInsert } from '@/shared/infra/db/schema';
-import type { IUserRepository } from '../repositories/user.repository.interface';
+import type { TransactionManager } from "@/lib/shared/kernel/transaction";
+import type { RequestContext } from "@/lib/shared/kernel/context";
+import { ConflictError } from "@/lib/shared/kernel/errors";
+import { User, UserInsert } from "@/lib/shared/infra/db/schema";
+import type { IUserRepository } from "../repositories/user.repository.interface";
 
 export class UserService {
   constructor(
@@ -263,16 +263,19 @@ export class UserService {
     if (ctx?.tx) {
       return this.createInternal(data, ctx);
     }
-    
+
     return this.transactionManager.run(async (tx) => {
       return this.createInternal(data, { tx });
     });
   }
 
-  private async createInternal(data: UserInsert, ctx: RequestContext): Promise<User> {
+  private async createInternal(
+    data: UserInsert,
+    ctx: RequestContext,
+  ): Promise<User> {
     const existing = await this.userRepository.findByEmail(data.email, ctx);
     if (existing) {
-      throw new ConflictError('Email already in use', { email: data.email });
+      throw new ConflictError("Email already in use", { email: data.email });
     }
     return this.userRepository.create(data, ctx);
   }
@@ -280,12 +283,18 @@ export class UserService {
   /**
    * Update with optional context.
    */
-  async update(id: string, data: Partial<UserInsert>, ctx?: RequestContext): Promise<User> {
+  async update(
+    id: string,
+    data: Partial<UserInsert>,
+    ctx?: RequestContext,
+  ): Promise<User> {
     const exec = async (ctx: RequestContext): Promise<User> => {
       if (data.email) {
         const existing = await this.userRepository.findByEmail(data.email, ctx);
         if (existing && existing.id !== id) {
-          throw new ConflictError('Email already in use', { email: data.email });
+          throw new ConflictError("Email already in use", {
+            email: data.email,
+          });
         }
       }
       return this.userRepository.update(id, data, ctx);
@@ -304,13 +313,13 @@ export class UserService {
 Use cases create transactions when orchestrating multiple services.
 
 ```typescript
-// modules/user/use-cases/register-user.use-case.ts
+// lib/modules/user/use-cases/register-user.use-case.ts
 
-import type { TransactionManager } from '@/shared/kernel/transaction';
-import type { IUserService } from '../services/user.service.interface';
-import type { IWorkspaceService } from '@/modules/workspace/services/workspace.service.interface';
-import type { IEmailService } from '@/shared/infra/email/email.service.interface';
-import { RegisterUserDTO } from '../dtos/register-user.dto';
+import type { TransactionManager } from "@/lib/shared/kernel/transaction";
+import type { IUserService } from "../services/user.service.interface";
+import type { IWorkspaceService } from "@/lib/modules/workspace/services/workspace.service.interface";
+import type { IEmailService } from "@/lib/shared/infra/email/email.service.interface";
+import { RegisterUserDTO } from "../dtos/register-user.dto";
 
 export class RegisterUserUseCase {
   constructor(
@@ -337,7 +346,9 @@ export class RegisterUserUseCase {
 
       // Add to workspace within same transaction
       if (input.workspaceId) {
-        await this.workspaceService.addMember(input.workspaceId, user.id, { tx });
+        await this.workspaceService.addMember(input.workspaceId, user.id, {
+          tx,
+        });
       }
 
       return user;
@@ -458,11 +469,11 @@ await this.transactionManager.run(async (tx) => {
   // Validate first
   const fromAccount = await this.accountRepository.findById(fromId, { tx });
   const toAccount = await this.accountRepository.findById(toId, { tx });
-  
+
   if (!fromAccount) throw new AccountNotFoundError(fromId);
   if (!toAccount) throw new AccountNotFoundError(toId);
   if (fromAccount.balance < amount) {
-    throw new BusinessRuleError('Insufficient funds');
+    throw new BusinessRuleError("Insufficient funds");
   }
 
   // Then mutate
@@ -478,7 +489,10 @@ await this.transactionManager.run(async (tx) => {
 ```typescript
 // tests/mocks/transaction.mock.ts
 
-import type { TransactionManager, TransactionContext } from '@/shared/kernel/transaction';
+import type {
+  TransactionManager,
+  TransactionContext,
+} from "@/lib/shared/kernel/transaction";
 
 export class MockTransactionManager implements TransactionManager {
   async run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T> {
@@ -490,7 +504,7 @@ export class MockTransactionManager implements TransactionManager {
 ### Integration Tests
 
 ```typescript
-describe('UserService', () => {
+describe("UserService", () => {
   let userService: UserService;
 
   beforeEach(() => {
@@ -504,11 +518,11 @@ describe('UserService', () => {
     await getContainer().db.delete(users);
   });
 
-  it('rolls back on conflict', async () => {
-    await userService.create({ email: 'test@example.com', name: 'Test' });
+  it("rolls back on conflict", async () => {
+    await userService.create({ email: "test@example.com", name: "Test" });
 
     await expect(
-      userService.create({ email: 'test@example.com', name: 'Test 2' })
+      userService.create({ email: "test@example.com", name: "Test 2" }),
     ).rejects.toThrow(ConflictError);
 
     const count = await getContainer().db.select().from(users);
@@ -520,7 +534,7 @@ describe('UserService', () => {
 ## Folder Structure
 
 ```
-src/
+src/lib/
 ├─ shared/
 │  ├─ kernel/
 │  │  ├─ transaction.ts      # TransactionManager interface, TransactionContext type
@@ -546,9 +560,9 @@ src/
 
 ## Checklist
 
-- [ ] `TransactionManager` interface defined in `shared/kernel/transaction.ts`
+- [ ] `TransactionManager` interface defined in `lib/shared/kernel/transaction.ts`
 - [ ] `TransactionContext` type alias in kernel (framework-agnostic)
-- [ ] `DrizzleTransactionManager` implementation in `shared/infra/db/transaction.ts`
+- [ ] `DrizzleTransactionManager` implementation in `lib/shared/infra/db/transaction.ts`
 - [ ] `RequestContext` includes optional `tx` field
 - [ ] Repositories accept `ctx?: RequestContext` parameter
 - [ ] Repositories use `ctx?.tx ?? this.db` pattern

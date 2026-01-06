@@ -2,6 +2,8 @@
 
 > Disciplined layered architecture for Node.js backends with Next.js, tRPC, Drizzle ORM, and PostgreSQL.
 
+See [../README.md](../README.md) for the unified project folder structure and full documentation index.
+
 ## Overview
 
 This documentation describes a **production-ready backend architecture** that emphasizes:
@@ -39,43 +41,46 @@ This documentation describes a **production-ready backend architecture** that em
 
 ## Technology Stack
 
-| Concern | Technology |
-|---------|------------|
-| Runtime | Node.js (serverless) |
-| Framework | Next.js |
-| API Layer | tRPC |
-| Database | PostgreSQL |
-| ORM | Drizzle |
-| Validation | Zod |
-| Logging | Pino |
+> **Note:** This documentation serves as an architectural reference. Always check `package.json` for actual package versions in your project.
+
+| Concern    | Technology           |
+| ---------- | -------------------- |
+| Runtime    | Node.js (serverless) |
+| Framework  | Next.js              |
+| API Layer  | tRPC                 |
+| Database   | PostgreSQL           |
+| ORM        | Drizzle              |
+| Validation | Zod                  |
+| Logging    | Pino                 |
 
 ## Documentation Structure
 
 ### Core Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Overview](./core/overview.md) | Architecture summary, folder structure, quick reference |
-| [Conventions](./core/conventions.md) | Layer responsibilities, DI patterns, kernel rules |
-| [Error Handling](./core/error-handling.md) | Error classes, validation, response structure |
-| [Transaction](./core/transaction.md) | Transaction manager, patterns, RequestContext |
-| [Logging](./core/logging.md) | Pino configuration, levels, business events |
-| [API Response](./core/api-response.md) | Envelope pattern, pagination helpers |
-| [ID Generation](./core/id-generation.md) | Database UUID strategy |
+| Document                                   | Description                                             |
+| ------------------------------------------ | ------------------------------------------------------- |
+| [Overview](./core/overview.md)             | Architecture summary, folder structure, quick reference |
+| [Conventions](./core/conventions.md)       | Layer responsibilities, DI patterns, kernel rules       |
+| [Error Handling](./core/error-handling.md) | Error classes, validation, response structure           |
+| [Transaction](./core/transaction.md)       | Transaction manager, patterns, RequestContext           |
+| [Logging](./core/logging.md)               | Pino configuration, levels, business events             |
+| [API Response](./core/api-response.md)     | Envelope pattern, pagination helpers                    |
+| [ID Generation](./core/id-generation.md)   | Database UUID strategy                                  |
 
 ### Integration Documentation
 
-| Document | Description |
-|----------|-------------|
-| [tRPC Integration](./trpc/integration.md) | Serverless patterns, routers, Drizzle setup |
+| Document                                   | Description                                   |
+| ------------------------------------------ | --------------------------------------------- |
+| [tRPC Integration](./trpc/integration.md)  | Serverless patterns, routers, Drizzle setup   |
 | [Authentication](./trpc/authentication.md) | Session/JWT management, auth middleware, RBAC |
-| [Webhooks](./webhook/architecture.md) | Inbound webhook handling, idempotency |
+| [Webhooks](./webhook/architecture.md)      | Inbound webhook handling, idempotency         |
+| [Supabase](./supabase/README.md)           | Auth, Storage, Database integration patterns  |
 
 ### Skills (AI-Assisted Development)
 
-| Skill | When to Use |
-|-------|-------------|
-| [backend-module](./skills/backend-module/SKILL.md) | Creating new domain modules (entities, resources) |
+| Skill                                                | When to Use                                             |
+| ---------------------------------------------------- | ------------------------------------------------------- |
+| [backend-module](./skills/backend-module/SKILL.md)   | Creating new domain modules (entities, resources)       |
 | [backend-feature](./skills/backend-feature/SKILL.md) | Adding features to existing modules (endpoints, fields) |
 
 ## Quick Start
@@ -121,58 +126,65 @@ if (!user) {
 
 ```typescript
 // Business event
-logger.info({ event: 'user.created', userId }, 'User created');
+logger.info({ event: "user.created", userId }, "User created");
 
 // Request-scoped logger
 const log = createRequestLogger({ requestId, userId });
-log.info('Processing request');
+log.info("Processing request");
 ```
 
 ## Folder Structure
 
+All server-side code lives under `src/lib/`.
+
 ```
 src/
 ├─ app/api/trpc/[trpc]/route.ts    # tRPC HTTP handler
-├─ shared/
-│  ├─ kernel/                       # Core types and interfaces
-│  │  ├─ context.ts                 # RequestContext
-│  │  ├─ transaction.ts             # TransactionManager
-│  │  ├─ pagination.ts              # Pagination types
-│  │  ├─ response.ts                # Response types
-│  │  └─ errors.ts                  # Base error classes
-│  ├─ infra/                        # Infrastructure implementations
-│  │  ├─ db/                        # Drizzle client, schema, migrations
-│  │  ├─ trpc/                      # tRPC setup, middleware
-│  │  ├─ logger/                    # Pino configuration
-│  │  └─ container.ts               # Composition root
-│  └─ utils/                        # Shared utilities
-├─ modules/
-│  └─ <module>/
-│     ├─ <module>.router.ts         # tRPC router
-│     ├─ dtos/                      # Input/output schemas
-│     ├─ errors/                    # Domain-specific errors
-│     ├─ use-cases/                 # Multi-service orchestration
-│     ├─ factories/                 # Dependency creation
-│     ├─ services/                  # Business logic
-│     └─ repositories/              # Data access
+├─ lib/                             # All server-side code
+│  ├─ shared/
+│  │  ├─ kernel/                    # Core types and interfaces
+│  │  │  ├─ dtos/                   # Cross-module DTOs
+│  │  │  ├─ context.ts              # RequestContext
+│  │  │  ├─ transaction.ts          # TransactionManager
+│  │  │  ├─ pagination.ts           # Pagination types
+│  │  │  ├─ response.ts             # Response types
+│  │  │  └─ errors.ts               # Base error classes
+│  │  ├─ infra/                     # Infrastructure implementations
+│  │  │  ├─ db/                     # Drizzle client, schema
+│  │  │  ├─ trpc/                   # tRPC setup, middleware
+│  │  │  ├─ logger/                 # Pino configuration
+│  │  │  └─ container.ts            # Composition root
+│  │  └─ utils/                     # Shared utilities
+│  ├─ modules/
+│  │  └─ <module>/
+│  │     ├─ <module>.router.ts      # tRPC router
+│  │     ├─ dtos/                   # Module-specific DTOs
+│  │     ├─ errors/                 # Domain-specific errors
+│  │     ├─ use-cases/              # Multi-service orchestration
+│  │     ├─ factories/              # Dependency creation
+│  │     ├─ services/               # Business logic
+│  │     └─ repositories/           # Data access
+│  └─ trpc/
+│     └─ client.ts                  # tRPC client
 └─ drizzle/migrations/              # Database migrations
 ```
 
 ## Core Principles
 
-| Principle | Description |
-|-----------|-------------|
-| **Explicit over implicit** | No magic, clear dependency flow |
-| **Composition over coupling** | Small, focused units composed together |
-| **Manual DI with factories** | Explicit wiring, easy testing |
-| **Infrastructure is replaceable** | Business logic doesn't know about frameworks |
-| **Business logic is framework-agnostic** | Services and use cases are pure TypeScript |
+| Principle                                | Description                                  |
+| ---------------------------------------- | -------------------------------------------- |
+| **Explicit over implicit**               | No magic, clear dependency flow              |
+| **Composition over coupling**            | Small, focused units composed together       |
+| **Manual DI with factories**             | Explicit wiring, easy testing                |
+| **Infrastructure is replaceable**        | Business logic doesn't know about frameworks |
+| **Business logic is framework-agnostic** | Services and use cases are pure TypeScript   |
 
 ## Key Patterns
 
 ### Transaction Context
 
 Services accept optional `ctx?: RequestContext`:
+
 - If `ctx.tx` provided → participate in external transaction
 - If no `ctx.tx` → service owns its own transaction
 

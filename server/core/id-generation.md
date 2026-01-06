@@ -18,17 +18,17 @@
 Use Drizzle's `uuid` type with `defaultRandom()`:
 
 ```typescript
-// shared/infra/db/schema.ts
+// lib/shared/infra/db/schema.ts
 
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  name: text('name').notNull(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 ```
 
@@ -46,17 +46,20 @@ CREATE TABLE users (
 Since the database generates IDs, repositories don't need to provide them:
 
 ```typescript
-// modules/user/repositories/user.repository.ts
+// lib/modules/user/repositories/user.repository.ts
 
 export class UserRepository {
-  async create(data: Omit<UserInsert, 'id'>, ctx?: RequestContext): Promise<User> {
+  async create(
+    data: Omit<UserInsert, "id">,
+    ctx?: RequestContext,
+  ): Promise<User> {
     const client = ctx?.tx ?? this.db;
-    
+
     const result = await client
       .insert(users)
       .values(data) // No id needed - database generates it
       .returning();
-    
+
     return result[0];
   }
 }
@@ -67,9 +70,9 @@ export class UserRepository {
 Update entity types to reflect optional ID on insert:
 
 ```typescript
-// shared/infra/db/schema.ts
+// lib/shared/infra/db/schema.ts
 
-import { createSelectSchema, createInsertSchema } from 'drizzle-zod';
+import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 
 // Select schema - id is always present
 export const UserSchema = createSelectSchema(users);
@@ -85,9 +88,9 @@ export type UserInsert = z.infer<typeof UserInsertSchema>;
 For endpoints that receive IDs as input:
 
 ```typescript
-// modules/user/dtos/get-user.dto.ts
+// lib/modules/user/dtos/get-user.dto.ts
 
-import { z } from 'zod';
+import { z } from "zod";
 
 export const GetUserSchema = z.object({
   id: z.string().uuid(),
@@ -105,9 +108,9 @@ export const UpdateUserSchema = z.object({
 UUID collisions are astronomically unlikely, but for absolute safety:
 
 ```typescript
-// shared/utils/db.ts
+// lib/shared/utils/db.ts
 
-import { ConflictError } from '@/shared/kernel/errors';
+import { ConflictError } from "@/lib/shared/kernel/errors";
 
 /**
  * Executes a database operation with retry on primary key collision.
@@ -128,7 +131,7 @@ export async function withRetryOnCollision<T>(
     }
   }
 
-  throw new ConflictError('Failed to insert after retries', {
+  throw new ConflictError("Failed to insert after retries", {
     attempts: maxRetries,
   });
 }
@@ -137,9 +140,9 @@ export async function withRetryOnCollision<T>(
  * Checks if error is a primary key violation.
  */
 function isPrimaryKeyViolation(error: unknown): boolean {
-  if (error && typeof error === 'object' && 'code' in error) {
+  if (error && typeof error === "object" && "code" in error) {
     // PostgreSQL unique violation on primary key
-    return error.code === '23505';
+    return error.code === "23505";
   }
   return false;
 }
@@ -148,20 +151,17 @@ function isPrimaryKeyViolation(error: unknown): boolean {
 **Usage in repository:**
 
 ```typescript
-// modules/user/repositories/user.repository.ts
+// lib/modules/user/repositories/user.repository.ts
 
-import { withRetryOnCollision } from '@/shared/utils/db';
+import { withRetryOnCollision } from "@/lib/shared/utils/db";
 
 export class UserRepository {
   async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
     const client = ctx?.tx ?? this.db;
-    
+
     return withRetryOnCollision(async () => {
-      const result = await client
-        .insert(users)
-        .values(data)
-        .returning();
-      
+      const result = await client.insert(users).values(data).returning();
+
       return result[0];
     });
   }
@@ -173,9 +173,9 @@ export class UserRepository {
 For cases where you need the ID before insert (rare):
 
 ```typescript
-// shared/utils/id.ts
+// lib/shared/utils/id.ts
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from "crypto";
 
 /**
  * Generates a UUID v4.
@@ -197,7 +197,7 @@ export function generateId(): string {
 const userId = generateId();
 await Promise.all([
   userRepository.createWithId(userId, userData),
-  auditService.log('user.created', { userId }), // Need ID immediately
+  auditService.log("user.created", { userId }), // Need ID immediately
 ]);
 ```
 
@@ -206,5 +206,5 @@ await Promise.all([
 - [ ] All tables use `uuid('id').primaryKey().defaultRandom()`
 - [ ] Insert types omit `id` field
 - [ ] DTOs validate IDs with `z.string().uuid()`
-- [ ] `withRetryOnCollision()` utility in `shared/utils/db.ts`
+- [ ] `withRetryOnCollision()` utility in `lib/shared/utils/db.ts`
 - [ ] `generateId()` utility available for edge cases

@@ -34,34 +34,34 @@ This backend follows a **disciplined layered architecture** with explicit bounda
 
 ## Core Principles
 
-| Principle | Description |
-|-----------|-------------|
-| **Explicit over implicit** | No magic, clear dependency flow |
-| **Composition over coupling** | Small, focused units composed together |
-| **Manual DI with factories** | Explicit wiring, easy testing |
-| **Infrastructure is replaceable** | Business logic doesn't know about frameworks |
-| **Business logic is framework-agnostic** | Services and use cases are pure TypeScript |
+| Principle                                | Description                                  |
+| ---------------------------------------- | -------------------------------------------- |
+| **Explicit over implicit**               | No magic, clear dependency flow              |
+| **Composition over coupling**            | Small, focused units composed together       |
+| **Manual DI with factories**             | Explicit wiring, easy testing                |
+| **Infrastructure is replaceable**        | Business logic doesn't know about frameworks |
+| **Business logic is framework-agnostic** | Services and use cases are pure TypeScript   |
 
 ## Technology Stack
 
-| Concern | Technology |
-|---------|------------|
-| Runtime | Node.js (serverless) |
-| Framework | Next.js |
-| API Layer | tRPC |
-| Database | PostgreSQL |
-| ORM | Drizzle |
-| Validation | Zod |
-| Logging | Pino |
+| Concern    | Technology           |
+| ---------- | -------------------- |
+| Runtime    | Node.js (serverless) |
+| Framework  | Next.js              |
+| API Layer  | tRPC                 |
+| Database   | PostgreSQL           |
+| ORM        | Drizzle              |
+| Validation | Zod                  |
+| Logging    | Pino                 |
 
 ## Layer Responsibilities
 
-| Layer | Responsibility | Transactions |
-|-------|----------------|--------------|
-| **Router/Controller** | HTTP concerns, input validation, error mapping | No |
-| **Use Case** | Multi-service orchestration, side effects | Yes (owns) |
-| **Service** | Business logic, single-service operations | Yes (owns or receives ctx) |
-| **Repository** | Data access, entity persistence | No (receives context) |
+| Layer                 | Responsibility                                 | Transactions               |
+| --------------------- | ---------------------------------------------- | -------------------------- |
+| **Router/Controller** | HTTP concerns, input validation, error mapping | No                         |
+| **Use Case**          | Multi-service orchestration, side effects      | Yes (owns)                 |
+| **Service**           | Business logic, single-service operations      | Yes (owns or receives ctx) |
+| **Repository**        | Data access, entity persistence                | No (receives context)      |
 
 ### Router Decision Flow
 
@@ -78,10 +78,10 @@ Is it a write operation?
 
 ### Entities vs DTOs
 
-| Type | Source | Used By | Purpose |
-|------|--------|---------|---------|
-| **Entity** | drizzle-zod | Repository, Service | Internal data representation |
-| **DTO** | Zod schemas | Router, Use Case | API contracts, input validation |
+| Type       | Source      | Used By             | Purpose                         |
+| ---------- | ----------- | ------------------- | ------------------------------- |
+| **Entity** | drizzle-zod | Repository, Service | Internal data representation    |
+| **DTO**    | Zod schemas | Router, Use Case    | API contracts, input validation |
 
 **Rule**: Return entities by default. Use DTOs when transforming, omitting sensitive fields, or combining data.
 
@@ -121,6 +121,8 @@ Client Request
 
 ## Folder Structure
 
+All server-side code lives under `src/lib/`.
+
 ```
 src/
 ├─ app/
@@ -129,63 +131,67 @@ src/
 │        └─ [trpc]/
 │           └─ route.ts
 │
-├─ shared/
-│  ├─ kernel/
-│  │  ├─ context.ts          # RequestContext
-│  │  ├─ transaction.ts      # TransactionManager
-│  │  ├─ pagination.ts       # Pagination types
-│  │  ├─ response.ts         # Response types
-│  │  ├─ auth.ts             # Session, roles
-│  │  └─ errors.ts           # Base error classes
-│  ├─ infra/
-│  │  ├─ db/
-│  │  │  ├─ drizzle.ts       # Drizzle client
-│  │  │  ├─ transaction.ts   # DrizzleTransactionManager
-│  │  │  └─ schema.ts        # Table + entity definitions
-│  │  ├─ trpc/
-│  │  │  ├─ trpc.ts          # tRPC initialization
-│  │  │  ├─ root.ts          # Root router
-│  │  │  ├─ context.ts       # Request context
-│  │  │  └─ middleware/
-│  │  ├─ logger/
-│  │  │  └─ index.ts         # Pino configuration
-│  │  └─ container.ts        # Composition root
-│  └─ utils/
-│     ├─ validation.ts       # Zod helpers
-│     ├─ pagination.ts       # Pagination helpers
-│     ├─ response.ts         # Response helpers
-│     └─ sanitize.ts         # Data sanitization
+├─ lib/                          # All server-side code
+│  ├─ shared/
+│  │  ├─ kernel/
+│  │  │  ├─ dtos/                # Cross-module DTOs
+│  │  │  │  ├─ common.ts         # Shared schemas (file upload, etc.)
+│  │  │  │  └─ index.ts
+│  │  │  ├─ context.ts           # RequestContext
+│  │  │  ├─ transaction.ts       # TransactionManager
+│  │  │  ├─ pagination.ts        # Pagination types
+│  │  │  ├─ response.ts          # Response types
+│  │  │  ├─ auth.ts              # Session, roles
+│  │  │  └─ errors.ts            # Base error classes
+│  │  ├─ infra/
+│  │  │  ├─ db/
+│  │  │  │  ├─ drizzle.ts        # Drizzle client
+│  │  │  │  ├─ transaction.ts    # DrizzleTransactionManager
+│  │  │  │  └─ schema.ts         # Table + entity definitions
+│  │  │  ├─ trpc/
+│  │  │  │  ├─ trpc.ts           # tRPC initialization
+│  │  │  │  ├─ root.ts           # Root router
+│  │  │  │  ├─ context.ts        # Request context
+│  │  │  │  └─ middleware/
+│  │  │  ├─ logger/
+│  │  │  │  └─ index.ts          # Pino configuration
+│  │  │  └─ container.ts         # Composition root
+│  │  └─ utils/
+│  │     ├─ validation.ts        # Zod helpers
+│  │     ├─ pagination.ts        # Pagination helpers
+│  │     ├─ response.ts          # Response helpers
+│  │     └─ sanitize.ts          # Data sanitization
+│  │
+│  ├─ modules/
+│  │  └─ <module>/
+│  │     ├─ <module>.router.ts   # tRPC router
+│  │     ├─ dtos/                # Module-specific DTOs
+│  │     ├─ errors/              # Domain-specific errors
+│  │     ├─ use-cases/           # Multi-service orchestration
+│  │     ├─ factories/           # Dependency creation
+│  │     ├─ services/            # Business logic
+│  │     └─ repositories/        # Data access
+│  │
+│  └─ trpc/
+│     └─ client.ts
 │
-├─ modules/
-│  └─ <module>/
-│     ├─ <module>.router.ts  # tRPC router
-│     ├─ dtos/               # Input/output schemas
-│     ├─ errors/             # Domain-specific errors
-│     ├─ use-cases/          # Multi-service orchestration
-│     ├─ factories/          # Dependency creation
-│     ├─ services/           # Business logic
-│     └─ repositories/       # Data access
-│
-├─ drizzle/
-│  └─ migrations/
-│
-└─ trpc/
-   └─ client.ts
+└─ drizzle/
+   └─ migrations/
 ```
 
 ## Documentation Index
 
-| Document | Description |
-|----------|-------------|
-| [Conventions](./conventions.md) | Layer responsibilities, DI, kernel rules |
-| [Error Handling](./error-handling.md) | Error classes, flow, response structure |
-| [Transaction](./transaction.md) | Transaction manager, patterns, context |
-| [Logging](./logging.md) | Pino configuration, levels, business events |
-| [API Response](./api-response.md) | Envelope pattern, pagination |
-| [ID Generation](./id-generation.md) | Database UUID strategy |
-| [tRPC Integration](../trpc/integration.md) | Serverless, routers, procedures |
-| [Authentication](../trpc/authentication.md) | Session management, authorization |
-| [Webhooks](../webhook/architecture.md) | Inbound webhook handling |
+| Document                                    | Description                                 |
+| ------------------------------------------- | ------------------------------------------- |
+| [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
+| [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
+| [Transaction](./transaction.md)             | Transaction manager, patterns, context      |
+| [Logging](./logging.md)                     | Pino configuration, levels, business events |
+| [API Response](./api-response.md)           | Envelope pattern, pagination                |
+| [ID Generation](./id-generation.md)         | Database UUID strategy                      |
+| [tRPC Integration](../trpc/integration.md)  | Serverless, routers, procedures             |
+| [Authentication](../trpc/authentication.md) | Session management, authorization           |
+| [Webhooks](../webhook/architecture.md)      | Inbound webhook handling                    |
 
 ## Quick Reference
 
@@ -204,10 +210,10 @@ const input = validate(CreateUserSchema, data);
 ```typescript
 // Request logger
 const log = createRequestLogger({ requestId, userId });
-log.info('Processing request');
+log.info("Processing request");
 
 // Business event
-logger.info({ event: 'user.created', userId }, 'User created');
+logger.info({ event: "user.created", userId }, "User created");
 ```
 
 ### Factory Usage

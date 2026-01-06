@@ -13,7 +13,7 @@
 
 ```typescript
 {
-  data: T
+  data: T;
 }
 ```
 
@@ -112,9 +112,9 @@ Defined in [Error Handling](./error-handling.md).
 ### Input Schema
 
 ```typescript
-// shared/kernel/pagination.ts
+// lib/shared/kernel/pagination.ts
 
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Standard pagination input schema.
@@ -123,7 +123,7 @@ import { z } from 'zod';
 export const PaginationInputSchema = z.object({
   limit: z.number().min(1).max(100).default(20),
   cursor: z.number().nullish(),
-  sort: z.enum(['asc', 'desc']).default('desc'),
+  sort: z.enum(["asc", "desc"]).default("desc"),
   search: z.string().nullish(),
 });
 
@@ -133,7 +133,7 @@ export type PaginationInput = z.infer<typeof PaginationInputSchema>;
 ### Output Schema
 
 ```typescript
-// shared/kernel/pagination.ts (continued)
+// lib/shared/kernel/pagination.ts (continued)
 
 /**
  * Pagination metadata schema.
@@ -143,7 +143,7 @@ export const PaginationMetaSchema = z.object({
   limit: z.number(),
   cursor: z.number().nullable(),
   nextCursor: z.number().nullable(),
-  sort: z.enum(['asc', 'desc']),
+  sort: z.enum(["asc", "desc"]),
 });
 
 export type PaginationMeta = z.infer<typeof PaginationMetaSchema>;
@@ -167,9 +167,9 @@ export type PaginatedResponse<T> = {
 ### Single Resource Response Schema
 
 ```typescript
-// shared/kernel/response.ts
+// lib/shared/kernel/response.ts
 
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Creates a single resource response schema.
@@ -188,9 +188,13 @@ export type ApiResponse<T> = {
 ## Pagination Helper
 
 ```typescript
-// shared/utils/pagination.ts
+// lib/shared/utils/pagination.ts
 
-import type { PaginationInput, PaginationMeta, PaginatedResponse } from '@/shared/kernel/pagination';
+import type {
+  PaginationInput,
+  PaginationMeta,
+  PaginatedResponse,
+} from "@/lib/shared/kernel/pagination";
 
 /**
  * Builds a paginated response with computed nextCursor.
@@ -213,7 +217,7 @@ export function buildPaginatedResponse<T>(
       limit,
       cursor,
       nextCursor,
-      sort: input.sort ?? 'desc',
+      sort: input.sort ?? "desc",
     },
   };
 }
@@ -222,9 +226,9 @@ export function buildPaginatedResponse<T>(
 ## Single Resource Response Helper
 
 ```typescript
-// shared/utils/response.ts
+// lib/shared/utils/response.ts
 
-import type { ApiResponse } from '@/shared/kernel/response';
+import type { ApiResponse } from "@/lib/shared/kernel/response";
 
 /**
  * Wraps data in standard envelope.
@@ -239,14 +243,14 @@ export function wrapResponse<T>(data: T): ApiResponse<T> {
 Extend `PaginationInputSchema` for endpoint-specific filters:
 
 ```typescript
-// modules/user/dtos/list-users.dto.ts
+// lib/modules/user/dtos/list-users.dto.ts
 
-import { z } from 'zod';
-import { PaginationInputSchema } from '@/shared/kernel/pagination';
+import { z } from "zod";
+import { PaginationInputSchema } from "@/lib/shared/kernel/pagination";
 
 export const ListUsersInputSchema = PaginationInputSchema.extend({
-  role: z.enum(['admin', 'member']).optional(),
-  status: z.enum(['active', 'inactive']).optional(),
+  role: z.enum(["admin", "member"]).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
 });
 
 export type ListUsersInput = z.infer<typeof ListUsersInputSchema>;
@@ -257,14 +261,14 @@ export type ListUsersInput = z.infer<typeof ListUsersInputSchema>;
 ### Router Example
 
 ```typescript
-// modules/user/user.router.ts
+// lib/modules/user/user.router.ts
 
-import { router, protectedProcedure } from '@/shared/infra/trpc';
-import { z } from 'zod';
-import { ListUsersInputSchema } from './dtos/list-users.dto';
-import { makeUserService } from './factories/user.factory';
-import { wrapResponse } from '@/shared/utils/response';
-import { UserNotFoundError } from './errors/user.errors';
+import { router, protectedProcedure } from "@/lib/shared/infra/trpc";
+import { z } from "zod";
+import { ListUsersInputSchema } from "./dtos/list-users.dto";
+import { makeUserService } from "./factories/user.factory";
+import { wrapResponse } from "@/lib/shared/utils/response";
+import { UserNotFoundError } from "./errors/user.errors";
 
 export const userRouter = router({
   // Single resource - wrapped in envelope
@@ -290,18 +294,17 @@ export const userRouter = router({
 ### Service Example
 
 ```typescript
-// modules/user/services/user.service.ts
+// lib/modules/user/services/user.service.ts
 
-import { eq, ilike, or, count, desc, asc, and } from 'drizzle-orm';
-import { users } from '@/shared/infra/db/schema';
-import { buildPaginatedResponse } from '@/shared/utils/pagination';
-import type { PaginatedResponse } from '@/shared/kernel/pagination';
-import type { ListUsersInput } from '../dtos/list-users.dto';
-import type { User } from '@/shared/infra/db/schema';
+import { users } from "@/lib/shared/infra/db/schema";
+import { buildPaginatedResponse } from "@/lib/shared/utils/pagination";
+import type { PaginatedResponse } from "@/lib/shared/kernel/pagination";
+import type { ListUsersInput } from "../dtos/list-users.dto";
+import type { User } from "@/lib/shared/infra/db/schema";
 
 export class UserService {
   async list(input: ListUsersInput): Promise<PaginatedResponse<User>> {
-    const { limit = 20, cursor, sort = 'desc', search, role } = input;
+    const { limit = 20, cursor, sort = "desc", search, role } = input;
     const offset = cursor ?? 0;
 
     // Build where conditions
@@ -309,10 +312,7 @@ export class UserService {
 
     if (search) {
       conditions.push(
-        or(
-          ilike(users.name, `%${search}%`),
-          ilike(users.email, `%${search}%`),
-        ),
+        or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
       );
     }
 
@@ -325,7 +325,7 @@ export class UserService {
       .select()
       .from(users)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(sort === 'desc' ? desc(users.createdAt) : asc(users.createdAt))
+      .orderBy(sort === "desc" ? desc(users.createdAt) : asc(users.createdAt))
       .limit(limit)
       .offset(offset);
 
@@ -394,10 +394,7 @@ Services decide which fields to search. The `search` parameter is a generic term
 // UserService searches: name, email
 if (search) {
   conditions.push(
-    or(
-      ilike(users.name, `%${search}%`),
-      ilike(users.email, `%${search}%`),
-    ),
+    or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
   );
 }
 
@@ -415,7 +412,7 @@ if (search) {
 ## Folder Structure
 
 ```
-src/
+src/lib/
 ├─ shared/
 │  ├─ kernel/
 │  │  ├─ pagination.ts    # PaginationInput, PaginationMeta, schemas
@@ -432,12 +429,12 @@ src/
 
 ## Checklist
 
-- [ ] `PaginationInputSchema` in `shared/kernel/pagination.ts`
-- [ ] `PaginationMetaSchema` in `shared/kernel/pagination.ts`
+- [ ] `PaginationInputSchema` in `lib/shared/kernel/pagination.ts`
+- [ ] `PaginationMetaSchema` in `lib/shared/kernel/pagination.ts`
 - [ ] `createPaginatedSchema` helper for output validation
 - [ ] `createResponseSchema` helper for single resource
-- [ ] `buildPaginatedResponse` utility in `shared/utils/pagination.ts`
-- [ ] `wrapResponse` utility in `shared/utils/response.ts`
+- [ ] `buildPaginatedResponse` utility in `lib/shared/utils/pagination.ts`
+- [ ] `wrapResponse` utility in `lib/shared/utils/response.ts`
 - [ ] Endpoint DTOs extend `PaginationInputSchema` with custom filters
 - [ ] Services implement search on relevant fields
 - [ ] Routers return consistent envelope structure

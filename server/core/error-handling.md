@@ -13,7 +13,7 @@
 ## Base Error Class
 
 ```typescript
-// shared/kernel/errors.ts
+// lib/shared/kernel/errors.ts
 
 export abstract class AppError extends Error {
   abstract readonly code: string;
@@ -32,71 +32,71 @@ export abstract class AppError extends Error {
 ## Core Error Classes
 
 ```typescript
-// shared/kernel/errors.ts
+// lib/shared/kernel/errors.ts
 
 // 400 - Bad Request
 export class ValidationError extends AppError {
-  readonly code = 'VALIDATION_ERROR';
+  readonly code = "VALIDATION_ERROR";
   readonly httpStatus = 400;
 }
 
 // 401 - Unauthorized
 export class AuthenticationError extends AppError {
-  readonly code = 'AUTHENTICATION_ERROR';
+  readonly code = "AUTHENTICATION_ERROR";
   readonly httpStatus = 401;
 }
 
 // 403 - Forbidden
 export class AuthorizationError extends AppError {
-  readonly code = 'AUTHORIZATION_ERROR';
+  readonly code = "AUTHORIZATION_ERROR";
   readonly httpStatus = 403;
 }
 
 // 404 - Not Found
 export class NotFoundError extends AppError {
-  readonly code = 'NOT_FOUND';
+  readonly code = "NOT_FOUND";
   readonly httpStatus = 404;
 }
 
 // 409 - Conflict
 export class ConflictError extends AppError {
-  readonly code = 'CONFLICT';
+  readonly code = "CONFLICT";
   readonly httpStatus = 409;
 }
 
 // 422 - Unprocessable Entity (business rule violations)
 export class BusinessRuleError extends AppError {
-  readonly code = 'BUSINESS_RULE_VIOLATION';
+  readonly code = "BUSINESS_RULE_VIOLATION";
   readonly httpStatus = 422;
 }
 
 // 429 - Too Many Requests
 export class RateLimitError extends AppError {
-  readonly code = 'RATE_LIMIT_EXCEEDED';
+  readonly code = "RATE_LIMIT_EXCEEDED";
   readonly httpStatus = 429;
 }
 
 // 500 - Internal Server Error
 export class InternalError extends AppError {
-  readonly code = 'INTERNAL_ERROR';
+  readonly code = "INTERNAL_ERROR";
   readonly httpStatus = 500;
 }
 
 // 502 - Bad Gateway
 export class BadGatewayError extends AppError {
-  readonly code = 'BAD_GATEWAY';
+  readonly code = "BAD_GATEWAY";
   readonly httpStatus = 502;
 }
 
 // 503 - Service Unavailable
 export class ServiceUnavailableError extends AppError {
-  readonly code = 'SERVICE_UNAVAILABLE';
+  readonly code = "SERVICE_UNAVAILABLE";
   readonly httpStatus = 503;
 }
 
 // 504 - Gateway Timeout
 export class GatewayTimeoutError extends AppError {
-  readonly code = 'GATEWAY_TIMEOUT';
+  readonly code = "GATEWAY_TIMEOUT";
   readonly httpStatus = 504;
 }
 ```
@@ -106,61 +106,72 @@ export class GatewayTimeoutError extends AppError {
 Each module defines its own error subclasses for specific error codes.
 
 ```typescript
-// modules/user/errors/user.errors.ts
+// lib/modules/user/errors/user.errors.ts
 
-import { NotFoundError, ConflictError, BusinessRuleError } from '@/shared/kernel/errors';
+import {
+  NotFoundError,
+  ConflictError,
+  BusinessRuleError,
+} from "@/lib/shared/kernel/errors";
 
 export class UserNotFoundError extends NotFoundError {
-  readonly code = 'USER_NOT_FOUND';
+  readonly code = "USER_NOT_FOUND";
 
   constructor(userId: string) {
-    super('User not found', { userId });
+    super("User not found", { userId });
   }
 }
 
 export class UserEmailConflictError extends ConflictError {
-  readonly code = 'USER_EMAIL_CONFLICT';
+  readonly code = "USER_EMAIL_CONFLICT";
 
   constructor(email: string) {
-    super('Email already in use', { email });
+    super("Email already in use", { email });
   }
 }
 
 export class UserCannotDeleteSelfError extends BusinessRuleError {
-  readonly code = 'USER_CANNOT_DELETE_SELF';
+  readonly code = "USER_CANNOT_DELETE_SELF";
 
   constructor(userId: string) {
-    super('Cannot delete your own account', { userId });
+    super("Cannot delete your own account", { userId });
   }
 }
 ```
 
 ```typescript
-// modules/workspace/errors/workspace.errors.ts
+// lib/modules/workspace/errors/workspace.errors.ts
 
-import { NotFoundError, AuthorizationError, BusinessRuleError } from '@/shared/kernel/errors';
+import {
+  NotFoundError,
+  AuthorizationError,
+  BusinessRuleError,
+} from "@/lib/shared/kernel/errors";
 
 export class WorkspaceNotFoundError extends NotFoundError {
-  readonly code = 'WORKSPACE_NOT_FOUND';
+  readonly code = "WORKSPACE_NOT_FOUND";
 
   constructor(workspaceId: string) {
-    super('Workspace not found', { workspaceId });
+    super("Workspace not found", { workspaceId });
   }
 }
 
 export class WorkspaceAccessDeniedError extends AuthorizationError {
-  readonly code = 'WORKSPACE_ACCESS_DENIED';
+  readonly code = "WORKSPACE_ACCESS_DENIED";
 
   constructor(workspaceId: string, userId: string) {
-    super('Access to workspace denied', { workspaceId, userId });
+    super("Access to workspace denied", { workspaceId, userId });
   }
 }
 
 export class WorkspaceHasActiveProjectsError extends BusinessRuleError {
-  readonly code = 'WORKSPACE_HAS_ACTIVE_PROJECTS';
+  readonly code = "WORKSPACE_HAS_ACTIVE_PROJECTS";
 
   constructor(workspaceId: string, projectCount: number) {
-    super('Cannot delete workspace with active projects', { workspaceId, projectCount });
+    super("Cannot delete workspace with active projects", {
+      workspaceId,
+      projectCount,
+    });
   }
 }
 ```
@@ -168,7 +179,7 @@ export class WorkspaceHasActiveProjectsError extends BusinessRuleError {
 ### Folder Structure
 
 ```
-modules/
+lib/modules/
 ├─ user/
 │  ├─ errors/
 │  │  └─ user.errors.ts
@@ -184,18 +195,18 @@ modules/
 Use a generic handler that transforms Zod errors into `ValidationError`:
 
 ```typescript
-// shared/utils/validation.ts
+// lib/shared/utils/validation.ts
 
-import { ZodError, ZodSchema } from 'zod';
-import { ValidationError } from '@/shared/kernel/errors';
+import { ZodError, ZodSchema } from "zod";
+import { ValidationError } from "@/lib/shared/kernel/errors";
 
 export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
 
   if (!result.success) {
-    throw new ValidationError('Validation failed', {
+    throw new ValidationError("Validation failed", {
       issues: result.error.issues.map((issue) => ({
-        path: issue.path.join('.'),
+        path: issue.path.join("."),
         message: issue.message,
       })),
     });
@@ -208,8 +219,8 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
 **Usage:**
 
 ```typescript
-import { validate } from '@/shared/utils/validation';
-import { CreateUserSchema } from './dtos/create-user.dto';
+import { validate } from "@/lib/shared/utils/validation";
+import { CreateUserSchema } from "./dtos/create-user.dto";
 
 const input = validate(CreateUserSchema, req.body);
 ```
@@ -220,10 +231,11 @@ const input = validate(CreateUserSchema, req.body);
 
 ```typescript
 interface ErrorResponse {
-  code: string;              // Error code (e.g., 'USER_NOT_FOUND')
-  message: string;           // Human-readable message
-  requestId: string;         // For support/debugging
-  details?: {                // Optional additional context
+  code: string; // Error code (e.g., 'USER_NOT_FOUND')
+  message: string; // Human-readable message
+  requestId: string; // For support/debugging
+  details?: {
+    // Optional additional context
     [key: string]: unknown;
   };
 }
@@ -266,10 +278,10 @@ interface ErrorResponse {
 ## Error Handler (Generic HTTP)
 
 ```typescript
-// shared/infra/http/error-handler.ts
+// lib/shared/infra/http/error-handler.ts
 
-import { AppError } from '@/shared/kernel/errors';
-import { logger } from '@/shared/infra/logger';
+import { AppError } from "@/lib/shared/kernel/errors";
+import { logger } from "@/lib/shared/infra/logger";
 
 interface ErrorResponseBody {
   code: string;
@@ -285,7 +297,7 @@ export function handleError(
   // Known application error
   if (error instanceof AppError) {
     logger.warn(
-      { 
+      {
         err: error,
         code: error.code,
         details: error.details,
@@ -307,18 +319,18 @@ export function handleError(
 
   // Unknown error - log full details, return generic response
   logger.error(
-    { 
+    {
       err: error,
       requestId,
     },
-    'Unexpected error',
+    "Unexpected error",
   );
 
   return {
     status: 500,
     body: {
-      code: 'INTERNAL_ERROR',
-      message: 'An unexpected error occurred',
+      code: "INTERNAL_ERROR",
+      message: "An unexpected error occurred",
       requestId,
     },
   };
@@ -330,17 +342,17 @@ export function handleError(
 For tRPC integration, see [tRPC Integration](../trpc/integration.md).
 
 ```typescript
-// shared/infra/trpc/trpc.ts
+// lib/shared/infra/trpc/trpc.ts
 
-import { initTRPC, TRPCError } from '@trpc/server';
-import { AppError } from '@/shared/kernel/errors';
-import { logger } from '@/shared/infra/logger';
-import type { Context } from './context';
+import { initTRPC, TRPCError } from "@trpc/server";
+import { AppError } from "@/lib/shared/kernel/errors";
+import { logger } from "@/lib/shared/infra/logger";
+import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
     const cause = error.cause;
-    const requestId = ctx?.requestId ?? 'unknown';
+    const requestId = ctx?.requestId ?? "unknown";
 
     // Known application error
     if (cause instanceof AppError) {
@@ -371,14 +383,14 @@ const t = initTRPC.context<Context>().create({
         err: error,
         requestId,
       },
-      'Unexpected error',
+      "Unexpected error",
     );
 
     return {
       ...shape,
       data: {
         ...shape.data,
-        code: 'INTERNAL_ERROR',
+        code: "INTERNAL_ERROR",
         requestId,
       },
     };
@@ -388,12 +400,12 @@ const t = initTRPC.context<Context>().create({
 
 ## Error Flow by Layer
 
-| Layer | Throws | Catches |
-|-------|--------|---------|
-| Repository | `NotFoundError`, `ConflictError` (from DB constraints) | Nothing |
-| Service | Domain-specific errors, `BusinessRuleError` | Nothing (let bubble) |
-| Use Case | Domain-specific errors | Nothing (let bubble) |
-| Router/Controller | `NotFoundError` for null results | All (via error handler) |
+| Layer             | Throws                                                 | Catches                 |
+| ----------------- | ------------------------------------------------------ | ----------------------- |
+| Repository        | `NotFoundError`, `ConflictError` (from DB constraints) | Nothing                 |
+| Service           | Domain-specific errors, `BusinessRuleError`            | Nothing (let bubble)    |
+| Use Case          | Domain-specific errors                                 | Nothing (let bubble)    |
+| Router/Controller | `NotFoundError` for null results                       | All (via error handler) |
 
 **Example flow:**
 
@@ -406,7 +418,7 @@ async findById(id: string, ctx?: RequestContext): Promise<User | null> {
     .from(users)
     .where(eq(users.id, id))
     .limit(1);
-  
+
   return result[0] ?? null;
 }
 
@@ -417,11 +429,11 @@ async delete(id: string, ctx?: RequestContext): Promise<void> {
     if (!user) {
       throw new UserNotFoundError(id);
     }
-    
+
     if (user.role === 'owner') {
       throw new UserCannotDeleteOwnerError(id);
     }
-    
+
     await this.userRepository.delete(id, ctx);
   };
 
@@ -453,36 +465,36 @@ delete: protectedProcedure
 
 ## HTTP Status Code Reference
 
-| Status | Class | When to Use |
-|--------|-------|-------------|
-| 400 | `ValidationError` | Malformed request, invalid input |
-| 401 | `AuthenticationError` | Missing or invalid credentials |
-| 403 | `AuthorizationError` | Valid credentials, insufficient permissions |
-| 404 | `NotFoundError` | Resource does not exist |
-| 409 | `ConflictError` | Resource conflict (duplicate, version mismatch) |
-| 422 | `BusinessRuleError` | Valid request, but violates business rules |
-| 429 | `RateLimitError` | Too many requests |
-| 500 | `InternalError` | Unexpected server error |
-| 502 | `BadGatewayError` | Upstream service error |
-| 503 | `ServiceUnavailableError` | Service temporarily unavailable |
-| 504 | `GatewayTimeoutError` | Upstream service timeout |
+| Status | Class                     | When to Use                                     |
+| ------ | ------------------------- | ----------------------------------------------- |
+| 400    | `ValidationError`         | Malformed request, invalid input                |
+| 401    | `AuthenticationError`     | Missing or invalid credentials                  |
+| 403    | `AuthorizationError`      | Valid credentials, insufficient permissions     |
+| 404    | `NotFoundError`           | Resource does not exist                         |
+| 409    | `ConflictError`           | Resource conflict (duplicate, version mismatch) |
+| 422    | `BusinessRuleError`       | Valid request, but violates business rules      |
+| 429    | `RateLimitError`          | Too many requests                               |
+| 500    | `InternalError`           | Unexpected server error                         |
+| 502    | `BadGatewayError`         | Upstream service error                          |
+| 503    | `ServiceUnavailableError` | Service temporarily unavailable                 |
+| 504    | `GatewayTimeoutError`     | Upstream service timeout                        |
 
 ### Retryable Status Codes
 
 Clients can determine retry behavior from status code:
 
-| Status | Retryable | Notes |
-|--------|-----------|-------|
-| 4xx | No | Client error, won't change without client action |
-| 429 | Yes | Rate limited, retry after backoff |
-| 500 | Maybe | Depends on cause |
-| 502 | Yes | Bad gateway, transient |
-| 503 | Yes | Unavailable, retry after backoff |
-| 504 | Yes | Timeout, retry |
+| Status | Retryable | Notes                                            |
+| ------ | --------- | ------------------------------------------------ |
+| 4xx    | No        | Client error, won't change without client action |
+| 429    | Yes       | Rate limited, retry after backoff                |
+| 500    | Maybe     | Depends on cause                                 |
+| 502    | Yes       | Bad gateway, transient                           |
+| 503    | Yes       | Unavailable, retry after backoff                 |
+| 504    | Yes       | Timeout, retry                                   |
 
 ## Checklist
 
-- [ ] Base `AppError` class in `shared/kernel/errors.ts`
+- [ ] Base `AppError` class in `lib/shared/kernel/errors.ts`
 - [ ] Core error classes for common HTTP statuses
 - [ ] Domain-specific errors in each module's `errors/` folder
 - [ ] Validation helper wraps Zod errors into `ValidationError`
