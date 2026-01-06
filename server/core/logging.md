@@ -236,6 +236,57 @@ export class UserService implements IUserService {
 }
 ```
 
+## Log Format Convention
+
+### Field Ordering
+
+Always order log fields consistently for readability:
+
+```typescript
+// 1. Event type identifier (if business event)
+// 2. Entity identifiers (userId, workspaceId, etc.)
+// 3. Action-specific data
+// 4. Metadata (duration, status, etc.)
+
+logger.info(
+  {
+    event: "user.logged_in",     // 1. Event type
+    userId: user.id,             // 2. Primary entity
+    email: user.email,           // 3. Action-specific
+  },
+  "User logged in",              // Human-readable message
+);
+```
+
+### Required Fields by Log Type
+
+| Log Type | Required Fields | Optional Fields |
+|----------|-----------------|-----------------|
+| Request start | `type` | — |
+| Request end | `duration`, `status`, `type` | `error` |
+| Business event | `event`, primary entity ID | Related entity IDs |
+| Known error | `err`, `code`, `requestId` | `details` |
+| Unknown error | `err`, `requestId` | — |
+
+### Message Format
+
+- **Request lifecycle**: Short verb phrase ("Request started", "Request completed")
+- **Business events**: Past tense describing what happened ("User logged in", "Order created")
+- **Errors**: The error message itself
+
+```typescript
+// Good messages
+log.info({ type }, "Request started");
+log.info({ duration, status, type }, "Request completed");
+logger.info({ event: "user.registered", userId }, "User registered");
+logger.warn({ err, code, requestId }, err.message);
+
+// Bad messages (avoid)
+log.info("Starting request processing...");  // Too verbose
+log.info("Done");                            // Too vague
+logger.info({ event: "user.registered" }, "A new user has been registered in the system");  // Too wordy
+```
+
 ### Business Event Naming Convention
 
 Use past tense, dot-separated format:
@@ -249,13 +300,30 @@ Use past tense, dot-separated format:
 | Event                      | Description                   |
 | -------------------------- | ----------------------------- |
 | `user.created`             | New user registered           |
+| `user.logged_in`           | User logged in                |
+| `user.logged_out`          | User logged out               |
 | `user.updated`             | User profile updated          |
 | `user.deleted`             | User account deleted          |
+| `user.magic_link_requested`| Magic link email sent         |
 | `workspace.created`        | New workspace created         |
 | `workspace.member.added`   | Member added to workspace     |
 | `workspace.member.removed` | Member removed from workspace |
 | `payment.processed`        | Payment completed             |
 | `payment.failed`           | Payment failed                |
+
+### Auth Events
+
+Standard auth-related events:
+
+| Event | When | Fields |
+|-------|------|--------|
+| `user.registered` | New user created | `userId`, `email` |
+| `user.logged_in` | Successful login | `userId`, `email` |
+| `user.logged_out` | User logged out | — |
+| `user.magic_link_requested` | Magic link sent | `email` |
+| `user.session_exchanged` | OAuth/magic link callback | `userId` |
+| `user.password_reset_requested` | Password reset email sent | `email` |
+| `user.password_changed` | Password updated | `userId` |
 
 ## Error Logging
 
@@ -407,14 +475,33 @@ export interface RequestContext {
 
 ## Checklist
 
+### Configuration
 - [ ] Pino configured with appropriate log level
 - [ ] Pretty printing enabled in development
 - [ ] Sensitive fields redacted via pino config
-- [ ] Request logger creates child logger with `requestId`
-- [ ] Request ID generated at context creation
-- [ ] Logger middleware logs request lifecycle
-- [ ] Request input logged at `debug` level only
+- [ ] Base context includes `env` and `service`
+
+### Request Tracing
+- [ ] Request ID generated at context creation (UUID)
+- [ ] Request logger creates child logger with `requestId`, `userId`, `method`, `path`
+- [ ] Logger middleware logs request start/end with duration
+- [ ] All procedures use `loggedProcedure` as base
+- [ ] Request input logged at `debug` level only (not in production)
+
+### Business Events
 - [ ] Services log significant business events at `info` level
-- [ ] Business events use `<entity>.<action>` naming convention
-- [ ] Error handler logs known errors at `warn`, unknown at `error`
-- [ ] Repositories do not log
+- [ ] Business events use `event` field with `<entity>.<action>` format
+- [ ] Business events include primary entity ID (e.g., `userId`)
+- [ ] Auth events follow standard naming (`user.logged_in`, `user.registered`, etc.)
+- [ ] Message is past tense, concise ("User logged in", not "A user has logged in")
+
+### Error Logging
+- [ ] Error handler logs known errors at `warn` with `code`, `details`, `requestId`
+- [ ] Error handler logs unknown errors at `error` with full stack
+- [ ] Error message used as log message (not generic text)
+
+### Layer Rules
+- [ ] Routers: No logging (handled by middleware)
+- [ ] Services: Log business events
+- [ ] Repositories: No logging
+- [ ] Use cases: No logging (services log the events)

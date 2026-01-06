@@ -2,15 +2,17 @@
 
 > Vendor-specific integration patterns for Supabase, including authentication, storage, and database access within the layered architecture.
 
+> **For complete authentication implementation**, see [auth.md](./auth.md) which covers tRPC integration, user roles, Next.js middleware, and the full registration flow.
+
 ## Overview
 
 Supabase provides three main services used in this architecture:
 
-| Service      | Purpose                                    | Layer                          |
-| ------------ | ------------------------------------------ | ------------------------------ |
-| **Auth**     | User authentication, sessions, magic links | Repository → Service           |
-| **Storage**  | Object/file storage with signed URLs       | Repository (adapter) → Service |
-| **Database** | PostgreSQL via Drizzle ORM                 | Repository                     |
+| Service      | Purpose                                    | Layer                          | Documentation |
+| ------------ | ------------------------------------------ | ------------------------------ | ------------- |
+| **Auth**     | User authentication, sessions, magic links | Repository → Service → Use Case | [auth.md](./auth.md) |
+| **Storage**  | Object/file storage with signed URLs       | Repository (adapter) → Service | Below |
+| **Database** | PostgreSQL via Drizzle ORM                 | Repository                     | Below |
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -39,153 +41,29 @@ Supabase provides three main services used in this architecture:
 
 ## Authentication
 
-### Client Creation
+> **Complete documentation**: See [auth.md](./auth.md) for the full authentication implementation including:
+> - tRPC context and session extraction
+> - User roles table with Drizzle
+> - Registration use case with multi-service orchestration
+> - Next.js middleware for route protection
+> - Request-scoped factory patterns
 
-The Supabase client requires cookies for SSR session management:
-
-```typescript
-// shared/infra/supabase/create-client.ts
-
-import { CookieMethodsServer, createServerClient } from "@supabase/ssr";
-import { Database } from "./database.types";
-
-export function createClient(
-  url: string,
-  key: string,
-  cookies: CookieMethodsServer,
-) {
-  // Detect service role key for admin operations
-  const payload = JSON.parse(atob(key.split(".")[1]));
-  const global =
-    payload.role === "service_role"
-      ? { headers: { Authorization: `Bearer ${key}` } }
-      : undefined;
-
-  return createServerClient<Database>(url, key, { cookies, global });
-}
-```
-
-**Key Points:**
-
-- `CookieMethodsServer` enables SSR session handling
-- Service role key bypasses RLS (Row Level Security)
-- Database types generated from Supabase schema
-
-### Auth Repository
+### Quick Summary
 
 ```typescript
-// modules/auth/repositories/auth.repository.ts
-
-import { createClient } from "@/shared/infra/supabase/create-client";
-
-export class AuthRepo {
-  constructor(private client: ReturnType<typeof createClient>) {}
-
-  async getCurrentUser(jwt?: string) {
-    const {
-      data: { user },
-      error,
-    } = await this.client.auth.getUser(jwt);
-    if (error) throw error;
-    return user;
-  }
-
-  async signUp(email: string, password: string, redirectBaseURL: string) {
-    const { data, error } = await this.client.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: redirectBaseURL },
-    });
-    if (error) throw error;
-    return data;
-  }
-
-  async signInWithPassword(email: string, password: string) {
-    const { data, error } = await this.client.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data;
-  }
-
-  async signInWithMagicLink(email: string, redirectBaseURL: string) {
-    const { data, error } = await this.client.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: redirectBaseURL,
-      },
-    });
-    if (error) throw error;
-    return data;
-  }
-
-  async verifyOtp(
-    tokenHash: string,
-    type: "magiclink" | "signup" | "recovery",
-  ) {
-    const { data, error } = await this.client.auth.verifyOtp({
-      token_hash: tokenHash,
-      type,
-    });
-    if (error) throw error;
-    return data;
-  }
-
-  async signOut() {
-    const { error } = await this.client.auth.signOut();
-    if (error) throw error;
-  }
-
-  async resetPassword(email: string, redirectBaseURL: string) {
-    const { error } = await this.client.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectBaseURL,
-    });
-    if (error) throw error;
-  }
-
-  async updatePassword(email: string, password: string) {
-    const { error } = await this.client.auth.updateUser({ email, password });
-    if (error) throw error;
-  }
+// Request-scoped factories (need cookies)
+export function makeAuthService(cookies: CookieMethodsServer) {
+  const client = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, cookies);
+  return new AuthService(new AuthRepository(client));
 }
-```
 
-### Auth Service
-
-```typescript
-// modules/auth/services/auth.service.ts
-
-import { AuthRepo } from "../repositories/auth.repository";
-
-export class AuthService {
-  constructor(private authRepo: AuthRepo) {}
-
-  async getCurrentUser(jwt?: string) {
-    return this.authRepo.getCurrentUser(jwt);
-  }
-
-  async signUp(email: string, password: string, baseUrl: string) {
-    return this.authRepo.signUp(email, password, `${baseUrl}/auth/callback`);
-  }
-
-  async signIn(email: string, password: string) {
-    return this.authRepo.signInWithPassword(email, password);
-  }
-
-  async signInWithMagicLink(email: string, baseUrl: string) {
-    return this.authRepo.signInWithMagicLink(email, `${baseUrl}/auth/callback`);
-  }
-
-  async verifyMagicLink(tokenHash: string) {
-    return this.authRepo.verifyOtp(tokenHash, "magiclink");
-  }
-
-  async signOut() {
-    return this.authRepo.signOut();
-  }
-}
+// In tRPC router
+login: publicProcedure
+  .input(LoginSchema)
+  .mutation(async ({ input, ctx }) => {
+    const authService = makeAuthService(ctx.cookies);
+    return authService.signIn(input.email, input.password);
+  }),
 ```
 
 ---
