@@ -112,7 +112,7 @@ Defined in [Error Handling](./error-handling.md).
 ### Input Schema
 
 ```typescript
-// lib/shared/kernel/pagination.ts
+// shared/kernel/pagination.ts
 
 import { z } from "zod";
 
@@ -133,7 +133,7 @@ export type PaginationInput = z.infer<typeof PaginationInputSchema>;
 ### Output Schema
 
 ```typescript
-// lib/shared/kernel/pagination.ts (continued)
+// shared/kernel/pagination.ts (continued)
 
 /**
  * Pagination metadata schema.
@@ -167,7 +167,7 @@ export type PaginatedResponse<T> = {
 ### Single Resource Response Schema
 
 ```typescript
-// lib/shared/kernel/response.ts
+// shared/kernel/response.ts
 
 import { z } from "zod";
 
@@ -188,13 +188,13 @@ export type ApiResponse<T> = {
 ## Pagination Helper
 
 ```typescript
-// lib/shared/utils/pagination.ts
+// shared/utils/pagination.ts
 
 import type {
   PaginationInput,
   PaginationMeta,
   PaginatedResponse,
-} from "@/lib/shared/kernel/pagination";
+} from "@/shared/kernel/pagination";
 
 /**
  * Builds a paginated response with computed nextCursor.
@@ -226,9 +226,9 @@ export function buildPaginatedResponse<T>(
 ## Single Resource Response Helper
 
 ```typescript
-// lib/shared/utils/response.ts
+// shared/utils/response.ts
 
-import type { ApiResponse } from "@/lib/shared/kernel/response";
+import type { ApiResponse } from "@/shared/kernel/response";
 
 /**
  * Wraps data in standard envelope.
@@ -243,10 +243,10 @@ export function wrapResponse<T>(data: T): ApiResponse<T> {
 Extend `PaginationInputSchema` for endpoint-specific filters:
 
 ```typescript
-// lib/modules/user/dtos/list-users.dto.ts
+// modules/user/dtos/list-users.dto.ts
 
 import { z } from "zod";
-import { PaginationInputSchema } from "@/lib/shared/kernel/pagination";
+import { PaginationInputSchema } from "@/shared/kernel/pagination";
 
 export const ListUsersInputSchema = PaginationInputSchema.extend({
   role: z.enum(["admin", "member"]).optional(),
@@ -261,13 +261,13 @@ export type ListUsersInput = z.infer<typeof ListUsersInputSchema>;
 ### Router Example
 
 ```typescript
-// lib/modules/user/user.router.ts
+// modules/user/user.router.ts
 
-import { router, protectedProcedure } from "@/lib/shared/infra/trpc";
+import { router, protectedProcedure } from "@/shared/infra/trpc";
 import { z } from "zod";
 import { ListUsersInputSchema } from "./dtos/list-users.dto";
 import { makeUserService } from "./factories/user.factory";
-import { wrapResponse } from "@/lib/shared/utils/response";
+import { wrapResponse } from "@/shared/utils/response";
 import { UserNotFoundError } from "./errors/user.errors";
 
 export const userRouter = router({
@@ -294,13 +294,13 @@ export const userRouter = router({
 ### Service Example
 
 ```typescript
-// lib/modules/user/services/user.service.ts
+// modules/user/services/user.service.ts
 
-import { users } from "@/lib/shared/infra/db/schema";
-import { buildPaginatedResponse } from "@/lib/shared/utils/pagination";
-import type { PaginatedResponse } from "@/lib/shared/kernel/pagination";
+import { users } from "@/shared/infra/db/schema";
+import { buildPaginatedResponse } from "@/shared/utils/pagination";
+import type { PaginatedResponse } from "@/shared/kernel/pagination";
 import type { ListUsersInput } from "../dtos/list-users.dto";
-import type { User } from "@/lib/shared/infra/db/schema";
+import type { User } from "@/shared/infra/db/schema";
 
 export class UserService {
   async list(input: ListUsersInput): Promise<PaginatedResponse<User>> {
@@ -429,12 +429,12 @@ src/lib/
 
 ## Checklist
 
-- [ ] `PaginationInputSchema` in `lib/shared/kernel/pagination.ts`
-- [ ] `PaginationMetaSchema` in `lib/shared/kernel/pagination.ts`
+- [ ] `PaginationInputSchema` in `shared/kernel/pagination.ts`
+- [ ] `PaginationMetaSchema` in `shared/kernel/pagination.ts`
 - [ ] `createPaginatedSchema` helper for output validation
 - [ ] `createResponseSchema` helper for single resource
-- [ ] `buildPaginatedResponse` utility in `lib/shared/utils/pagination.ts`
-- [ ] `wrapResponse` utility in `lib/shared/utils/response.ts`
+- [ ] `buildPaginatedResponse` utility in `shared/utils/pagination.ts`
+- [ ] `wrapResponse` utility in `shared/utils/response.ts`
 - [ ] Endpoint DTOs extend `PaginationInputSchema` with custom filters
 - [ ] Services implement search on relevant fields
 - [ ] Routers return consistent envelope structure

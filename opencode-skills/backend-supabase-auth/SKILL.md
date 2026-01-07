@@ -1,6 +1,6 @@
 ---
 name: backend-supabase-auth
-description: Implement Supabase authentication with tRPC, user roles, Next.js middleware, magic links, and request-scoped factories
+description: Implement Supabase authentication with tRPC, user roles, Next.js proxy, magic links, and request-scoped factories
 ---
 
 # Supabase Authentication
@@ -10,7 +10,7 @@ Use this skill when implementing authentication with Supabase Auth in a Next.js 
 ## Architecture
 
 ```
-Request → Middleware (refresh) → tRPC Context (session) → Router → Service → Repository
+Request → Proxy (refresh) → tRPC Context (session) → Router → Service → Repository
 ```
 
 | Component | Location | Responsibility |
@@ -21,7 +21,9 @@ Request → Middleware (refresh) → tRPC Context (session) → Router → Servi
 | Auth Factory | `modules/auth/factories/auth.factory.ts` | Request-scoped DI |
 | User Roles | `modules/user-role/` | Application roles in DB |
 | tRPC Context | `shared/infra/trpc/context.ts` | Session extraction |
-| Middleware | `middleware.ts` | Session refresh, route protection |
+| Next.js Proxy | `proxy.ts` | Session refresh, route protection |
+
+> **Note:** In Next.js 16+, `middleware.ts` is renamed to `proxy.ts` and the export is `proxy` instead of `middleware`. The proxy runtime is nodejs-only (edge runtime not supported).
 
 ## Step-by-Step
 
@@ -279,7 +281,74 @@ export async function createContext({ req }) {
 }
 ```
 
-### 8. Auth Router
+### 8. tRPC Setup (Inline Middleware)
+
+**Important:** Define all middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files.
+
+```typescript
+// shared/infra/trpc/trpc.ts
+import { initTRPC, TRPCError } from "@trpc/server";
+import { AppError, AuthenticationError } from "@/shared/kernel/errors";
+import type { Context, AuthenticatedContext } from "./context";
+
+const t = initTRPC.context<Context>().create({
+  errorFormatter({ error, shape, ctx }) {
+    const cause = error.cause;
+    const requestId = ctx?.requestId;
+
+    if (cause instanceof AppError) {
+      ctx?.log.warn(
+        { err: cause, code: cause.code, details: cause.details, requestId },
+        cause.message,
+      );
+      return { ...shape, data: { ...shape.data, code: cause.code, requestId } };
+    }
+
+    ctx?.log.error({ err: error, requestId }, "Unexpected error");
+    return { ...shape, data: { ...shape.data, requestId } };
+  },
+});
+
+export const router = t.router;
+export const middleware = t.middleware;
+
+/**
+ * Logger middleware - defined inline to avoid circular deps
+ */
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+  ctx.log.info({ type }, "Request started");
+
+  try {
+    const result = await next({ ctx });
+    ctx.log.info({ duration: Date.now() - start, status: "success", type }, "Request completed");
+    return result;
+  } catch (error) {
+    ctx.log.info({ duration: Date.now() - start, status: "error", type }, "Request failed");
+    throw error;
+  }
+});
+
+/**
+ * Auth middleware - defined inline to avoid circular deps
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required",
+      cause: new AuthenticationError("Authentication required"),
+    });
+  }
+  return next({ ctx: ctx as AuthenticatedContext });
+});
+
+const loggedProcedure = t.procedure.use(loggerMiddleware);
+export const publicProcedure = loggedProcedure;
+export const protectedProcedure = loggedProcedure.use(authMiddleware);
+```
+
+### 9. Auth Router
 
 ```typescript
 // modules/auth/auth.router.ts
@@ -318,18 +387,30 @@ export const authRouter = router({
 });
 ```
 
-### 9. Next.js Middleware
+### 10. Next.js Proxy (Next.js 16+)
+
+> **Note:** In Next.js 16+, `middleware.ts` is renamed to `proxy.ts` and the export is `proxy` instead of `middleware`.
 
 ```typescript
-// middleware.ts
-import { NextResponse } from "next/server";
+// proxy.ts
+import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const PROTECTED = ["/dashboard", "/settings"];
 const AUTH = ["/login", "/register"];
 
-export async function middleware(request) {
-  let response = NextResponse.next({ request });
+function matchesRoute(path: string, routes: string[]): boolean {
+  return routes.some((route) => path === route || path.startsWith(`${route}/`));
+}
+
+/**
+ * Next.js proxy for session refresh and route protection.
+ * - Refreshes Supabase session on every request
+ * - Redirects unauthenticated users from protected routes to /login
+ * - Redirects authenticated users from auth routes to /
+ */
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -339,9 +420,9 @@ export async function middleware(request) {
         getAll: () => request.cookies.getAll(),
         setAll: (toSet) => {
           toSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({ request });
           toSet.forEach(({ name, value, options }) => 
-            response.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
@@ -352,16 +433,19 @@ export async function middleware(request) {
   const path = request.nextUrl.pathname;
 
   // Redirect unauthenticated from protected
-  if (!user && PROTECTED.some((r) => path.startsWith(r))) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!user && matchesRoute(path, PROTECTED)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("redirect", path);
+    return NextResponse.redirect(url);
   }
 
   // Redirect authenticated from auth pages
-  if (user && AUTH.some((r) => path.startsWith(r))) {
+  if (user && matchesRoute(path, AUTH)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return response;
+  return supabaseResponse;
 }
 
 export const config = {
@@ -369,7 +453,7 @@ export const config = {
 };
 ```
 
-### 10. Auth Callback Route
+### 11. Auth Callback Route
 
 ```typescript
 // app/auth/callback/route.ts
@@ -444,6 +528,138 @@ DATABASE_URL=postgresql://...
 - [ ] Auth router endpoints
 
 ### Next.js
-- [ ] Middleware refreshes session
+- [ ] Proxy refreshes session (`proxy.ts` with `export async function proxy`)
 - [ ] Route protection works
 - [ ] Callback route handles OAuth/magic link
+
+---
+
+## Auth Module Implementation Checklist
+
+Use this checklist when implementing authentication to ensure nothing is missed.
+
+### Auth Errors (`errors/auth.errors.ts`)
+- [ ] `InvalidCredentialsError` with `readonly code = 'AUTH_INVALID_CREDENTIALS'`
+- [ ] `EmailNotVerifiedError` with `readonly code = 'AUTH_EMAIL_NOT_VERIFIED'`
+- [ ] `UserAlreadyExistsError` with `readonly code = 'AUTH_USER_ALREADY_EXISTS'`
+- [ ] `SessionExpiredError` with `readonly code = 'AUTH_SESSION_EXPIRED'`
+- [ ] All errors extend appropriate base class (`AuthenticationError`, `ConflictError`)
+- [ ] Error messages are user-safe (no stack traces, internal details)
+
+```typescript
+// CORRECT - has unique code
+export class InvalidCredentialsError extends AuthenticationError {
+  readonly code = 'AUTH_INVALID_CREDENTIALS';
+  constructor() {
+    super('Invalid email or password');
+  }
+}
+
+// WRONG - missing code (will use parent's generic code)
+export class InvalidCredentialsError extends AuthenticationError {
+  constructor() {
+    super('Invalid email or password');
+  }
+}
+```
+
+### Auth Repository (`repositories/auth.repository.ts`)
+- [ ] Interface `IAuthRepository` defined
+- [ ] Class implements interface: `class AuthRepository implements IAuthRepository`
+- [ ] Maps external errors (Supabase, etc.) to domain errors
+- [ ] No business logic
+- [ ] No logging
+
+### Auth Service (`services/auth.service.ts`)
+- [ ] Interface `IAuthService` defined
+- [ ] Class implements interface: `class AuthService implements IAuthService`
+- [ ] Constructor accepts `IAuthRepository` (interface, not concrete)
+- [ ] Business event logging for all auth actions:
+  - [ ] `user.logged_in` on successful login
+  - [ ] `user.registered` on successful signup
+  - [ ] `user.logged_out` on logout
+  - [ ] `user.magic_link_requested` on magic link request
+  - [ ] `user.session_exchanged` on OAuth/callback
+- [ ] Redirect URLs constructed in service layer
+
+### Auth Factory (`factories/auth.factory.ts`)
+- [ ] Request-scoped pattern (NOT lazy singleton) - auth needs cookies
+- [ ] Accepts `CookieMethodsServer` parameter
+- [ ] Creates fresh instances per request
+
+### Auth Use Cases (if applicable)
+- [ ] `RegisterUserUseCase` for multi-service registration
+- [ ] Throws domain errors (NOT generic `Error`)
+- [ ] Depends on service interfaces (NOT concrete classes)
+- [ ] Transaction manager for DB operations
+- [ ] External service calls (Supabase) OUTSIDE transaction
+- [ ] DB operations INSIDE transaction
+
+```typescript
+// CORRECT - domain error
+if (!result.user) {
+  throw new AuthRegistrationFailedError(input.email);
+}
+
+// WRONG - generic error
+if (!result.user) {
+  throw new Error('Failed to create user');
+}
+```
+
+### tRPC Context (`shared/infra/trpc/context.ts`)
+- [ ] Extracts session from auth provider (Supabase)
+- [ ] Enriches with application role from database
+- [ ] Creates child logger with `requestId`, `userId`
+- [ ] Exposes `cookies` for request-scoped factories
+
+### tRPC Procedures (`shared/infra/trpc/trpc.ts`)
+- [ ] Logger middleware applied to all procedures
+- [ ] `publicProcedure` uses logger middleware
+- [ ] `protectedProcedure` uses logger + auth middleware
+- [ ] Error formatter includes `requestId` in all error logs
+- [ ] Known errors logged at `warn` level
+- [ ] Unknown errors logged at `error` level
+
+```typescript
+// CORRECT - includes requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details, requestId },
+  cause.message,
+);
+
+// WRONG - missing requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details },
+  cause.message,
+);
+```
+
+### Auth Router (`auth.router.ts`)
+- [ ] `login` - public, calls service
+- [ ] `register` - public, calls use case (if multi-service)
+- [ ] `logout` - protected, calls service
+- [ ] `me` - protected, returns session from context
+- [ ] Magic link endpoint if needed
+- [ ] No direct logging (handled by middleware)
+
+### tRPC Middleware (Inline in `trpc.ts`)
+- [ ] All middleware defined inline in `trpc.ts` (avoid circular deps)
+- [ ] NO separate middleware files that import from `trpc.ts`
+- [ ] Logger middleware defined with `t.middleware()`
+- [ ] Auth middleware defined with `t.middleware()`
+
+### Proxy (`proxy.ts`) - Next.js 16+
+- [ ] File named `proxy.ts` (not `middleware.ts`)
+- [ ] Export named `proxy` (not `middleware`)
+- [ ] Session refresh on every request
+- [ ] Protected routes redirect to login
+- [ ] Auth routes redirect authenticated users away
+- [ ] Preserves `?redirect=` for post-login navigation
+
+### User Roles (if applicable)
+- [ ] `user_roles` table schema with FK to auth users
+- [ ] `IUserRoleRepository` interface
+- [ ] `IUserRoleService` interface
+- [ ] Business event: `user_role.created`
+- [ ] Lazy singleton factory (DB-backed, not request-scoped)

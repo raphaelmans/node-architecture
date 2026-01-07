@@ -234,3 +234,85 @@ export const appRouter = router({
 | DTOs for API contracts | Entities for internal use |
 
 See [references/layer-patterns.md](references/layer-patterns.md) for detailed patterns.
+
+---
+
+## Module Checklist
+
+Use this checklist for EVERY new module to ensure nothing is missed.
+
+### Errors (`errors/<module>.errors.ts`)
+- [ ] Each error class extends appropriate base (`NotFoundError`, `ConflictError`, etc.)
+- [ ] Each error class has unique `readonly code = '<MODULE>_<ERROR_TYPE>'`
+- [ ] Error code uses SCREAMING_SNAKE_CASE
+- [ ] Constructor passes entity ID to details: `super('Message', { entityId })`
+- [ ] Error messages are user-safe (no internal details)
+
+```typescript
+// CORRECT
+export class EntityNotFoundError extends NotFoundError {
+  readonly code = 'ENTITY_NOT_FOUND';  // REQUIRED: unique code
+  constructor(entityId: string) {
+    super('Entity not found', { entityId });
+  }
+}
+
+// WRONG - missing code property
+export class EntityNotFoundError extends NotFoundError {
+  constructor(entityId: string) {
+    super('Entity not found', { entityId });
+  }
+}
+```
+
+### Repository (`repositories/<module>.repository.ts`)
+- [ ] Interface `I<Entity>Repository` defined with all method signatures
+- [ ] Class implements the interface: `class <Entity>Repository implements I<Entity>Repository`
+- [ ] Constructor accepts `DbClient`
+- [ ] `getClient(ctx)` helper returns `ctx?.tx ?? this.db`
+- [ ] All methods accept `ctx?: RequestContext`
+- [ ] Returns `null` for not found (never throws NotFoundError)
+- [ ] No logging in repository layer
+- [ ] No business logic in repository
+
+### Service (`services/<module>.service.ts`)
+- [ ] Interface `I<Entity>Service` defined with all method signatures
+- [ ] Class implements the interface: `class <Entity>Service implements I<Entity>Service`
+- [ ] Constructor accepts interface types (not concrete): `I<Entity>Repository`
+- [ ] Constructor accepts `TransactionManager`
+- [ ] Read methods pass through `ctx` to repository
+- [ ] Write methods check `ctx?.tx` - participate if exists, else create own transaction
+- [ ] Business events logged with `logger.info({ event: '<entity>.<action>', ... }, 'Message')`
+- [ ] Event names use `<entity>.<past_tense_action>` format
+- [ ] Returns `null` for not found (router handles throwing)
+
+### Factory (`factories/<module>.factory.ts`)
+- [ ] Lazy singleton pattern for standard modules (DB-backed)
+- [ ] Request-scoped pattern for modules needing request context (cookies, etc.)
+- [ ] Returns interface type, not concrete class
+- [ ] Uses `getContainer()` for shared dependencies
+
+### DTOs (`dtos/`)
+- [ ] Zod schemas for all inputs
+- [ ] `export type <Name>DTO = z.infer<typeof <Name>Schema>`
+- [ ] Index file exports all DTOs
+- [ ] Validation rules match business requirements
+
+### Router (`<module>.router.ts`)
+- [ ] Uses `publicProcedure` or `protectedProcedure` (both include logging)
+- [ ] Input validated with `.input(ZodSchema)`
+- [ ] Calls factory to get service: `make<Entity>Service()`
+- [ ] Handles null returns by throwing domain error: `if (!entity) throw new EntityNotFoundError(id)`
+- [ ] No business logic in router (delegate to service/use-case)
+- [ ] No direct logging (handled by middleware)
+
+### Root Router Registration
+- [ ] Router imported in `shared/infra/trpc/root.ts`
+- [ ] Router added to `appRouter`
+
+### Final Verification
+- [ ] TypeScript compiles without errors
+- [ ] All interfaces have implementations
+- [ ] All error classes have unique codes
+- [ ] Business events logged in service layer
+- [ ] No logging in repository layer

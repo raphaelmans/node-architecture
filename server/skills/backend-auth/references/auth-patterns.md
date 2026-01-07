@@ -91,12 +91,41 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 
 ```typescript
 // shared/infra/trpc/trpc.ts
-import { initTRPC } from '@trpc/server';
-import { authMiddleware } from './middleware/auth.middleware';
-import { loggerMiddleware } from './middleware/logger.middleware';
-import type { Context } from './context';
+// Middleware defined INLINE to avoid circular dependencies
+import { initTRPC, TRPCError } from '@trpc/server';
+import { AuthenticationError } from '@/shared/kernel/errors';
+import type { Context, AuthenticatedContext } from './context';
 
 const t = initTRPC.context<Context>().create({ /* ... */ });
+
+export const router = t.router;
+export const middleware = t.middleware;
+
+// Logger middleware - defined inline
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+  ctx.log.info({ type }, 'Request started');
+  try {
+    const result = await next({ ctx });
+    ctx.log.info({ duration: Date.now() - start, status: 'success', type }, 'Request completed');
+    return result;
+  } catch (error) {
+    ctx.log.info({ duration: Date.now() - start, status: 'error', type }, 'Request failed');
+    throw error;
+  }
+});
+
+// Auth middleware - defined inline
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+      cause: new AuthenticationError('Authentication required'),
+    });
+  }
+  return next({ ctx: ctx as AuthenticatedContext });
+});
 
 const baseProcedure = t.procedure.use(loggerMiddleware);
 

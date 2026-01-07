@@ -18,7 +18,7 @@
 Use Drizzle's `uuid` type with `defaultRandom()`:
 
 ```typescript
-// lib/shared/infra/db/schema.ts
+// shared/infra/db/schema.ts
 
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 
@@ -46,7 +46,7 @@ CREATE TABLE users (
 Since the database generates IDs, repositories don't need to provide them:
 
 ```typescript
-// lib/modules/user/repositories/user.repository.ts
+// modules/user/repositories/user.repository.ts
 
 export class UserRepository {
   async create(
@@ -70,7 +70,7 @@ export class UserRepository {
 Update entity types to reflect optional ID on insert:
 
 ```typescript
-// lib/shared/infra/db/schema.ts
+// shared/infra/db/schema.ts
 
 import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 
@@ -88,7 +88,7 @@ export type UserInsert = z.infer<typeof UserInsertSchema>;
 For endpoints that receive IDs as input:
 
 ```typescript
-// lib/modules/user/dtos/get-user.dto.ts
+// modules/user/dtos/get-user.dto.ts
 
 import { z } from "zod";
 
@@ -108,9 +108,9 @@ export const UpdateUserSchema = z.object({
 UUID collisions are astronomically unlikely, but for absolute safety:
 
 ```typescript
-// lib/shared/utils/db.ts
+// shared/utils/db.ts
 
-import { ConflictError } from "@/lib/shared/kernel/errors";
+import { ConflictError } from "@/shared/kernel/errors";
 
 /**
  * Executes a database operation with retry on primary key collision.
@@ -151,9 +151,9 @@ function isPrimaryKeyViolation(error: unknown): boolean {
 **Usage in repository:**
 
 ```typescript
-// lib/modules/user/repositories/user.repository.ts
+// modules/user/repositories/user.repository.ts
 
-import { withRetryOnCollision } from "@/lib/shared/utils/db";
+import { withRetryOnCollision } from "@/shared/utils/db";
 
 export class UserRepository {
   async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
@@ -173,7 +173,7 @@ export class UserRepository {
 For cases where you need the ID before insert (rare):
 
 ```typescript
-// lib/shared/utils/id.ts
+// shared/utils/id.ts
 
 import { randomUUID } from "crypto";
 
@@ -206,5 +206,5 @@ await Promise.all([
 - [ ] All tables use `uuid('id').primaryKey().defaultRandom()`
 - [ ] Insert types omit `id` field
 - [ ] DTOs validate IDs with `z.string().uuid()`
-- [ ] `withRetryOnCollision()` utility in `lib/shared/utils/db.ts`
+- [ ] `withRetryOnCollision()` utility in `shared/utils/db.ts`
 - [ ] `generateId()` utility available for edge cases

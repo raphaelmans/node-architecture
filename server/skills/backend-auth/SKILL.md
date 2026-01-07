@@ -486,4 +486,129 @@ export function requireAnyPermission(...permissions: Permission[]) {
 - [ ] Resource ownership verified
 - [ ] Sensitive operations require re-auth
 
+---
+
+## Auth Module Implementation Checklist
+
+Use this checklist when implementing authentication to ensure nothing is missed.
+
+### Auth Errors (`errors/auth.errors.ts`)
+- [ ] `InvalidCredentialsError` with `readonly code = 'AUTH_INVALID_CREDENTIALS'`
+- [ ] `EmailNotVerifiedError` with `readonly code = 'AUTH_EMAIL_NOT_VERIFIED'`
+- [ ] `UserAlreadyExistsError` with `readonly code = 'AUTH_USER_ALREADY_EXISTS'`
+- [ ] `SessionExpiredError` with `readonly code = 'AUTH_SESSION_EXPIRED'`
+- [ ] All errors extend appropriate base class (`AuthenticationError`, `ConflictError`)
+- [ ] Error messages are user-safe (no stack traces, internal details)
+
+```typescript
+// CORRECT - has unique code
+export class InvalidCredentialsError extends AuthenticationError {
+  readonly code = 'AUTH_INVALID_CREDENTIALS';
+  constructor() {
+    super('Invalid email or password');
+  }
+}
+
+// WRONG - missing code (will use parent's generic code)
+export class InvalidCredentialsError extends AuthenticationError {
+  constructor() {
+    super('Invalid email or password');
+  }
+}
+```
+
+### Auth Repository (`repositories/auth.repository.ts`)
+- [ ] Interface `IAuthRepository` defined
+- [ ] Class implements interface: `class AuthRepository implements IAuthRepository`
+- [ ] Maps external errors (Supabase, etc.) to domain errors
+- [ ] No business logic
+- [ ] No logging
+
+### Auth Service (`services/auth.service.ts`)
+- [ ] Interface `IAuthService` defined
+- [ ] Class implements interface: `class AuthService implements IAuthService`
+- [ ] Constructor accepts `IAuthRepository` (interface, not concrete)
+- [ ] Business event logging for all auth actions:
+  - [ ] `user.logged_in` on successful login
+  - [ ] `user.registered` on successful signup
+  - [ ] `user.logged_out` on logout
+  - [ ] `user.magic_link_requested` on magic link request
+  - [ ] `user.session_exchanged` on OAuth/callback
+- [ ] Redirect URLs constructed in service layer
+
+### Auth Factory (`factories/auth.factory.ts`)
+- [ ] Request-scoped pattern (NOT lazy singleton) - auth needs cookies
+- [ ] Accepts `CookieMethodsServer` parameter
+- [ ] Creates fresh instances per request
+
+### Auth Use Cases (if applicable)
+- [ ] `RegisterUserUseCase` for multi-service registration
+- [ ] Throws domain errors (NOT generic `Error`)
+- [ ] Depends on service interfaces (NOT concrete classes)
+- [ ] Transaction manager for DB operations
+- [ ] External service calls (Supabase) OUTSIDE transaction
+- [ ] DB operations INSIDE transaction
+
+```typescript
+// CORRECT - domain error
+if (!result.user) {
+  throw new AuthRegistrationFailedError(input.email);
+}
+
+// WRONG - generic error
+if (!result.user) {
+  throw new Error('Failed to create user');
+}
+```
+
+### tRPC Context (`shared/infra/trpc/context.ts`)
+- [ ] Extracts session from auth provider (Supabase)
+- [ ] Enriches with application role from database
+- [ ] Creates child logger with `requestId`, `userId`
+- [ ] Exposes `cookies` for request-scoped factories
+
+### tRPC Procedures (`shared/infra/trpc/trpc.ts`)
+- [ ] Logger middleware applied to all procedures
+- [ ] `publicProcedure` uses logger middleware
+- [ ] `protectedProcedure` uses logger + auth middleware
+- [ ] Error formatter includes `requestId` in all error logs
+- [ ] Known errors logged at `warn` level
+- [ ] Unknown errors logged at `error` level
+
+```typescript
+// CORRECT - includes requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details, requestId },
+  cause.message,
+);
+
+// WRONG - missing requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details },
+  cause.message,
+);
+```
+
+### Auth Router (`auth.router.ts`)
+- [ ] `login` - public, calls service
+- [ ] `register` - public, calls use case (if multi-service)
+- [ ] `logout` - protected, calls service
+- [ ] `me` - protected, returns session from context
+- [ ] Magic link endpoint if needed
+- [ ] No direct logging (handled by middleware)
+
+### Proxy (`proxy.ts`) - Next.js 16+
+- [ ] Session refresh on every request
+- [ ] Protected routes redirect to login
+- [ ] Auth routes redirect authenticated users away
+- [ ] Preserves `?redirect=` for post-login navigation
+- [ ] Export named `proxy` function (not `middleware`)
+
+### User Roles (if applicable)
+- [ ] `user_roles` table schema with FK to auth users
+- [ ] `IUserRoleRepository` interface
+- [ ] `IUserRoleService` interface
+- [ ] Business event: `user_role.created`
+- [ ] Lazy singleton factory (DB-backed, not request-scoped)
+
 See [references/auth-patterns.md](references/auth-patterns.md) for more examples.

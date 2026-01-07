@@ -21,7 +21,7 @@
 - Router handles null check for `findById` (throws `NotFoundError` if null)
 
 ```typescript
-// lib/modules/user/user.router.ts
+// modules/user/user.router.ts
 
 export const userRouter = router({
   getById: protectedProcedure
@@ -65,7 +65,7 @@ A use case represents a **business action or workflow**, not an HTTP endpoint.
 - Single-service writes (service owns the transaction)
 
 ```typescript
-// lib/modules/user/use-cases/register-user.use-case.ts
+// modules/user/use-cases/register-user.use-case.ts
 
 export class RegisterUserUseCase {
   constructor(
@@ -118,7 +118,7 @@ export class RegisterUserUseCase {
 - `create(data, ctx?)` — participates in external transaction if ctx provided, otherwise owns
 
 ```typescript
-// lib/modules/user/services/user.service.ts
+// modules/user/services/user.service.ts
 
 export class UserService implements IUserService {
   constructor(
@@ -170,7 +170,7 @@ export class UserService implements IUserService {
 - Never create transactions
 
 ```typescript
-// lib/modules/user/repositories/user.repository.ts
+// modules/user/repositories/user.repository.ts
 
 export class UserRepository implements IUserRepository {
   constructor(private db: DbClient) {}
@@ -234,11 +234,11 @@ src/lib/
 **Composition root (shared infrastructure):**
 
 ```typescript
-// lib/shared/infra/container.ts
+// shared/infra/container.ts
 
 import { db } from "./db/drizzle";
 import { DrizzleTransactionManager } from "./db/transaction";
-import type { TransactionManager } from "@/lib/shared/kernel/transaction";
+import type { TransactionManager } from "@/shared/kernel/transaction";
 
 export interface Container {
   db: typeof db;
@@ -261,9 +261,9 @@ export function getContainer(): Container {
 **Module factory (lazy singletons):**
 
 ```typescript
-// lib/modules/user/factories/user.factory.ts
+// modules/user/factories/user.factory.ts
 
-import { getContainer } from "@/lib/shared/infra/container";
+import { getContainer } from "@/shared/infra/container";
 import { UserRepository } from "../repositories/user.repository";
 import { UserService } from "../services/user.service";
 import { RegisterUserUseCase } from "../use-cases/register-user.use-case";
@@ -347,7 +347,7 @@ Kernel must NOT import:
 ### Kernel Contents
 
 ```
-lib/shared/kernel/
+shared/kernel/
 ├─ dtos/              # Cross-module DTOs
 │  ├─ common.ts       # Shared schemas (file upload, etc.)
 │  └─ index.ts
@@ -377,7 +377,7 @@ lib/shared/kernel/
 **Approach:** Use Drizzle schema types for database records. Add domain entity classes only when you need behavior attached to data.
 
 ```typescript
-// lib/shared/infra/db/schema.ts
+// shared/infra/db/schema.ts
 
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { createSelectSchema, createInsertSchema } from "drizzle-zod";
@@ -405,7 +405,7 @@ export type User = z.infer<typeof UserSchema>;
 **Zod-based DTO pattern:**
 
 ```typescript
-// lib/modules/user/dtos/create-user.dto.ts
+// modules/user/dtos/create-user.dto.ts
 
 import { z } from "zod";
 
@@ -420,12 +420,12 @@ export type CreateUserDTO = z.infer<typeof CreateUserSchema>;
 
 ### Cross-Module DTOs
 
-DTOs that are shared across multiple modules live in `lib/shared/kernel/dtos/`.
+DTOs that are shared across multiple modules live in `shared/kernel/dtos/`.
 
-**When to use shared DTOs (`lib/shared/kernel/dtos/`):**
+**When to use shared DTOs (`shared/kernel/dtos/`):**
 
 - Schemas used by multiple modules (e.g., file upload, image asset)
-- Common input patterns (pagination is already in `lib/shared/kernel/pagination.ts`)
+- Common input patterns (pagination is already in `shared/kernel/pagination.ts`)
 - DTOs consumed by the frontend
 
 **When to use module DTOs (`lib/modules/<module>/dtos/`):**
@@ -436,7 +436,7 @@ DTOs that are shared across multiple modules live in `lib/shared/kernel/dtos/`.
 **Example - shared DTO:**
 
 ```typescript
-// lib/shared/kernel/dtos/common.ts
+// shared/kernel/dtos/common.ts
 
 import { z } from "zod";
 
@@ -455,10 +455,10 @@ export const FileUploadSchema = z.object({
 **Example - module DTO using shared schema:**
 
 ```typescript
-// lib/modules/user/dtos/update-user.dto.ts
+// modules/user/dtos/update-user.dto.ts
 
 import { z } from "zod";
-import { ImageAssetSchema } from "@/lib/shared/kernel/dtos/common";
+import { ImageAssetSchema } from "@/shared/kernel/dtos/common";
 
 export const UpdateUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -546,15 +546,128 @@ These are **explicitly deferred**:
 
 They will be revisited when the system demands them.
 
-## Checklist
+---
 
-- [ ] Repository interface defined with `ctx?: RequestContext`
-- [ ] Service interface defined, accepts optional `ctx` for transaction participation
-- [ ] Service receives `TransactionManager` via constructor
-- [ ] Services own transactions for single-service writes
-- [ ] Services participate in external transactions when ctx.tx provided
-- [ ] Use cases only for multi-service orchestration or side effects
-- [ ] Factory creates lazy singletons for repository/service
-- [ ] Factory creates new instance for each use case
-- [ ] Router handles null check and throws `NotFoundError`
-- [ ] Sensitive fields omitted before returning to client
+## Layer-by-Layer Checklist
+
+Use this comprehensive checklist for EVERY module to ensure nothing is missed.
+
+### Errors Layer (`errors/<module>.errors.ts`)
+
+```typescript
+// Template - EVERY error class MUST follow this
+export class <Entity><ErrorType>Error extends <BaseError> {
+  readonly code = '<MODULE>_<ERROR_TYPE>';  // REQUIRED
+  constructor(<entityId>: string) {
+    super('<User-safe message>', { <entityId> });
+  }
+}
+```
+
+- [ ] Each error extends appropriate base (`NotFoundError`, `ConflictError`, `AuthenticationError`, etc.)
+- [ ] Each error has `readonly code = '<MODULE>_<ERROR_TYPE>'` (SCREAMING_SNAKE_CASE)
+- [ ] Code is unique across the entire application
+- [ ] Constructor passes IDs to details object
+- [ ] Message is user-safe (no internal details, stack traces)
+
+### Repository Layer (`repositories/<module>.repository.ts`)
+
+- [ ] Interface `I<Entity>Repository` defined with all method signatures
+- [ ] Class implements interface: `implements I<Entity>Repository`
+- [ ] Constructor accepts `DbClient`
+- [ ] `getClient(ctx)` helper: `return (ctx?.tx as DrizzleTransaction) ?? this.db`
+- [ ] All methods accept `ctx?: RequestContext`
+- [ ] Returns `null` for not found (never throws)
+- [ ] No business logic
+- [ ] No logging
+
+### Service Layer (`services/<module>.service.ts`)
+
+- [ ] Interface `I<Entity>Service` defined with all method signatures
+- [ ] Class implements interface: `implements I<Entity>Service`
+- [ ] Constructor accepts **interface** types: `I<Entity>Repository` (not concrete)
+- [ ] Constructor accepts `TransactionManager`
+- [ ] Read methods: pass `ctx` through to repository
+- [ ] Write methods: check `ctx?.tx` - participate if exists, else create transaction
+- [ ] Business events logged: `logger.info({ event: '<entity>.<action>', ... }, 'Message')`
+- [ ] Event names: `<entity>.<past_tense_action>` format
+- [ ] Returns `null` for not found (router handles throwing)
+- [ ] No service-to-service calls
+
+### Use Case Layer (`use-cases/<name>.use-case.ts`)
+
+- [ ] Only created for multi-service orchestration or side effects
+- [ ] Constructor accepts **interface** types (not concrete classes)
+- [ ] Constructor accepts `TransactionManager`
+- [ ] Throws **domain errors** (NOT generic `Error`)
+- [ ] External service calls OUTSIDE transaction
+- [ ] DB operations INSIDE transaction
+- [ ] Side effects AFTER transaction commits
+- [ ] No logging (services log the events)
+
+```typescript
+// CORRECT - domain error
+if (!result) throw new EntityNotFoundError(id);
+
+// WRONG - generic error
+if (!result) throw new Error('Entity not found');
+```
+
+### Factory Layer (`factories/<module>.factory.ts`)
+
+- [ ] Lazy singleton for DB-backed modules (repository, service)
+- [ ] Request-scoped for request-dependent modules (auth with cookies)
+- [ ] Returns interface type in JSDoc/type hints
+- [ ] Uses `getContainer()` for shared dependencies
+
+### DTO Layer (`dtos/`)
+
+- [ ] Zod schemas for all inputs
+- [ ] Type exported: `export type <Name>DTO = z.infer<typeof <Name>Schema>`
+- [ ] Index file exports all schemas and types
+- [ ] Validation rules match business requirements
+- [ ] Sensitive fields excluded from output DTOs
+
+### Router Layer (`<module>.router.ts`)
+
+- [ ] Uses `publicProcedure` or `protectedProcedure` (includes logging middleware)
+- [ ] Input validated with `.input(ZodSchema)`
+- [ ] Calls factory: `make<Entity>Service()` or `make<UseCase>()`
+- [ ] Handles null: `if (!entity) throw new EntityNotFoundError(id)`
+- [ ] One service OR one use case per endpoint (not both)
+- [ ] No business logic
+- [ ] No direct logging (handled by middleware)
+- [ ] Sensitive fields omitted before returning
+
+### tRPC Infrastructure (`shared/infra/trpc/`)
+
+- [ ] Logger middleware applied to ALL procedures
+- [ ] `publicProcedure = loggedProcedure`
+- [ ] `protectedProcedure = loggedProcedure.use(authMiddleware)`
+- [ ] Error formatter logs include `requestId`
+- [ ] Known errors (`AppError`) logged at `warn` level
+- [ ] Unknown errors logged at `error` level
+- [ ] Context includes `log` (child logger with requestId)
+
+```typescript
+// Error formatter MUST include requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details, requestId },
+  cause.message,
+);
+```
+
+### Root Router Registration
+
+- [ ] Router imported in `shared/infra/trpc/root.ts`
+- [ ] Router added to `appRouter`
+
+### Final Module Verification
+
+- [ ] TypeScript compiles without errors
+- [ ] All interfaces have implementations
+- [ ] All error classes have unique codes
+- [ ] Business events logged in service layer
+- [ ] No logging in repository layer
+- [ ] No generic `Error` throws in use cases
+- [ ] `requestId` included in all error logs

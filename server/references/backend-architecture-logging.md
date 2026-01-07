@@ -152,52 +152,59 @@ log.debug({ input }, 'Request input');
 
 ### tRPC Middleware
 
-```typescript
-// shared/infra/trpc/middleware/logger.middleware.ts
-
-import { middleware } from '../trpc';
-import { createRequestLogger } from '@/shared/infra/logger';
-
-export const loggerMiddleware = middleware(async ({ ctx, next, path, type }) => {
-  const start = Date.now();
-
-  const log = createRequestLogger({
-    requestId: ctx.requestId,
-    userId: ctx.userId,
-    method: type,
-    path,
-  });
-
-  log.info('Request started');
-
-  // Log input at debug level only
-  if (ctx.input) {
-    log.debug({ input: ctx.input }, 'Request input');
-  }
-
-  try {
-    const result = await next({ ctx: { ...ctx, log } });
-    const duration = Date.now() - start;
-
-    log.info({ duration, status: 'success' }, 'Request completed');
-
-    return result;
-  } catch (error) {
-    const duration = Date.now() - start;
-
-    log.info({ duration, status: 'error' }, 'Request failed');
-
-    throw error;
-  }
-});
-```
-
-### Apply to Procedures
+**Important:** Define middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
 
 ```typescript
 // shared/infra/trpc/trpc.ts
 
 const t = initTRPC.context<Context>().create({ /* ... */ });
+
+export const router = t.router;
+export const middleware = t.middleware;
+
+/**
+ * Logger middleware - request lifecycle tracing.
+ * Defined inline to avoid circular dependency with middleware exports.
+ */
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+
+  ctx.log.info({ type }, 'Request started');
+
+  // Log input at debug level only in development
+  if (process.env.NODE_ENV !== 'production') {
+    ctx.log.debug('Request processing');
+  }
+
+  try {
+    const result = await next({ ctx });
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: 'success', type }, 'Request completed');
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: 'error', type }, 'Request failed');
+
+    throw error;
+  }
+});
+
+/**
+ * Auth middleware - requires valid session.
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+      cause: new AuthenticationError('Authentication required'),
+    });
+  }
+  return next({ ctx: ctx as AuthenticatedContext });
+});
 
 const loggedProcedure = t.procedure.use(loggerMiddleware);
 

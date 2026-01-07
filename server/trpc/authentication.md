@@ -172,8 +172,31 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 ```typescript
 // shared/infra/trpc/trpc.ts
 
-import { authMiddleware } from './middleware/auth.middleware';
-import { loggerMiddleware } from './middleware/logger.middleware';
+// Middleware defined inline to avoid circular dependencies
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+  ctx.log.info({ type }, 'Request started');
+  
+  try {
+    const result = await next({ ctx });
+    ctx.log.info({ duration: Date.now() - start, status: 'success', type }, 'Request completed');
+    return result;
+  } catch (error) {
+    ctx.log.info({ duration: Date.now() - start, status: 'error', type }, 'Request failed');
+    throw error;
+  }
+});
+
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+      cause: new AuthenticationError('Authentication required'),
+    });
+  }
+  return next({ ctx: ctx as AuthenticatedContext });
+});
 
 const baseProcedure = t.procedure.use(loggerMiddleware);
 

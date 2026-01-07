@@ -15,7 +15,7 @@
 ## Logger Configuration
 
 ```typescript
-// lib/shared/infra/logger/index.ts
+// shared/infra/logger/index.ts
 
 import pino from "pino";
 
@@ -79,7 +79,7 @@ export type Logger = typeof logger;
 Create a child logger with request context for correlation.
 
 ```typescript
-// lib/shared/infra/logger/index.ts
+// shared/infra/logger/index.ts
 
 export interface RequestLogContext {
   requestId: string;
@@ -138,60 +138,85 @@ log.debug({ input }, "Request input");
 
 ### tRPC Middleware
 
-```typescript
-// lib/shared/infra/trpc/middleware/logger.middleware.ts
-
-import { middleware } from "../trpc";
-import { createRequestLogger } from "@/lib/shared/infra/logger";
-
-export const loggerMiddleware = middleware(
-  async ({ ctx, next, path, type }) => {
-    const start = Date.now();
-
-    const log = createRequestLogger({
-      requestId: ctx.requestId,
-      userId: ctx.userId ?? undefined,
-      method: type,
-      path,
-    });
-
-    log.info("Request started");
-
-    // Log input at debug level only
-    if (process.env.NODE_ENV !== "production") {
-      log.debug({ input: ctx.input }, "Request input");
-    }
-
-    try {
-      const result = await next({ ctx: { ...ctx, log } });
-      const duration = Date.now() - start;
-
-      log.info({ duration, status: "success" }, "Request completed");
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - start;
-
-      log.info({ duration, status: "error" }, "Request failed");
-
-      throw error;
-    }
-  },
-);
-```
-
-### Apply to Procedures
+**Important:** Define middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
 
 ```typescript
-// lib/shared/infra/trpc/trpc.ts
+// shared/infra/trpc/trpc.ts
+
+import { initTRPC, TRPCError } from "@trpc/server";
+import { AppError, AuthenticationError } from "@/shared/kernel/errors";
+import type { Context, AuthenticatedContext } from "./context";
 
 const t = initTRPC.context<Context>().create({
-  /* ... */
+  errorFormatter({ error, shape, ctx }) {
+    // ... error formatting
+  },
 });
 
+export const router = t.router;
+export const middleware = t.middleware;
+
+/**
+ * Logger middleware - request lifecycle tracing.
+ * Defined inline to avoid circular dependency with middleware exports.
+ */
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+
+  ctx.log.info({ type }, "Request started");
+
+  // Log input at debug level only in development
+  if (process.env.NODE_ENV !== "production") {
+    ctx.log.debug("Request processing");
+  }
+
+  try {
+    const result = await next({ ctx });
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: "success", type }, "Request completed");
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: "error", type }, "Request failed");
+
+    throw error;
+  }
+});
+
+/**
+ * Auth middleware - requires valid session.
+ * Defined inline to avoid circular dependency.
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required",
+      cause: new AuthenticationError("Authentication required"),
+    });
+  }
+
+  return next({
+    ctx: ctx as AuthenticatedContext,
+  });
+});
+
+/**
+ * Base procedure with logging - all procedures use this
+ */
 const loggedProcedure = t.procedure.use(loggerMiddleware);
 
+/**
+ * Public procedure - no authentication required
+ */
 export const publicProcedure = loggedProcedure;
+
+/**
+ * Protected procedure - authentication required
+ */
 export const protectedProcedure = loggedProcedure.use(authMiddleware);
 ```
 
@@ -200,9 +225,9 @@ export const protectedProcedure = loggedProcedure.use(authMiddleware);
 Log significant business events in services.
 
 ```typescript
-// lib/modules/user/services/user.service.ts
+// modules/user/services/user.service.ts
 
-import { logger } from "@/lib/shared/infra/logger";
+import { logger } from "@/shared/infra/logger";
 
 export class UserService implements IUserService {
   async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
@@ -358,7 +383,7 @@ logger.error(
 Generate UUID at the tRPC context creation.
 
 ```typescript
-// lib/shared/infra/trpc/context.ts
+// shared/infra/trpc/context.ts
 
 import { randomUUID } from "crypto";
 
@@ -385,7 +410,7 @@ Pino's `redact` option handles common sensitive fields automatically.
 For cases where you need to log objects that might contain sensitive data:
 
 ```typescript
-// lib/shared/utils/sanitize.ts
+// shared/utils/sanitize.ts
 
 const SENSITIVE_KEYS = [
   "password",

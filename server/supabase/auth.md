@@ -14,7 +14,7 @@ This document covers the full authentication flow using Supabase Auth integrated
 | Auth Factory | `modules/auth/factories/auth.factory.ts` | Request-scoped DI |
 | User Roles | `modules/user-role/` | Application-level roles in database |
 | tRPC Context | `shared/infra/trpc/context.ts` | Session extraction |
-| Next.js Middleware | `middleware.ts` | Session refresh, route protection |
+| Next.js Proxy | `proxy.ts` | Session refresh, route protection |
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -25,7 +25,7 @@ This document covers the full authentication flow using Supabase Auth integrated
 │       ▼                                                               │
 │  ┌─────────────────┐                                                  │
 │  │ Next.js         │ ─── Refresh session cookies                      │
-│  │ Middleware      │                                                  │
+│  │ Proxy           │                                                  │
 │  └────────┬────────┘                                                  │
 │           │                                                           │
 │           ▼                                                           │
@@ -600,51 +600,9 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
 
 ---
 
-## Logger Middleware (Request Tracing)
+## tRPC Middleware & Procedures
 
-All procedures use logger middleware for request lifecycle tracing:
-
-```typescript
-// shared/infra/trpc/middleware/logger.middleware.ts
-
-import { middleware } from "../trpc";
-
-/**
- * Logger middleware for request lifecycle tracing.
- * Logs request start, completion/failure, and duration.
- */
-export const loggerMiddleware = middleware(async ({ ctx, next, path, type }) => {
-  const start = Date.now();
-
-  ctx.log.info({ type }, "Request started");
-
-  // Log input at debug level only in development
-  if (process.env.NODE_ENV !== "production") {
-    ctx.log.debug("Request processing");
-  }
-
-  try {
-    const result = await next({ ctx });
-    const duration = Date.now() - start;
-
-    ctx.log.info({ duration, status: "success", type }, "Request completed");
-
-    return result;
-  } catch (error) {
-    const duration = Date.now() - start;
-
-    ctx.log.info({ duration, status: "error", type }, "Request failed");
-
-    throw error;
-  }
-});
-```
-
----
-
-## Auth Middleware (tRPC)
-
-Auth middleware and procedure setup with logging:
+**Important:** Define all middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
 
 ```typescript
 // shared/infra/trpc/trpc.ts
@@ -652,7 +610,6 @@ Auth middleware and procedure setup with logging:
 import { initTRPC, TRPCError } from "@trpc/server";
 import { AppError, AuthenticationError } from "@/shared/kernel/errors";
 import type { Context, AuthenticatedContext } from "./context";
-import { loggerMiddleware } from "./middleware/logger.middleware";
 
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
@@ -683,6 +640,36 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const middleware = t.middleware;
+
+/**
+ * Logger middleware - request lifecycle tracing.
+ * Defined inline to avoid circular dependency with middleware exports.
+ */
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const start = Date.now();
+
+  ctx.log.info({ type }, "Request started");
+
+  // Log input at debug level only in development
+  if (process.env.NODE_ENV !== "production") {
+    ctx.log.debug("Request processing");
+  }
+
+  try {
+    const result = await next({ ctx });
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: "success", type }, "Request completed");
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - start;
+
+    ctx.log.info({ duration, status: "error", type }, "Request failed");
+
+    throw error;
+  }
+});
 
 /**
  * Auth middleware - requires valid session.
@@ -769,8 +756,10 @@ export const authRouter = router({
 
 Session refresh and route protection:
 
+> **Note:** In Next.js 16+, `middleware.ts` is renamed to `proxy.ts` and the export is renamed from `middleware` to `proxy`. The proxy runtime is nodejs-only (edge runtime not supported).
+
 ```typescript
-// middleware.ts
+// proxy.ts
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -782,7 +771,13 @@ function matchesRoute(path: string, routes: string[]): boolean {
   return routes.some((route) => path === route || path.startsWith(`${route}/`));
 }
 
-export async function middleware(request: NextRequest) {
+/**
+ * Next.js proxy for session refresh and route protection.
+ * - Refreshes Supabase session on every request
+ * - Redirects unauthenticated users from protected routes to /login
+ * - Redirects authenticated users from auth routes to /
+ */
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -939,7 +934,7 @@ src/
 │       └── trpc/
 │           └── [trpc]/
 │               └── route.ts
-├── middleware.ts                  # Session refresh + route protection
+├── proxy.ts                       # Session refresh + route protection (Next.js 16+)
 ├── shared/
 │   ├── kernel/
 │   │   ├── auth.ts               # Session, UserRole, Permission

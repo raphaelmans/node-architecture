@@ -121,7 +121,7 @@ Client Request
 
 ## Folder Structure
 
-All server-side code lives under `src/lib/`.
+Server-side code is organized at the `src/` level, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
 
 ```
 src/
@@ -129,55 +129,64 @@ src/
 │  └─ api/
 │     └─ trpc/
 │        └─ [trpc]/
-│           └─ route.ts
+│           └─ route.ts         # tRPC HTTP handler
 │
-├─ lib/                          # All server-side code
-│  ├─ shared/
-│  │  ├─ kernel/
-│  │  │  ├─ dtos/                # Cross-module DTOs
-│  │  │  │  ├─ common.ts         # Shared schemas (file upload, etc.)
-│  │  │  │  └─ index.ts
-│  │  │  ├─ context.ts           # RequestContext
-│  │  │  ├─ transaction.ts       # TransactionManager
-│  │  │  ├─ pagination.ts        # Pagination types
-│  │  │  ├─ response.ts          # Response types
-│  │  │  ├─ auth.ts              # Session, roles
-│  │  │  └─ errors.ts            # Base error classes
-│  │  ├─ infra/
-│  │  │  ├─ db/
-│  │  │  │  ├─ drizzle.ts        # Drizzle client
-│  │  │  │  ├─ transaction.ts    # DrizzleTransactionManager
-│  │  │  │  └─ schema.ts         # Table + entity definitions
-│  │  │  ├─ trpc/
-│  │  │  │  ├─ trpc.ts           # tRPC initialization
-│  │  │  │  ├─ root.ts           # Root router
-│  │  │  │  ├─ context.ts        # Request context
-│  │  │  │  └─ middleware/
-│  │  │  ├─ logger/
-│  │  │  │  └─ index.ts          # Pino configuration
-│  │  │  └─ container.ts         # Composition root
-│  │  └─ utils/
-│  │     ├─ validation.ts        # Zod helpers
-│  │     ├─ pagination.ts        # Pagination helpers
-│  │     ├─ response.ts          # Response helpers
-│  │     └─ sanitize.ts          # Data sanitization
-│  │
-│  ├─ modules/
-│  │  └─ <module>/
-│  │     ├─ <module>.router.ts   # tRPC router
-│  │     ├─ dtos/                # Module-specific DTOs
-│  │     ├─ errors/              # Domain-specific errors
-│  │     ├─ use-cases/           # Multi-service orchestration
-│  │     ├─ factories/           # Dependency creation
-│  │     ├─ services/            # Business logic
-│  │     └─ repositories/        # Data access
-│  │
-│  └─ trpc/
-│     └─ client.ts
+├─ shared/                       # Cross-cutting infrastructure
+│  ├─ kernel/
+│  │  ├─ context.ts             # RequestContext type
+│  │  ├─ transaction.ts         # TransactionManager interface
+│  │  ├─ auth.ts                # Session, UserRole, Permission types
+│  │  └─ errors.ts              # Base error classes
+│  ├─ infra/
+│  │  ├─ db/
+│  │  │  ├─ drizzle.ts          # Drizzle client (postgres.js driver)
+│  │  │  ├─ transaction.ts      # DrizzleTransactionManager
+│  │  │  ├─ types.ts            # DbClient, DrizzleTransaction types
+│  │  │  └─ schema/             # Table definitions
+│  │  │     ├─ index.ts
+│  │  │     └─ <table>.ts
+│  │  ├─ trpc/
+│  │  │  ├─ trpc.ts             # tRPC init + middleware (inline)
+│  │  │  ├─ root.ts             # Root router
+│  │  │  └─ context.ts          # Request context creation
+│  │  ├─ logger/
+│  │  │  └─ index.ts            # Pino configuration
+│  │  └─ supabase/              # Supabase client (if using)
+│  │     ├─ create-client.ts
+│  │     └─ types.ts
+│  └─ utils/                     # Optional utility functions
+│
+├─ modules/                      # Domain modules
+│  └─ <module>/
+│     ├─ <module>.router.ts     # tRPC router
+│     ├─ dtos/                  # Input/output schemas
+│     │  ├─ <action>.dto.ts
+│     │  └─ index.ts
+│     ├─ errors/                # Domain-specific errors
+│     │  └─ <module>.errors.ts
+│     ├─ use-cases/             # Multi-service orchestration
+│     │  └─ <action>.use-case.ts
+│     ├─ factories/             # Dependency creation
+│     │  └─ <module>.factory.ts
+│     ├─ services/              # Business logic
+│     │  └─ <module>.service.ts
+│     └─ repositories/          # Data access
+│        └─ <module>.repository.ts
+│
+├─ trpc/
+│  └─ client.ts                 # Client-side tRPC setup
+│
+├─ lib/
+│  └─ env/                      # Environment validation
+│     └─ index.ts
+│
+├─ proxy.ts                     # Next.js 16+ proxy (session refresh, route protection)
 │
 └─ drizzle/
    └─ migrations/
 ```
+
+> **Note:** In Next.js 16+, the file `middleware.ts` is renamed to `proxy.ts` and the export is renamed from `middleware` to `proxy`.
 
 ## Documentation Index
 

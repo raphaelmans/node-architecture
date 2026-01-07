@@ -117,13 +117,14 @@ export const middleware = t.middleware;
 
 ### Context Creation
 
+> **Note:** For Supabase Auth implementation, see [Supabase Auth](../supabase/auth.md#trpc-context). The context includes additional `cookies` and `origin` fields for Supabase SSR.
+
 ```typescript
 // shared/infra/trpc/context.ts
 
 import { randomUUID } from 'crypto';
 import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import type { Session } from '@/shared/kernel/auth';
-import { verifySessionToken } from '@/shared/infra/auth/session';
 import { createRequestLogger, type Logger } from '@/shared/infra/logger';
 
 export interface Context {
@@ -131,6 +132,9 @@ export interface Context {
   session: Session | null;
   userId: string | null;
   log: Logger;
+  // For Supabase Auth, also include:
+  // cookies: CookieMethodsServer;
+  // origin: string;
 }
 
 export async function createContext(
@@ -140,10 +144,10 @@ export async function createContext(
   
   const requestId = req.headers.get('x-request-id') ?? randomUUID();
   
-  const cookies = parseCookies(req.headers.get('cookie') ?? '');
-  const token = cookies['session_token'];
-  
-  const session = token ? await verifySessionToken(token) : null;
+  // Session extraction varies by auth provider:
+  // - JWT: parse cookie, verify token
+  // - Supabase: use createClient with cookies, call getUser()
+  const session = null; // Extract from auth provider
   
   const log = createRequestLogger({
     requestId,
@@ -195,40 +199,57 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 });
 ```
 
+### Procedure Definitions
+
+**Important:** Define middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
+
 ```typescript
-// shared/infra/trpc/middleware/logger.middleware.ts
+// shared/infra/trpc/trpc.ts (continued)
 
-import { middleware } from '../trpc';
+export const router = t.router;
+export const middleware = t.middleware;
 
-export const loggerMiddleware = middleware(async ({ ctx, next, path, type }) => {
+/**
+ * Logger middleware - request lifecycle tracing.
+ * Defined inline to avoid circular dependency with middleware exports.
+ */
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
   const start = Date.now();
   
-  ctx.log.info({ path, type }, 'Request started');
+  ctx.log.info({ type }, 'Request started');
 
   try {
-    const result = await next();
+    const result = await next({ ctx });
     const duration = Date.now() - start;
     
-    ctx.log.info({ path, type, duration, status: 'success' }, 'Request completed');
+    ctx.log.info({ duration, status: 'success', type }, 'Request completed');
     
     return result;
   } catch (error) {
     const duration = Date.now() - start;
     
-    ctx.log.info({ path, type, duration, status: 'error' }, 'Request failed');
+    ctx.log.info({ duration, status: 'error', type }, 'Request failed');
     
     throw error;
   }
 });
-```
 
-### Procedure Definitions
+/**
+ * Auth middleware - requires valid session.
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+      cause: new AuthenticationError('Authentication required'),
+    });
+  }
 
-```typescript
-// shared/infra/trpc/trpc.ts (continued)
-
-import { authMiddleware } from './middleware/auth.middleware';
-import { loggerMiddleware } from './middleware/logger.middleware';
+  return next({
+    ctx: ctx as AuthenticatedContext,
+  });
+});
 
 const baseProcedure = t.procedure.use(loggerMiddleware);
 
@@ -354,31 +375,47 @@ The error formatter (shown above) automatically:
 
 ### Connection Management
 
-Use a singleton pattern for the Drizzle client to reuse connections during warm invocations.
+Use a singleton pattern with `postgres.js` driver for better serverless compatibility.
 
 ```typescript
 // shared/infra/db/drizzle.ts
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as schema from './schema';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
 
-const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
-};
+const createDatabase = () => {
+  const isVercel = process.env.VERCEL === "1";
+  const connectionString = process.env.DATABASE_URL;
 
-const pool =
-  globalForDb.pool ??
-  new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 10, // Adjust based on serverless concurrency
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not defined");
+  }
+
+  const client = postgres(connectionString, {
+    connect_timeout: 30,
+    idle_timeout: 20 * 60,
+    max_lifetime: 60 * 30,
+    max: isVercel ? 5 : 10, // Lower for serverless
+    prepare: false,
   });
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.pool = pool;
+  return drizzle({ client, casing: "snake_case", schema });
+};
+
+// Singleton pattern for development hot reload
+const db = global.__db ?? createDatabase();
+
+if (process.env.NODE_ENV !== "production") {
+  global.__db = db;
 }
 
-export const db = drizzle(pool, { schema });
+declare global {
+  var __db: ReturnType<typeof createDatabase> | undefined;
+}
+
+export type AppDatabase = typeof db;
+export { db };
 ```
 
 ### Container Integration
@@ -427,12 +464,9 @@ src/
 │  │  │  ├─ drizzle.ts       # Drizzle client
 │  │  │  └─ schema.ts        # Drizzle schema definitions
 │  │  ├─ trpc/
-│  │  │  ├─ trpc.ts          # tRPC initialization
+│  │  │  ├─ trpc.ts          # tRPC init + middleware (inline)
 │  │  │  ├─ root.ts          # Root router
-│  │  │  ├─ context.ts       # Request context
-│  │  │  └─ middleware/
-│  │  │     ├─ auth.middleware.ts
-│  │  │     └─ logger.middleware.ts
+│  │  │  └─ context.ts       # Request context
 │  │  └─ container.ts
 │  └─ utils/
 │

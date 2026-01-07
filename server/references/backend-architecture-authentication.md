@@ -269,45 +269,48 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 });
 ```
 
-### 5.3 Logger Middleware
+### 5.3 Middleware & Procedure Definitions
+
+**Important:** Define all middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
 
 ```typescript
-// shared/infra/trpc/middleware/logger.middleware.ts
+// shared/infra/trpc/trpc.ts
 
-import { middleware } from '../trpc';
+export const router = t.router;
+export const middleware = t.middleware;
 
 /**
- * Middleware that logs request lifecycle.
+ * Logger middleware - request lifecycle tracing.
+ * Defined inline to avoid circular dependency.
  */
-export const loggerMiddleware = middleware(async ({ ctx, next, path, type }) => {
+const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
   const start = Date.now();
-  
-  ctx.log.info({ path, type }, 'Request started');
+  ctx.log.info({ type }, 'Request started');
 
   try {
-    const result = await next();
-    const duration = Date.now() - start;
-    
-    ctx.log.info({ path, type, duration, status: 'success' }, 'Request completed');
-    
+    const result = await next({ ctx });
+    ctx.log.info({ duration: Date.now() - start, status: 'success', type }, 'Request completed');
     return result;
   } catch (error) {
-    const duration = Date.now() - start;
-    
-    ctx.log.info({ path, type, duration, status: 'error' }, 'Request failed');
-    
+    ctx.log.info({ duration: Date.now() - start, status: 'error', type }, 'Request failed');
     throw error;
   }
 });
-```
 
-### 5.4 Procedure Definitions
-
-```typescript
-// shared/infra/trpc/trpc.ts (continued)
-
-import { authMiddleware } from './middleware/auth.middleware';
-import { loggerMiddleware } from './middleware/logger.middleware';
+/**
+ * Auth middleware - requires valid session.
+ * Defined inline to avoid circular dependency.
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session || !ctx.userId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+      cause: new AuthenticationError('Authentication required'),
+    });
+  }
+  return next({ ctx: ctx as AuthenticatedContext });
+});
 
 /**
  * Base procedure with logging.

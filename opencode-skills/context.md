@@ -31,6 +31,7 @@ Content with step-by-step instructions, code examples, and checklists.
 
 | Skill | Description |
 |-------|-------------|
+| `agent-context` | Log progress and update agent context files with versioned naming |
 | `backend-module` | Create new modules (repository, service, factory, router, DTOs, errors) |
 | `backend-feature` | Add endpoints, fields, use cases to existing modules |
 | `backend-webhook` | Inbound webhooks with signature verification |

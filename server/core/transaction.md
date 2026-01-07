@@ -14,17 +14,17 @@
 
 | Component                   | Location                             | Responsibility                         |
 | --------------------------- | ------------------------------------ | -------------------------------------- |
-| `TransactionContext`        | `lib/shared/kernel/transaction.ts`   | Type alias for transaction client      |
-| `TransactionManager`        | `lib/shared/kernel/transaction.ts`   | Abstract interface                     |
-| `RequestContext`            | `lib/shared/kernel/context.ts`       | Carries transaction through call stack |
-| `DrizzleTransactionManager` | `lib/shared/infra/db/transaction.ts` | Drizzle implementation                 |
+| `TransactionContext`        | `shared/kernel/transaction.ts`   | Type alias for transaction client      |
+| `TransactionManager`        | `shared/kernel/transaction.ts`   | Abstract interface                     |
+| `RequestContext`            | `shared/kernel/context.ts`       | Carries transaction through call stack |
+| `DrizzleTransactionManager` | `shared/infra/db/transaction.ts` | Drizzle implementation                 |
 
 ## Kernel Abstractions
 
 These types belong in the kernel because they're framework-agnostic contracts used across all layers.
 
 ```typescript
-// lib/shared/kernel/transaction.ts
+// shared/kernel/transaction.ts
 
 /**
  * TransactionContext represents an active database transaction.
@@ -53,7 +53,7 @@ export interface TransactionManager {
 The `RequestContext` carries the transaction context through the call stack.
 
 ```typescript
-// lib/shared/kernel/context.ts
+// shared/kernel/context.ts
 
 import type { TransactionContext } from "./transaction";
 
@@ -85,33 +85,41 @@ export interface RequestContext {
 ### Type Definitions
 
 ```typescript
-// lib/shared/infra/db/types.ts
+// shared/infra/db/types.ts
 
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
+
+type AppSchema = typeof schema;
 
 /**
  * The main Drizzle database client type.
+ * Import AppDatabase from drizzle.ts for the actual type.
  */
-export type DbClient = NodePgDatabase<typeof schema>;
+export type { AppDatabase as DbClient } from "./drizzle";
 
 /**
- * Drizzle transaction type - this is what gets passed to repositories.
+ * Drizzle transaction type for postgres.js driver.
+ * Used when passing transaction context to repositories.
  */
-export type DrizzleTransaction = Parameters<
-  Parameters<DbClient["transaction"]>[0]
->[0];
+export type DrizzleTransaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  AppSchema,
+  ExtractTablesWithRelations<AppSchema>
+>;
 ```
 
 ### Transaction Manager Implementation
 
 ```typescript
-// lib/shared/infra/db/transaction.ts
+// shared/infra/db/transaction.ts
 
 import type {
   TransactionManager,
   TransactionContext,
-} from "@/lib/shared/kernel/transaction";
+} from "@/shared/kernel/transaction";
 import type { DbClient, DrizzleTransaction } from "./types";
 
 /**
@@ -130,44 +138,66 @@ export class DrizzleTransactionManager implements TransactionManager {
 
 ### Database Client Setup
 
-```typescript
-// lib/shared/infra/db/drizzle.ts
+Uses `postgres.js` driver for better serverless compatibility (recommended over `node-postgres`).
 
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+```typescript
+// shared/infra/db/drizzle.ts
+
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
-import type { DbClient } from "./types";
 
 /**
- * Global singleton for database pool (survives serverless warm starts).
+ * Create database connection - singleton pattern for development.
+ * Uses postgres.js driver for better serverless compatibility.
  */
-const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
+const createDatabase = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+  const isVercel = process.env.VERCEL === "1";
+
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not defined");
+  }
+
+  const client = postgres(connectionString, {
+    connect_timeout: 30,
+    idle_timeout: 20 * 60, // 20 minutes
+    max_lifetime: 60 * 30, // 30 minutes
+    max: isVercel ? 5 : 10, // Lower for serverless
+    prepare: false,
+    onnotice: isProduction ? () => {} : undefined,
+  });
+
+  return drizzle({ client, casing: "snake_case", schema });
 };
 
-function createPool(): Pool {
-  if (!globalForDb.pool) {
-    globalForDb.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-    });
-  }
-  return globalForDb.pool;
+// Use existing connection if available (development)
+const db = global.__db ?? createDatabase();
+
+// Store globally in development to prevent multiple instances during hot reload
+if (process.env.NODE_ENV !== "production") {
+  global.__db = db;
 }
 
-export const db: DbClient = drizzle(createPool(), { schema });
+declare global {
+  var __db: ReturnType<typeof createDatabase> | undefined;
+}
+
+export type AppDatabase = typeof db;
+
+export { db };
 ```
 
 ## Container Integration
 
 ```typescript
-// lib/shared/infra/container.ts
+// shared/infra/container.ts
 
 import { db } from "./db/drizzle";
 import { DrizzleTransactionManager } from "./db/transaction";
-import type { TransactionManager } from "@/lib/shared/kernel/transaction";
+import type { TransactionManager } from "@/shared/kernel/transaction";
 
 export interface Container {
   db: DbClient;
@@ -194,12 +224,12 @@ export function getContainer(): Container {
 Repositories accept optional `RequestContext` and use the transaction if provided.
 
 ```typescript
-// lib/modules/user/repositories/user.repository.ts
+// modules/user/repositories/user.repository.ts
 
 import { eq } from "drizzle-orm";
-import { users, User, UserInsert } from "@/lib/shared/infra/db/schema";
-import type { RequestContext } from "@/lib/shared/kernel/context";
-import type { DbClient, DrizzleTransaction } from "@/lib/shared/infra/db/types";
+import { users, User, UserInsert } from "@/shared/infra/db/schema";
+import type { RequestContext } from "@/shared/kernel/context";
+import type { DbClient, DrizzleTransaction } from "@/shared/infra/db/types";
 
 export class UserRepository {
   constructor(private db: DbClient) {}
@@ -233,12 +263,12 @@ export class UserRepository {
 Services accept optional `RequestContext`. If provided with a transaction, they participate in it. Otherwise, they own their own transaction.
 
 ```typescript
-// lib/modules/user/services/user.service.ts
+// modules/user/services/user.service.ts
 
-import type { TransactionManager } from "@/lib/shared/kernel/transaction";
-import type { RequestContext } from "@/lib/shared/kernel/context";
-import { ConflictError } from "@/lib/shared/kernel/errors";
-import { User, UserInsert } from "@/lib/shared/infra/db/schema";
+import type { TransactionManager } from "@/shared/kernel/transaction";
+import type { RequestContext } from "@/shared/kernel/context";
+import { ConflictError } from "@/shared/kernel/errors";
+import { User, UserInsert } from "@/shared/infra/db/schema";
 import type { IUserRepository } from "../repositories/user.repository.interface";
 
 export class UserService {
@@ -313,12 +343,12 @@ export class UserService {
 Use cases create transactions when orchestrating multiple services.
 
 ```typescript
-// lib/modules/user/use-cases/register-user.use-case.ts
+// modules/user/use-cases/register-user.use-case.ts
 
-import type { TransactionManager } from "@/lib/shared/kernel/transaction";
+import type { TransactionManager } from "@/shared/kernel/transaction";
 import type { IUserService } from "../services/user.service.interface";
-import type { IWorkspaceService } from "@/lib/modules/workspace/services/workspace.service.interface";
-import type { IEmailService } from "@/lib/shared/infra/email/email.service.interface";
+import type { IWorkspaceService } from "@/modules/workspace/services/workspace.service.interface";
+import type { IEmailService } from "@/shared/infra/email/email.service.interface";
 import { RegisterUserDTO } from "../dtos/register-user.dto";
 
 export class RegisterUserUseCase {
@@ -492,7 +522,7 @@ await this.transactionManager.run(async (tx) => {
 import type {
   TransactionManager,
   TransactionContext,
-} from "@/lib/shared/kernel/transaction";
+} from "@/shared/kernel/transaction";
 
 export class MockTransactionManager implements TransactionManager {
   async run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T> {
@@ -560,9 +590,9 @@ src/lib/
 
 ## Checklist
 
-- [ ] `TransactionManager` interface defined in `lib/shared/kernel/transaction.ts`
+- [ ] `TransactionManager` interface defined in `shared/kernel/transaction.ts`
 - [ ] `TransactionContext` type alias in kernel (framework-agnostic)
-- [ ] `DrizzleTransactionManager` implementation in `lib/shared/infra/db/transaction.ts`
+- [ ] `DrizzleTransactionManager` implementation in `shared/infra/db/transaction.ts`
 - [ ] `RequestContext` includes optional `tx` field
 - [ ] Repositories accept `ctx?: RequestContext` parameter
 - [ ] Repositories use `ctx?.tx ?? this.db` pattern

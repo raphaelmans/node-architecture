@@ -1,16 +1,14 @@
 ---
 name: backend-feature
-description: Add endpoints, service methods, fields, and use cases to existing backend modules in Next.js + tRPC + Drizzle projects
+description: Adds new features to existing backend modules including endpoints, service methods, and database changes. Use when adding a new endpoint, new API method, extending an entity, adding a field, or when the user mentions "add endpoint", "new route", "add field", "extend module".
 ---
 
 # Adding Features to Existing Modules
 
-Use this skill when extending existing modules with new endpoints, fields, or capabilities.
-
 ## Feature Types
 
-| Type | Changes Required |
-|------|------------------|
+| Type | What Changes |
+|------|--------------|
 | New endpoint | Router + Service method + DTO |
 | New field | Schema + Migration + DTOs |
 | New service method | Service + Repository (if needed) |
@@ -22,96 +20,126 @@ Use this skill when extending existing modules with new endpoints, fields, or ca
 
 ```
 Is it a read operation?
-├── Yes → Service + Router only
+├── Yes → Add to Service + Router
 └── No (write)
     └── Multiple services or side effects?
-        ├── No → Service + Router
-        └── Yes → Create Use Case
+        ├── No → Add to Service + Router
+        └── Yes → Create Use Case + Add to Router
 ```
 
-### 2. Create DTO
+### 2. Create DTO (if needed)
 
 ```typescript
-// modules/<module>/dtos/<action>-entity.dto.ts
-import { z } from 'zod'
+// modules/<module>/dtos/<action>-<entity>.dto.ts
+import { z } from 'zod';
 
-export const ArchiveEntitySchema = z.object({
-  id: z.string().uuid(),
-})
+export const <Action><Entity>Schema = z.object({
+  // Define input fields
+});
 
-export type ArchiveEntityDTO = z.infer<typeof ArchiveEntitySchema>
+export type <Action><Entity>DTO = z.infer<typeof <Action><Entity>Schema>;
 ```
 
-### 3. Add Repository Method (if new data access)
+### 3. Add Repository Method (if new data access pattern)
 
 ```typescript
-// In repository file - add method
+// In repository file
 async findByStatus(status: string, ctx?: RequestContext): Promise<Entity[]> {
-  const client = this.getClient(ctx)
-  return client.select().from(entities).where(eq(entities.status, status))
+  const client = this.getClient(ctx);
+  return client
+    .select()
+    .from(entities)
+    .where(eq(entities.status, status));
 }
+```
 
-// Update interface
+Update interface:
+```typescript
 export interface IEntityRepository {
-  // ... existing
-  findByStatus(status: string, ctx?: RequestContext): Promise<Entity[]>
+  // ... existing methods
+  findByStatus(status: string, ctx?: RequestContext): Promise<Entity[]>;
 }
 ```
 
 ### 4. Add Service Method
 
 ```typescript
-// For writes with business logic
+// In service file
+async findByStatus(status: string, ctx?: RequestContext): Promise<Entity[]> {
+  return this.entityRepository.findByStatus(status, ctx);
+}
+
+// For write operations with business logic:
 async archive(id: string, ctx?: RequestContext): Promise<Entity> {
   const exec = async (ctx: RequestContext): Promise<Entity> => {
-    const entity = await this.entityRepository.findById(id, ctx)
+    const entity = await this.entityRepository.findById(id, ctx);
     if (!entity) {
-      throw new EntityNotFoundError(id)
+      throw new EntityNotFoundError(id);
     }
     if (entity.status === 'archived') {
-      throw new EntityAlreadyArchivedError(id)
+      throw new EntityAlreadyArchivedError(id);
     }
+    
+    const updated = await this.entityRepository.update(id, { status: 'archived' }, ctx);
+    
+    logger.info(
+      { event: 'entity.archived', entityId: id },
+      'Entity archived',
+    );
+    
+    return updated;
+  };
 
-    const updated = await this.entityRepository.update(
-      id,
-      { status: 'archived' },
-      ctx
-    )
+  if (ctx?.tx) return exec(ctx);
+  return this.transactionManager.run((tx) => exec({ tx }));
+}
+```
 
-    logger.info({ event: 'entity.archived', entityId: id }, 'Entity archived')
-
-    return updated
-  }
-
-  if (ctx?.tx) return exec(ctx)
-  return this.transactionManager.run((tx) => exec({ tx }))
+Update interface:
+```typescript
+export interface IEntityService {
+  // ... existing methods
+  findByStatus(status: string, ctx?: RequestContext): Promise<Entity[]>;
+  archive(id: string, ctx?: RequestContext): Promise<Entity>;
 }
 ```
 
 ### 5. Add Router Procedure
 
 ```typescript
-archive: protectedProcedure
-  .input(z.object({ id: z.string().uuid() }))
-  .mutation(async ({ input }) => {
-    const entity = await makeEntityService().archive(input.id)
-    return wrapResponse(entity)
-  }),
+// In router file
+export const entityRouter = router({
+  // ... existing procedures
+  
+  getByStatus: protectedProcedure
+    .input(z.object({ status: z.enum(['active', 'archived']) }))
+    .query(async ({ input }) => {
+      const entities = await makeEntityService().findByStatus(input.status);
+      return wrapResponse(entities);
+    }),
+
+  archive: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      const entity = await makeEntityService().archive(input.id);
+      return wrapResponse(entity);
+    }),
+});
 ```
 
 ## Adding a New Field
 
-### 1. Update Schema
+### 1. Update Database Schema
 
 ```typescript
 // shared/infra/db/schema.ts
 export const entities = pgTable('entities', {
-  // ... existing
-  newField: text('new_field'),
-})
+  // ... existing fields
+  newField: text('new_field'),  // Add new field
+});
 ```
 
-### 2. Generate Migration
+### 2. Generate and Run Migration
 
 ```bash
 npx drizzle-kit generate
@@ -121,111 +149,147 @@ npx drizzle-kit migrate
 ### 3. Update DTOs
 
 ```typescript
-// Add to create/update DTOs as needed
-export const UpdateEntitySchema = z.object({
-  // ... existing
+// Create DTO - add if user can set on create
+export const CreateEntitySchema = z.object({
+  // ... existing fields
   newField: z.string().optional(),
-})
+});
+
+// Update DTO - add if user can update
+export const UpdateEntitySchema = z.object({
+  // ... existing fields
+  newField: z.string().optional(),
+});
 ```
 
-## Adding a Use Case
+### 4. Update Service (if business logic needed)
 
-Use cases are for multi-service orchestration or complex workflows.
+```typescript
+private async createInternal(data: EntityInsert, ctx: RequestContext): Promise<Entity> {
+  // Add validation for new field if needed
+  if (data.newField) {
+    // Validate newField
+  }
+  
+  return this.entityRepository.create(data, ctx);
+}
+```
 
-### 1. Create Use Case
+## Adding a New Use Case
+
+Use cases are for multi-service orchestration or complex workflows with side effects.
+
+### 1. Create Use Case Class
 
 ```typescript
 // modules/<module>/use-cases/<action>.use-case.ts
-import type { TransactionManager } from '@/shared/kernel/transaction'
-import type { IEntityService } from '../services/entity.service'
-import type { IOtherService } from '@/modules/other/services/other.service'
-import type { IEmailService } from '@/shared/infra/email/email.service'
+import type { TransactionManager } from '@/shared/kernel/transaction';
+import type { IEntityService } from '../services/entity.service';
+import type { IOtherService } from '@/modules/other/services/other.service';
+import type { IEmailService } from '@/shared/infra/email/email.service';
 
-export interface ICreateWithNotificationUseCase {
-  execute(input: CreateEntityDTO): Promise<Entity>
+export interface I<Action>UseCase {
+  execute(input: <Action>DTO): Promise<Result>;
 }
 
-export class CreateWithNotificationUseCase implements ICreateWithNotificationUseCase {
+export class <Action>UseCase implements I<Action>UseCase {
   constructor(
     private entityService: IEntityService,
     private otherService: IOtherService,
     private emailService: IEmailService,
-    private transactionManager: TransactionManager
+    private transactionManager: TransactionManager,
   ) {}
 
-  async execute(input: CreateEntityDTO): Promise<Entity> {
+  async execute(input: <Action>DTO): Promise<Result> {
     // Transaction for database operations
-    const entity = await this.transactionManager.run(async (tx) => {
-      const created = await this.entityService.create(input, { tx })
-      await this.otherService.relatedAction(created.id, { tx })
-      return created
-    })
+    const result = await this.transactionManager.run(async (tx) => {
+      const entity = await this.entityService.doSomething(input.entityId, { tx });
+      await this.otherService.relatedAction(entity.id, { tx });
+      return entity;
+    });
 
     // Side effects after transaction
-    await this.emailService.sendNotification(entity.email)
+    await this.emailService.sendNotification(result.email);
 
-    return entity
+    return result;
   }
 }
 ```
 
-### 2. Add Factory
+### 2. Add Factory Function
 
 ```typescript
+// modules/<module>/factories/<module>.factory.ts
+
 // Use cases: new instance per invocation
-export function makeCreateWithNotificationUseCase() {
-  return new CreateWithNotificationUseCase(
+export function make<Action>UseCase() {
+  return new <Action>UseCase(
     makeEntityService(),
     makeOtherService(),
     makeEmailService(),
-    getContainer().transactionManager
-  )
+    getContainer().transactionManager,
+  );
 }
 ```
 
 ### 3. Add Router Procedure
 
 ```typescript
-createWithNotification: protectedProcedure
-  .input(CreateEntitySchema)
+// In router
+<action>: protectedProcedure
+  .input(<Action>Schema)
   .mutation(async ({ input }) => {
-    return makeCreateWithNotificationUseCase().execute(input)
+    return make<Action>UseCase().execute(input);
   }),
 ```
 
-## Adding Pagination
+## Adding Pagination to an Endpoint
 
 ### 1. Create List DTO
 
 ```typescript
-import { PaginationInputSchema } from '@/shared/kernel/pagination'
+// modules/<module>/dtos/list-<entities>.dto.ts
+import { z } from 'zod';
+import { PaginationInputSchema } from '@/shared/kernel/pagination';
 
 export const ListEntitiesInputSchema = PaginationInputSchema.extend({
+  // Module-specific filters
   status: z.enum(['active', 'archived']).optional(),
-  search: z.string().optional(),
-})
+  ownerId: z.string().uuid().optional(),
+});
+
+export type ListEntitiesInput = z.infer<typeof ListEntitiesInputSchema>;
 ```
 
-### 2. Repository Method
+### 2. Add Repository Method
 
 ```typescript
 async findMany(
   input: ListEntitiesInput,
-  ctx?: RequestContext
+  ctx?: RequestContext,
 ): Promise<{ data: Entity[]; total: number }> {
-  const client = this.getClient(ctx)
-  const { limit = 20, cursor, sort = 'desc', search, status } = input
-  const offset = cursor ?? 0
+  const client = this.getClient(ctx);
+  const { limit = 20, cursor, sort = 'desc', search, status, ownerId } = input;
+  const offset = cursor ?? 0;
 
-  const conditions = []
+  const conditions = [];
+  
   if (search) {
-    conditions.push(ilike(entities.name, `%${search}%`))
+    conditions.push(
+      or(
+        ilike(entities.name, `%${search}%`),
+        ilike(entities.description, `%${search}%`),
+      ),
+    );
   }
   if (status) {
-    conditions.push(eq(entities.status, status))
+    conditions.push(eq(entities.status, status));
+  }
+  if (ownerId) {
+    conditions.push(eq(entities.ownerId, ownerId));
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [data, [{ total }]] = await Promise.all([
     client
@@ -235,29 +299,59 @@ async findMany(
       .orderBy(sort === 'desc' ? desc(entities.createdAt) : asc(entities.createdAt))
       .limit(limit)
       .offset(offset),
-    client.select({ total: count() }).from(entities).where(whereClause),
-  ])
+    client
+      .select({ total: count() })
+      .from(entities)
+      .where(whereClause),
+  ]);
 
-  return { data, total }
+  return { data, total };
 }
 ```
 
-### 3. Service + Router
+### 3. Add Service Method
 
 ```typescript
-// Service
 async list(input: ListEntitiesInput): Promise<PaginatedResponse<Entity>> {
-  const { data, total } = await this.entityRepository.findMany(input)
-  return buildPaginatedResponse(data, total, input)
+  const { data, total } = await this.entityRepository.findMany(input);
+  return buildPaginatedResponse(data, total, input);
 }
-
-// Router
-list: protectedProcedure.input(ListEntitiesInputSchema).query(async ({ input }) => {
-  return makeEntityService().list(input)
-}),
 ```
 
-## Checklist
+### 4. Add Router Procedure
+
+```typescript
+list: protectedProcedure
+  .input(ListEntitiesInputSchema)
+  .query(async ({ input }) => {
+    return makeEntityService().list(input);
+  }),
+```
+
+## Adding Domain Errors
+
+```typescript
+// modules/<module>/errors/<module>.errors.ts
+
+// Add new error classes as needed
+export class EntityAlreadyArchivedError extends BusinessRuleError {
+  readonly code = 'ENTITY_ALREADY_ARCHIVED';
+
+  constructor(entityId: string) {
+    super('Entity is already archived', { entityId });
+  }
+}
+
+export class EntityAccessDeniedError extends AuthorizationError {
+  readonly code = 'ENTITY_ACCESS_DENIED';
+
+  constructor(entityId: string, userId: string) {
+    super('Access to entity denied', { entityId, userId });
+  }
+}
+```
+
+## Checklist for New Features
 
 - [ ] DTO created with Zod schema
 - [ ] Repository method added (if new data access)
@@ -267,4 +361,7 @@ list: protectedProcedure.input(ListEntitiesInputSchema).query(async ({ input }) 
 - [ ] Business events logged in service
 - [ ] Domain errors created (if new error cases)
 - [ ] Router procedure added
+- [ ] Input validation in `.input()` uses Zod schema
 - [ ] Router handles null from service (throws NotFoundError)
+
+See [references/endpoint-patterns.md](references/endpoint-patterns.md) for more examples.

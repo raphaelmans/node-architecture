@@ -13,7 +13,7 @@
 ## Base Error Class
 
 ```typescript
-// lib/shared/kernel/errors.ts
+// shared/kernel/errors.ts
 
 export abstract class AppError extends Error {
   abstract readonly code: string;
@@ -32,7 +32,7 @@ export abstract class AppError extends Error {
 ## Core Error Classes
 
 ```typescript
-// lib/shared/kernel/errors.ts
+// shared/kernel/errors.ts
 
 // 400 - Bad Request
 export class ValidationError extends AppError {
@@ -106,13 +106,13 @@ export class GatewayTimeoutError extends AppError {
 Each module defines its own error subclasses for specific error codes.
 
 ```typescript
-// lib/modules/user/errors/user.errors.ts
+// modules/user/errors/user.errors.ts
 
 import {
   NotFoundError,
   ConflictError,
   BusinessRuleError,
-} from "@/lib/shared/kernel/errors";
+} from "@/shared/kernel/errors";
 
 export class UserNotFoundError extends NotFoundError {
   readonly code = "USER_NOT_FOUND";
@@ -140,13 +140,13 @@ export class UserCannotDeleteSelfError extends BusinessRuleError {
 ```
 
 ```typescript
-// lib/modules/workspace/errors/workspace.errors.ts
+// modules/workspace/errors/workspace.errors.ts
 
 import {
   NotFoundError,
   AuthorizationError,
   BusinessRuleError,
-} from "@/lib/shared/kernel/errors";
+} from "@/shared/kernel/errors";
 
 export class WorkspaceNotFoundError extends NotFoundError {
   readonly code = "WORKSPACE_NOT_FOUND";
@@ -195,10 +195,10 @@ lib/modules/
 Use a generic handler that transforms Zod errors into `ValidationError`:
 
 ```typescript
-// lib/shared/utils/validation.ts
+// shared/utils/validation.ts
 
 import { ZodError, ZodSchema } from "zod";
-import { ValidationError } from "@/lib/shared/kernel/errors";
+import { ValidationError } from "@/shared/kernel/errors";
 
 export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
@@ -219,7 +219,7 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
 **Usage:**
 
 ```typescript
-import { validate } from "@/lib/shared/utils/validation";
+import { validate } from "@/shared/utils/validation";
 import { CreateUserSchema } from "./dtos/create-user.dto";
 
 const input = validate(CreateUserSchema, req.body);
@@ -278,10 +278,10 @@ interface ErrorResponse {
 ## Error Handler (Generic HTTP)
 
 ```typescript
-// lib/shared/infra/http/error-handler.ts
+// shared/infra/http/error-handler.ts
 
-import { AppError } from "@/lib/shared/kernel/errors";
-import { logger } from "@/lib/shared/infra/logger";
+import { AppError } from "@/shared/kernel/errors";
+import { logger } from "@/shared/infra/logger";
 
 interface ErrorResponseBody {
   code: string;
@@ -342,11 +342,11 @@ export function handleError(
 For tRPC integration, see [tRPC Integration](../trpc/integration.md).
 
 ```typescript
-// lib/shared/infra/trpc/trpc.ts
+// shared/infra/trpc/trpc.ts
 
 import { initTRPC, TRPCError } from "@trpc/server";
-import { AppError } from "@/lib/shared/kernel/errors";
-import { logger } from "@/lib/shared/infra/logger";
+import { AppError } from "@/shared/kernel/errors";
+import { logger } from "@/shared/infra/logger";
 import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
@@ -494,12 +494,83 @@ Clients can determine retry behavior from status code:
 
 ## Checklist
 
-- [ ] Base `AppError` class in `lib/shared/kernel/errors.ts`
-- [ ] Core error classes for common HTTP statuses
-- [ ] Domain-specific errors in each module's `errors/` folder
+### Base Infrastructure
+- [ ] Base `AppError` class in `shared/kernel/errors.ts`
+- [ ] Core error classes for common HTTP statuses (400, 401, 403, 404, 409, 422, 429, 500, 502, 503, 504)
 - [ ] Validation helper wraps Zod errors into `ValidationError`
+
+### Domain Error Classes (CRITICAL)
+
+Every domain error class MUST have:
+
+```typescript
+export class <Entity><ErrorType>Error extends <BaseError> {
+  readonly code = '<MODULE>_<ERROR_TYPE>';  // REQUIRED - unique code
+  
+  constructor(<params>) {
+    super('<message>', { <details> });
+  }
+}
+```
+
+**Checklist for each domain error:**
+- [ ] Extends appropriate base class (`NotFoundError`, `ConflictError`, `AuthenticationError`, etc.)
+- [ ] Has `readonly code` property with unique value
+- [ ] Code format: `<MODULE>_<ERROR_TYPE>` in SCREAMING_SNAKE_CASE
+- [ ] Constructor passes relevant IDs to `details` object
+- [ ] Message is user-safe (no internal details)
+
+**Common error codes by module:**
+| Module | Error | Code |
+|--------|-------|------|
+| Auth | Invalid credentials | `AUTH_INVALID_CREDENTIALS` |
+| Auth | Email not verified | `AUTH_EMAIL_NOT_VERIFIED` |
+| Auth | User already exists | `AUTH_USER_ALREADY_EXISTS` |
+| Auth | Session expired | `AUTH_SESSION_EXPIRED` |
+| User | User not found | `USER_NOT_FOUND` |
+| User | Email conflict | `USER_EMAIL_CONFLICT` |
+| Workspace | Not found | `WORKSPACE_NOT_FOUND` |
+| Workspace | Access denied | `WORKSPACE_ACCESS_DENIED` |
+
+### Error Handler / tRPC Error Formatter
 - [ ] Error handler attaches `requestId` to all responses
-- [ ] Known errors logged at `warn` level
-- [ ] Unknown errors logged at `error` level with full stack
+- [ ] Error logs include `requestId` field
+- [ ] Known errors (`AppError`) logged at `warn` level with `code`, `details`, `requestId`
+- [ ] Unknown errors logged at `error` level with full stack and `requestId`
+- [ ] Client response includes `code`, `message`, `requestId`, optional `details`
 - [ ] Client never receives stack traces or internal details
-- [ ] Router handles null returns from service and throws `NotFoundError`
+
+```typescript
+// CORRECT - requestId included in logs
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details, requestId },
+  cause.message,
+);
+
+// WRONG - missing requestId
+ctx?.log.warn(
+  { err: cause, code: cause.code, details: cause.details },
+  cause.message,
+);
+```
+
+### Use Cases
+- [ ] Throw domain errors (NOT generic `Error`)
+- [ ] Use specific error types for each failure case
+
+```typescript
+// CORRECT
+if (!result.user) {
+  throw new AuthRegistrationFailedError(input.email);
+}
+
+// WRONG
+if (!result.user) {
+  throw new Error('Failed to create user');
+}
+```
+
+### Router Layer
+- [ ] Router handles null returns from service
+- [ ] Router throws appropriate domain error for null
+- [ ] No catching and re-throwing (let errors bubble to formatter)
