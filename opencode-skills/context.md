@@ -32,6 +32,7 @@ Content with step-by-step instructions, code examples, and checklists.
 | Skill | Description |
 |-------|-------------|
 | `user-stories` | Create user stories from PRD with acceptance criteria, edge cases, and checkpoints |
+| `user-story-pdf` | Generate professional PDF documents from user story checkpoints for product teams |
 | `agent-plan` | Create implementation plans derived from user stories with API specs, UI mockups, and checklists |
 | `agent-context` | Log progress and update agent context files with versioned naming |
 | `backend-module` | Create new modules (repository, service, factory, router, DTOs, errors) |
