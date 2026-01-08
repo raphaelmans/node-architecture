@@ -1,6 +1,6 @@
 # Supabase Authentication
 
-> Complete authentication implementation using Supabase Auth with tRPC, Next.js middleware, and user roles.
+> Complete authentication implementation using Supabase Auth with tRPC, Next.js middleware, and user roles. Uses **PKCE flow** for magic links and email verification.
 
 ## Overview
 
@@ -45,6 +45,84 @@ This document covers the full authentication flow using Supabase Auth integrated
 │  │ or publicProc   │                                                  │
 │  └─────────────────┘                                                  │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## PKCE Flow vs Implicit Flow
+
+This implementation uses **PKCE (Proof Key for Code Exchange)** flow, which is the recommended approach for SSR applications.
+
+| Aspect | Implicit Flow | PKCE Flow (Recommended) |
+|--------|---------------|-------------------------|
+| **URL Parameter** | `code` | `token_hash` |
+| **Verification Method** | `exchangeCodeForSession(code)` | `verifyOtp({ token_hash, type })` |
+| **Route Handler** | `/auth/callback` | `/auth/confirm` |
+| **Security** | Less secure | More secure for SSR |
+
+### PKCE Flow Diagram
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        Magic Link PKCE Flow                            │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  1. User requests magic link                                           │
+│     └─► POST /api/trpc/auth.loginWithMagicLink                        │
+│                                                                        │
+│  2. Service calls Supabase signInWithOtp                               │
+│     └─► emailRedirectTo: https://app.com/auth/confirm                 │
+│                                                                        │
+│  3. Supabase sends email with link:                                    │
+│     └─► https://app.com/auth/confirm?token_hash=xxx&type=magiclink    │
+│                                                                        │
+│  4. User clicks link → Route handler verifies                          │
+│     └─► supabase.auth.verifyOtp({ token_hash, type: 'magiclink' })    │
+│                                                                        │
+│  5. Session cookies set → Redirect to /dashboard                       │
+│                                                                        │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Supabase Dashboard Configuration
+
+**IMPORTANT:** The `{{ .SiteURL }}` variable in email templates is controlled by Supabase Dashboard, not your environment variables.
+
+### URL Configuration
+
+Navigate to **Supabase Dashboard → Authentication → URL Configuration**:
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| **Site URL** | `https://yourdomain.com` | Used in `{{ .SiteURL }}` email template variable |
+| **Redirect URLs** | `https://yourdomain.com/auth/confirm` | Whitelist for PKCE |
+| | `https://yourdomain.com/auth/callback` | Whitelist for OAuth |
+| | `http://localhost:3000/auth/confirm` | For local development |
+| | `http://localhost:3000/auth/callback` | For local development |
+
+### Email Templates
+
+Navigate to **Supabase Dashboard → Authentication → Email Templates**:
+
+**Magic Link Template:**
+```html
+<h2>Magic Link</h2>
+<p>Follow this link to login:</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink">Log In</a></p>
+```
+
+**Signup Confirmation Template:**
+```html
+<h2>Confirm your signup</h2>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">Confirm your email</a></p>
+```
+
+**Password Recovery Template:**
+```html
+<h2>Reset your password</h2>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset Password</a></p>
 ```
 
 ---
@@ -94,22 +172,36 @@ The repository wraps Supabase Auth and maps errors to domain errors:
 // modules/auth/repositories/auth.repository.ts
 
 import type { SupabaseClient } from "@/shared/infra/supabase/types";
+import type { User, Session } from "@supabase/supabase-js";
 import {
   InvalidCredentialsError,
   EmailNotVerifiedError,
   UserAlreadyExistsError,
 } from "../errors/auth.errors";
 
-export class AuthRepository {
+export interface IAuthRepository {
+  getCurrentUser(): Promise<User | null>;
+  signInWithPassword(email: string, password: string): Promise<{ user: User; session: Session }>;
+  signInWithOtp(email: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }>;
+  signUp(email: string, password: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }>;
+  signOut(): Promise<void>;
+  exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }>;
+  // PKCE flow methods
+  verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifyRecovery(tokenHash: string): Promise<void>;
+}
+
+export class AuthRepository implements IAuthRepository {
   constructor(private client: SupabaseClient) {}
 
-  async getCurrentUser() {
+  async getCurrentUser(): Promise<User | null> {
     const { data: { user }, error } = await this.client.auth.getUser();
     if (error) throw error;
     return user;
   }
 
-  async signInWithPassword(email: string, password: string) {
+  async signInWithPassword(email: string, password: string): Promise<{ user: User; session: Session }> {
     const { data, error } = await this.client.auth.signInWithPassword({
       email,
       password,
@@ -128,7 +220,7 @@ export class AuthRepository {
     return data;
   }
 
-  async signInWithOtp(email: string, redirectTo: string) {
+  async signInWithOtp(email: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }> {
     const { data, error } = await this.client.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
@@ -138,7 +230,7 @@ export class AuthRepository {
     return data;
   }
 
-  async signUp(email: string, password: string, redirectTo: string) {
+  async signUp(email: string, password: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }> {
     const { data, error } = await this.client.auth.signUp({
       email,
       password,
@@ -155,15 +247,43 @@ export class AuthRepository {
     return data;
   }
 
-  async signOut() {
+  async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
     if (error) throw error;
   }
 
-  async exchangeCodeForSession(code: string) {
+  // OAuth flow (kept for OAuth providers)
+  async exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }> {
     const { data, error } = await this.client.auth.exchangeCodeForSession(code);
     if (error) throw error;
     return data;
+  }
+
+  // PKCE flow methods
+  async verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+    const { data, error } = await this.client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "magiclink",
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+    const { data, error } = await this.client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "signup",
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async verifyRecovery(tokenHash: string): Promise<void> {
+    const { error } = await this.client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "recovery",
+    });
+    if (error) throw error;
   }
 }
 ```
@@ -214,6 +334,49 @@ export class SessionExpiredError extends AuthenticationError {
 
 ---
 
+## Auth DTOs
+
+```typescript
+// modules/auth/dtos/login.dto.ts
+
+import { z } from "zod";
+
+export const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export type LoginDTO = z.infer<typeof LoginSchema>;
+
+export const MagicLinkSchema = z.object({
+  email: z.string().email(),
+});
+
+export type MagicLinkDTO = z.infer<typeof MagicLinkSchema>;
+```
+
+```typescript
+// modules/auth/dtos/verify.dto.ts
+
+import { z } from "zod";
+
+export const VerifyTokenHashSchema = z.object({
+  token_hash: z.string(),
+});
+
+export type VerifyTokenHashDTO = z.infer<typeof VerifyTokenHashSchema>;
+```
+
+```typescript
+// modules/auth/dtos/index.ts
+
+export * from "./login.dto";
+export * from "./register.dto";
+export * from "./verify.dto";
+```
+
+---
+
 ## Auth Service
 
 Service layer with redirect URL construction and **business event logging**:
@@ -221,20 +384,33 @@ Service layer with redirect URL construction and **business event logging**:
 ```typescript
 // modules/auth/services/auth.service.ts
 
-import type { AuthRepository } from "../repositories/auth.repository";
+import type { IAuthRepository } from "../repositories/auth.repository";
+import type { User, Session } from "@supabase/supabase-js";
 import { logger } from "@/shared/infra/logger";
 
-export class AuthService {
-  constructor(private authRepository: AuthRepository) {}
+export interface IAuthService {
+  getCurrentUser(): Promise<User | null>;
+  signIn(email: string, password: string): Promise<{ user: User; session: Session }>;
+  signInWithMagicLink(email: string, baseUrl: string): Promise<{ user: User | null; session: Session | null }>;
+  signUp(email: string, password: string, baseUrl: string): Promise<{ user: User | null; session: Session | null }>;
+  signOut(): Promise<void>;
+  exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }>;
+  // PKCE flow methods
+  verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifyRecovery(tokenHash: string): Promise<void>;
+}
 
-  async getCurrentUser() {
+export class AuthService implements IAuthService {
+  constructor(private authRepository: IAuthRepository) {}
+
+  async getCurrentUser(): Promise<User | null> {
     return this.authRepository.getCurrentUser();
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(email: string, password: string): Promise<{ user: User; session: Session }> {
     const result = await this.authRepository.signInWithPassword(email, password);
 
-    // Business event: user logged in
     logger.info(
       { event: "user.logged_in", userId: result.user.id, email },
       "User logged in",
@@ -243,11 +419,11 @@ export class AuthService {
     return result;
   }
 
-  async signInWithMagicLink(email: string, baseUrl: string) {
-    const redirectTo = `${baseUrl}/auth/callback`;
+  async signInWithMagicLink(email: string, baseUrl: string): Promise<{ user: User | null; session: Session | null }> {
+    // PKCE flow: redirect to /auth/confirm
+    const redirectTo = `${baseUrl}/auth/confirm`;
     const result = await this.authRepository.signInWithOtp(email, redirectTo);
 
-    // Business event: magic link requested
     logger.info(
       { event: "user.magic_link_requested", email },
       "Magic link requested",
@@ -256,12 +432,12 @@ export class AuthService {
     return result;
   }
 
-  async signUp(email: string, password: string, baseUrl: string) {
-    const redirectTo = `${baseUrl}/auth/callback`;
+  async signUp(email: string, password: string, baseUrl: string): Promise<{ user: User | null; session: Session | null }> {
+    // PKCE flow: redirect to /auth/confirm
+    const redirectTo = `${baseUrl}/auth/confirm`;
     const result = await this.authRepository.signUp(email, password, redirectTo);
 
     if (result.user) {
-      // Business event: user registered
       logger.info(
         { event: "user.registered", userId: result.user.id, email },
         "User registered",
@@ -271,15 +447,56 @@ export class AuthService {
     return result;
   }
 
-  async signOut() {
+  async signOut(): Promise<void> {
     await this.authRepository.signOut();
 
-    // Business event: user logged out
     logger.info({ event: "user.logged_out" }, "User logged out");
   }
 
-  async exchangeCodeForSession(code: string) {
-    return this.authRepository.exchangeCodeForSession(code);
+  async exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }> {
+    const result = await this.authRepository.exchangeCodeForSession(code);
+
+    if (result.user) {
+      logger.info(
+        { event: "user.session_exchanged", userId: result.user.id },
+        "Session exchanged from code",
+      );
+    }
+
+    return result;
+  }
+
+  // PKCE flow methods
+  async verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+    const result = await this.authRepository.verifyMagicLink(tokenHash);
+
+    if (result.user) {
+      logger.info(
+        { event: "user.magic_link_verified", userId: result.user.id },
+        "Magic link verified",
+      );
+    }
+
+    return result;
+  }
+
+  async verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+    const result = await this.authRepository.verifySignUp(tokenHash);
+
+    if (result.user) {
+      logger.info(
+        { event: "user.signup_verified", userId: result.user.id },
+        "Signup verified",
+      );
+    }
+
+    return result;
+  }
+
+  async verifyRecovery(tokenHash: string): Promise<void> {
+    await this.authRepository.verifyRecovery(tokenHash);
+
+    logger.info({ event: "user.recovery_verified" }, "Password recovery verified");
   }
 }
 ```
@@ -587,12 +804,38 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
     path: new URL(req.url).pathname,
   });
 
+  // Determine the origin URL for redirects
+  const getOriginUrl = (): string => {
+    // 1. Use explicit APP_URL from env if set (production)
+    if (env.NEXT_PUBLIC_APP_URL) {
+      return env.NEXT_PUBLIC_APP_URL;
+    }
+
+    // 2. Build from x-forwarded-host (Vercel, proxies)
+    const forwardedHost = headerStore.get("x-forwarded-host");
+    const forwardedProto = headerStore.get("x-forwarded-proto");
+    if (forwardedHost) {
+      const protocol = forwardedProto || "https";
+      return `${protocol}://${forwardedHost}`;
+    }
+
+    // 3. Build from host header
+    const host = headerStore.get("host");
+    if (host) {
+      const protocol = host.includes("localhost") ? "http" : "https";
+      return `${protocol}://${host}`;
+    }
+
+    // 4. Fallback to localhost for development
+    return "http://localhost:3000";
+  };
+
   return {
     requestId,
     session,
     userId: session?.userId ?? null,
     cookies: cookieMethods,
-    origin: headerStore.get("origin") ?? "http://localhost:3000",
+    origin: getOriginUrl(),
     log,
   };
 }
@@ -650,7 +893,6 @@ const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
 
   ctx.log.info({ type }, "Request started");
 
-  // Log input at debug level only in development
   if (process.env.NODE_ENV !== "production") {
     ctx.log.debug("Request processing");
   }
@@ -705,7 +947,7 @@ export const protectedProcedure = loggedProcedure.use(authMiddleware);
 
 import { router, publicProcedure, protectedProcedure } from "@/shared/infra/trpc/trpc";
 import { makeAuthService, makeRegisterUserUseCase } from "./factories/auth.factory";
-import { LoginSchema, RegisterSchema, MagicLinkSchema } from "./dtos";
+import { LoginSchema, RegisterSchema, MagicLinkSchema, VerifyTokenHashSchema } from "./dtos";
 
 export const authRouter = router({
   login: publicProcedure
@@ -747,12 +989,45 @@ export const authRouter = router({
         role: ctx.session.role,
       };
     }),
+
+  // PKCE flow verification endpoints
+  verifyMagicLink: publicProcedure
+    .input(VerifyTokenHashSchema)
+    .query(async ({ input, ctx }) => {
+      const authService = makeAuthService(ctx.cookies);
+      const result = await authService.verifyMagicLink(input.token_hash);
+      return {
+        user: result.user
+          ? { id: result.user.id, email: result.user.email }
+          : null,
+      };
+    }),
+
+  verifySignUp: publicProcedure
+    .input(VerifyTokenHashSchema)
+    .query(async ({ input, ctx }) => {
+      const authService = makeAuthService(ctx.cookies);
+      const result = await authService.verifySignUp(input.token_hash);
+      return {
+        user: result.user
+          ? { id: result.user.id, email: result.user.email }
+          : null,
+      };
+    }),
+
+  verifyRecovery: publicProcedure
+    .input(VerifyTokenHashSchema)
+    .mutation(async ({ input, ctx }) => {
+      const authService = makeAuthService(ctx.cookies);
+      await authService.verifyRecovery(input.token_hash);
+      return { success: true };
+    }),
 });
 ```
 
 ---
 
-## Next.js Middleware
+## Next.js Proxy
 
 Session refresh and route protection:
 
@@ -828,17 +1103,172 @@ export const config = {
 
 ---
 
-## Auth Callback Route
+## Auth Confirm Route (PKCE Flow)
 
-Handles OAuth and magic link redirects:
+Handles magic link, signup confirmation, and password recovery:
+
+```typescript
+// app/auth/confirm/route.ts
+
+import { type EmailOtpType } from "@supabase/supabase-js";
+import { type NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createClient } from "@/shared/infra/supabase/create-client";
+import { env } from "@/lib/env";
+import { logger } from "@/shared/infra/logger";
+
+/**
+ * Auth confirm route handler for PKCE flow (magic link, signup, recovery).
+ * Verifies token_hash and creates session via verifyOtp.
+ */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
+
+  const redirectTo = request.nextUrl.clone();
+  redirectTo.searchParams.delete("token_hash");
+  redirectTo.searchParams.delete("type");
+
+  // Default redirect to dashboard
+  redirectTo.pathname = "/dashboard";
+
+  if (!token_hash || !type) {
+    logger.warn(
+      { scope: "auth:confirm", token_hash: !!token_hash, type },
+      "Missing token_hash or type parameter",
+    );
+    redirectTo.pathname = "/";
+    return NextResponse.redirect(redirectTo);
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
+        });
+      },
+    },
+  );
+
+  switch (type) {
+    case "magiclink":
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash,
+          type: "magiclink",
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          logger.info(
+            { event: "user.magic_link_verified", userId: data.user.id },
+            "Magic link verified",
+          );
+        }
+
+        return NextResponse.redirect(redirectTo);
+      } catch (error) {
+        logger.error(
+          {
+            scope: "auth:magiclink_verification",
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Magic link verification failed",
+        );
+      }
+      break;
+
+    case "signup":
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash,
+          type: "signup",
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          logger.info(
+            { event: "user.signup_verified", userId: data.user.id },
+            "Signup verified",
+          );
+        }
+
+        return NextResponse.redirect(redirectTo);
+      } catch (error) {
+        logger.error(
+          {
+            scope: "auth:signup_verification",
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Signup verification failed",
+        );
+      }
+      break;
+
+    case "recovery":
+      try {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash,
+          type: "recovery",
+        });
+
+        if (error) throw error;
+
+        logger.info(
+          { event: "user.recovery_verified" },
+          "Password recovery verified",
+        );
+
+        return NextResponse.redirect(redirectTo);
+      } catch (error) {
+        logger.error(
+          {
+            scope: "auth:recovery_verification",
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Password recovery verification failed",
+        );
+      }
+      break;
+
+    default:
+      logger.warn({ scope: "auth:confirm", type }, "Unknown verification type");
+  }
+
+  // Fallback: redirect to home on error
+  redirectTo.pathname = "/";
+  return NextResponse.redirect(redirectTo);
+}
+```
+
+---
+
+## Auth Callback Route (OAuth Flow)
+
+Kept for OAuth providers that use authorization codes:
 
 ```typescript
 // app/auth/callback/route.ts
 
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createClient } from "@/shared/infra/supabase/create-client";
+import { env } from "@/lib/env";
 
+/**
+ * Auth callback route handler for OAuth flows.
+ * Exchanges authorization code for session.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -846,30 +1276,39 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    const supabase = createClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
         },
       },
     );
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+
     if (!error) {
+      const forwardedHost = request.headers.get("x-forwarded-host");
+      const isLocalEnv = process.env.NODE_ENV === "development";
+
+      if (isLocalEnv) {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+      if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${next}`);
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+  // Redirect to index on error
+  return NextResponse.redirect(`${origin}/`);
 }
 ```
 
@@ -908,6 +1347,10 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 ```bash
 # .env.local
 
+# App URL (production deployment URL)
+# Used for constructing redirect URLs in code
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+
 # Supabase (public - safe to expose)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
@@ -928,8 +1371,10 @@ DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/pos
 src/
 ├── app/
 │   ├── auth/
-│   │   └── callback/
-│   │       └── route.ts          # OAuth/magic link callback
+│   │   ├── callback/
+│   │   │   └── route.ts          # OAuth callback (code exchange)
+│   │   └── confirm/
+│   │       └── route.ts          # PKCE callback (token_hash verification)
 │   └── api/
 │       └── trpc/
 │           └── [trpc]/
@@ -962,6 +1407,7 @@ src/
     │   ├── dtos/
     │   │   ├── login.dto.ts
     │   │   ├── register.dto.ts
+    │   │   ├── verify.dto.ts     # PKCE verification DTO
     │   │   └── index.ts
     │   ├── errors/
     │   │   └── auth.errors.ts
@@ -989,22 +1435,34 @@ src/
 
 ## Checklist
 
-### Supabase Setup
+### Supabase Dashboard Setup
 - [ ] Create Supabase project
 - [ ] Get publishable and secret keys
-- [ ] Configure email templates for magic link/confirmation
-- [ ] Set redirect URLs in Supabase dashboard
+- [ ] **Set Site URL** to production domain (e.g., `https://yourdomain.com`)
+- [ ] **Add Redirect URLs:**
+  - `https://yourdomain.com/auth/confirm` (PKCE)
+  - `https://yourdomain.com/auth/callback` (OAuth)
+  - `http://localhost:3000/auth/confirm` (dev)
+  - `http://localhost:3000/auth/callback` (dev)
+- [ ] **Configure email templates** with `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=...`
+
+### Environment Variables
+- [ ] `NEXT_PUBLIC_APP_URL` set to production URL
+- [ ] `NEXT_PUBLIC_SUPABASE_URL` configured
+- [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` configured
+- [ ] `SUPABASE_URL` configured
+- [ ] `SUPABASE_SECRET_KEY` configured
+- [ ] `DATABASE_URL` configured
 
 ### Infrastructure
 - [ ] `create-client.ts` with SSR cookie handling
-- [ ] Environment variables configured
 - [ ] Database migrations for `user_roles` table
 
 ### Auth Module
-- [ ] `AuthRepository` wrapping Supabase Auth
-- [ ] `AuthService` with redirect URL construction
+- [ ] `AuthRepository` with PKCE methods (`verifyMagicLink`, `verifySignUp`, `verifyRecovery`)
+- [ ] `AuthService` with redirect URL construction to `/auth/confirm`
 - [ ] Domain errors (`InvalidCredentialsError`, etc.)
-- [ ] DTOs with Zod schemas
+- [ ] DTOs with Zod schemas (including `VerifyTokenHashSchema`)
 - [ ] Request-scoped factories
 
 ### User Role Module
@@ -1017,17 +1475,18 @@ src/
 - [ ] Context extracts session + role
 - [ ] `publicProcedure` and `protectedProcedure`
 - [ ] Error formatter maps `AppError`
-- [ ] Auth router with login/register/logout/me
+- [ ] Auth router with verification endpoints
 
 ### Next.js
-- [ ] Middleware for session refresh
-- [ ] Route protection (redirect unauthenticated)
-- [ ] Auth callback route handler
+- [ ] Proxy for session refresh (`proxy.ts`)
+- [ ] Route protection works
+- [ ] `/auth/confirm` route handler for PKCE
+- [ ] `/auth/callback` route handler for OAuth
 
 ### Registration Flow
 - [ ] `RegisterUserUseCase` orchestrates Supabase + DB
 - [ ] User role created on registration
-- [ ] Email confirmation flow works
+- [ ] Email confirmation flow works with PKCE
 
 ---
 
@@ -1042,3 +1501,4 @@ src/
 | **Transaction ownership** | `UserRoleService` owns DB transaction |
 | **Use case orchestration** | `RegisterUserUseCase` coordinates auth + DB |
 | **Kernel types** | `Session`, `UserRole`, `Permission` in kernel |
+| **PKCE flow** | `verifyOtp` with `token_hash` for magic links |

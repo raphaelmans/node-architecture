@@ -42,13 +42,24 @@ Supabase provides three main services used in this architecture:
 ## Authentication
 
 > **Complete documentation**: See [auth.md](./auth.md) for the full authentication implementation including:
+> - **PKCE flow** for magic links and email verification
 > - tRPC context and session extraction
 > - User roles table with Drizzle
 > - Registration use case with multi-service orchestration
 > - Next.js middleware for route protection
 > - Request-scoped factory patterns
+> - Supabase Dashboard configuration (Site URL, email templates)
 
 ### Quick Summary
+
+This implementation uses **PKCE flow** (not implicit flow) for magic links:
+
+| Flow | Route | Method |
+|------|-------|--------|
+| Magic Link | `/auth/confirm?token_hash=xxx&type=magiclink` | `verifyOtp()` |
+| Signup | `/auth/confirm?token_hash=xxx&type=signup` | `verifyOtp()` |
+| Recovery | `/auth/confirm?token_hash=xxx&type=recovery` | `verifyOtp()` |
+| OAuth | `/auth/callback?code=xxx` | `exchangeCodeForSession()` |
 
 ```typescript
 // Request-scoped factories (need cookies)
@@ -58,13 +69,19 @@ export function makeAuthService(cookies: CookieMethodsServer) {
 }
 
 // In tRPC router
-login: publicProcedure
-  .input(LoginSchema)
+loginWithMagicLink: publicProcedure
+  .input(MagicLinkSchema)
   .mutation(async ({ input, ctx }) => {
     const authService = makeAuthService(ctx.cookies);
-    return authService.signIn(input.email, input.password);
+    // Redirects to /auth/confirm for PKCE flow
+    await authService.signInWithMagicLink(input.email, ctx.origin);
+    return { success: true };
   }),
 ```
+
+**Important Supabase Dashboard Settings:**
+- **Site URL** must be set to your production domain (used in `{{ .SiteURL }}` email template variable)
+- **Email templates** should use: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink`
 
 ---
 
