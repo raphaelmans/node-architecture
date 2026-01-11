@@ -73,6 +73,13 @@ This documentation describes a **production-ready frontend architecture** that e
 | [Environment](./core/environment.md)           | Type-safe environment variables (@t3-oss/env-nextjs)  |
 | [Folder Structure](./core/folder-structure.md) | Directory architecture                                |
 
+### Next.js Documentation
+
+| Document | Description |
+| --- | --- |
+| [Overview](./nextjs/overview.md) | App Router conventions, auth guards, route registry |
+| [Auth + Routing Skill](./nextjs/skills/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
+
 ### References
 
 The `references/` folder contains detailed implementation guides from an existing codebase.
