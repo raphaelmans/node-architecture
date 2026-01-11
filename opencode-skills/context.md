@@ -44,6 +44,7 @@ Content with step-by-step instructions, code examples, and checklists.
 | `frontend-form` | Forms with StandardForm, Zod, react-hook-form |
 | `frontend-data` | tRPC queries, mutations, cache invalidation |
 | `frontend-state` | nuqs URL state + Zustand stores |
+| `nextjs-auth-routing` | Type-safe routes + proxy-based auth guarding in Next.js 16 |
 
 ## Source Documentation
 
