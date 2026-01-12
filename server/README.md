@@ -74,6 +74,7 @@ This documentation describes a **production-ready backend architecture** that em
 | [tRPC Integration](./trpc/integration.md)  | Serverless patterns, routers, Drizzle setup   |
 | [Authentication](./trpc/authentication.md) | Session/JWT management, auth middleware, RBAC |
 | [Webhooks](./webhook/architecture.md)      | Inbound webhook handling, idempotency         |
+| [Webhook Testing](./webhook/testing-overview.md) | Testing guide + Vendor Simulator              |
 | [Supabase](./supabase/README.md)           | Auth, Storage, Database integration patterns  |
 
 ### Skills (AI-Assisted Development)

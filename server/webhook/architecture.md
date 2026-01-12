@@ -12,6 +12,18 @@
 - Comprehensive logging for debugging
 - Handlers always delegate to Use Cases for better maintainability
 
+## Testing Guides
+
+| Document | Description |
+| --- | --- |
+| [Testing Overview](./testing-overview.md) | Testing strategy + index |
+| [Test Doubles](./testing-test-doubles.md) | Stub/mock/spy/fake/simulator definitions |
+| [Vendor Simulator](./testing-vendor-simulator.md) | Emulator patterns and scenarios |
+| [Schema Validation](./testing-schema-validation.md) | Zod + fixtures + payload drift |
+| [Routing + Business Logic](./testing-routing-and-business-logic.md) | Handler registry, mapping, idempotency |
+| [Contract + Regression](./testing-contract-and-regression.md) | Fixture suite + versioning vendor changes |
+| [Testing Checklist](./testing-checklist.md) | CTO/product-ready checklist |
+
 ## Folder Structure
 
 ```
