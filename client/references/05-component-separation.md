@@ -146,7 +146,8 @@ export default function ProfileForm() {
   // SUBMISSION LOGIC
   // ============================================
   const router = useRouter()
-  const trpcUtils = trpc.useUtils()
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
   const catchErrorToast = useCatchErrorToast()
   const errorToast = useErrorToast()
 
@@ -168,7 +169,9 @@ export default function ProfileForm() {
         await updateOnboardingStatusMut.mutateAsync({ onboarded: true })
 
         // 4. Invalidate cache
-        await trpcUtils.profile.getByCurrentUser.invalidate()
+        await queryClient.invalidateQueries(
+          trpc.profile.getByCurrentUser.queryFilter(),
+        )
 
         // 5. Navigate
         router.push(appRoutes.dashboard)

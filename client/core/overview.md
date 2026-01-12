@@ -159,6 +159,12 @@ User Interaction
 ### Data Fetching
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
+
 // Query
 const { data, isLoading } = trpc.user.getById.useQuery({ id });
 
@@ -169,12 +175,11 @@ const settingsQuery = trpc.settings.get.useQuery(
   { enabled: !!profileQuery.data?.id },
 );
 
-// Mutation with cache invalidation
-const trpcUtils = trpc.useUtils();
+// Mutation with cache invalidation (type-safe)
 const mutation = trpc.user.update.useMutation();
 
 await mutation.mutateAsync(data);
-await trpcUtils.user.getById.invalidate({ id });
+await queryClient.invalidateQueries(trpc.user.getById.queryFilter({ id }));
 ```
 
 ### Forms

@@ -109,23 +109,27 @@ updateMut.error       // Error object
 ### Mutation with Cache Invalidation
 
 ```typescript
-const trpcUtils = trpc.useUtils()
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
 const onSubmit = async (data: ProfileFormHandler) => {
-  const result = await updateMut.mutateAsync(data)
+  const result = await updateMut.mutateAsync(data);
 
   // Invalidate single query
-  await trpcUtils.profile.getByCurrentUser.invalidate()
-  
+  await queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter());
+
   // Invalidate with params
-  await trpcUtils.profile.getById.invalidate({ id: result.id })
-  
+  await queryClient.invalidateQueries(trpc.profile.getById.queryFilter({ id: result.id }));
+
   // Parallel invalidation
   await Promise.all([
-    trpcUtils.profile.invalidate(),
-    trpcUtils.company.invalidate(),
-  ])
-}
+    queryClient.invalidateQueries(trpc.profile.pathFilter()),
+    queryClient.invalidateQueries(trpc.company.pathFilter()),
+  ]);
+};
 ```
 
 ### Chained Mutations
@@ -162,7 +166,7 @@ const onSubmit = async (data: ProfileFormHandler) => {
   }
 
   // 4. Invalidate cache
-  await trpcUtils.profile.getByCurrentUser.invalidate()
+  await queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter())
 }
 ```
 
@@ -187,38 +191,50 @@ const handleUpload = async (file: File, profileId: string) => {
 ### Invalidation Methods
 
 ```typescript
-const trpcUtils = trpc.useUtils()
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
 // Invalidate all queries for a router
-await trpcUtils.profile.invalidate()
+await queryClient.invalidateQueries(trpc.profile.pathFilter());
 
 // Invalidate specific query (no params)
-await trpcUtils.profile.getByCurrentUser.invalidate()
+await queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter());
 
 // Invalidate specific query (with params)
-await trpcUtils.profile.getById.invalidate({ id: profileId })
+await queryClient.invalidateQueries(trpc.profile.getById.queryFilter({ id: profileId }));
 
 // Parallel invalidation
 await Promise.all([
-  trpcUtils.profile.invalidate(),
-  trpcUtils.company.invalidate(),
-])
+  queryClient.invalidateQueries(trpc.profile.pathFilter()),
+  queryClient.invalidateQueries(trpc.company.pathFilter()),
+]);
 ```
 
 ### Direct Cache Updates (getData/setData)
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
+
 // Read from cache
-const cachedProfile = trpcUtils.profile.getById.getData({ id: profileId })
+const cachedProfile = queryClient.getQueryData(
+  trpc.profile.getById.queryKey({ id: profileId }),
+);
 
 // Write to cache
-trpcUtils.profile.getById.setData({ id: profileId }, (old) => ({
+queryClient.setQueryData(trpc.profile.getById.queryKey({ id: profileId }), (old) => ({
   ...old!,
-  name: 'Updated Name',
-}))
+  name: "Updated Name",
+}));
 
 // Cancel outgoing queries
-await trpcUtils.profile.getById.cancel({ id: profileId })
+await queryClient.cancelQueries(trpc.profile.getById.queryFilter({ id: profileId }));
 ```
 
 ---
@@ -228,39 +244,54 @@ await trpcUtils.profile.getById.cancel({ id: profileId })
 Full pattern for instant UI feedback:
 
 ```typescript
-const likeMutation = trpc.post.like.useMutation({
-  onMutate: async (newLike) => {
-    // 1. Cancel outgoing refetches to prevent overwrite
-    await trpcUtils.post.getById.cancel({ id: newLike.postId })
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
-    // 2. Snapshot previous value for rollback
-    const previousPost = trpcUtils.post.getById.getData({ 
-      id: newLike.postId 
-    })
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
-    // 3. Optimistically update cache
-    trpcUtils.post.getById.setData({ id: newLike.postId }, (old) => ({
-      ...old!,
-      likes: old!.likes + 1,
-    }))
+const likeMutation = useMutation(
+  trpc.post.like.mutationOptions({
+    onMutate: async (newLike) => {
+      // 1. Cancel outgoing refetches to prevent overwrite
+      await queryClient.cancelQueries(
+        trpc.post.getById.queryFilter({ id: newLike.postId }),
+      );
 
-    // 4. Return context for rollback
-    return { previousPost }
-  },
-  
-  onError: (err, newLike, context) => {
-    // 5. Rollback on error
-    trpcUtils.post.getById.setData(
-      { id: newLike.postId }, 
-      context?.previousPost
-    )
-  },
-  
-  onSettled: () => {
-    // 6. Refetch to ensure consistency
-    trpcUtils.post.getById.invalidate()
-  },
-})
+      // 2. Snapshot previous value for rollback
+      const previousPost = queryClient.getQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+      );
+
+      // 3. Optimistically update cache
+      queryClient.setQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+        (old) => ({
+          ...old!,
+          likes: old!.likes + 1,
+        }),
+      );
+
+      // 4. Return context for rollback
+      return { previousPost };
+    },
+
+    onError: (_err, newLike, context) => {
+      // 5. Rollback on error
+      queryClient.setQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+        context?.previousPost,
+      );
+    },
+
+    onSettled: (_data, _err, newLike) => {
+      // 6. Refetch to ensure consistency
+      queryClient.invalidateQueries(
+        trpc.post.getById.queryFilter({ id: newLike.postId }),
+      );
+    },
+  }),
+);
 ```
 
 ---
@@ -403,27 +434,34 @@ function ProfileForm() {
 ### Form with Mutation
 
 ```typescript
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
 function ProfileForm() {
-  const trpcUtils = trpc.useUtils()
-  const updateMut = trpc.profile.update.useMutation()
-  const router = useRouter()
-  const catchErrorToast = useCatchErrorToast()
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const catchErrorToast = useCatchErrorToast();
+
+  const updateMut = useMutation(trpc.profile.update.mutationOptions());
 
   const onSubmit = async (data: ProfileFormHandler) => {
     return catchErrorToast(
       async () => {
-        await updateMut.mutateAsync(data)
-        await trpcUtils.profile.getByCurrentUser.invalidate()
-        router.push(appRoutes.dashboard)
+        await updateMut.mutateAsync(data);
+        await queryClient.invalidateQueries(
+          trpc.profile.getByCurrentUser.queryFilter(),
+        );
+        router.push(appRoutes.dashboard);
       },
-      { description: 'Profile updated!' }
-    )
-  }
+      { description: "Profile updated!" },
+    );
+  };
 
   return (
     <StandardFormProvider form={form} onSubmit={onSubmit}>
       {/* fields */}
     </StandardFormProvider>
-  )
+  );
 }
 ```

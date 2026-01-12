@@ -98,7 +98,8 @@ import {
   StandardFormProvider,
   StandardFormError,
 } from '@/components/form';
-import { trpc } from '@/lib/trpc/client';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 import appRoutes from '@/common/app-routes';
 import { useCatchErrorToast } from '@/common/hooks';
 import {
@@ -114,18 +115,21 @@ interface <Feature>FormProps {
 
 export function <Feature>Form({ <entity>Id }: <Feature>FormProps) {
   const router = useRouter();
-  const trpcUtils = trpc.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const catchErrorToast = useCatchErrorToast();
 
   // Data fetching (edit mode)
-  const <entity>Query = trpc.<module>.getById.useQuery(
-    { id: <entity>Id ?? '' },
-    { enabled: !!<entity>Id },
+  const <entity>Query = useQuery(
+    trpc.<module>.getById.queryOptions(
+      { id: <entity>Id ?? "" },
+      { enabled: !!<entity>Id },
+    ),
   );
 
   // Mutations
-  const createMut = trpc.<module>.create.useMutation();
-  const updateMut = trpc.<module>.update.useMutation();
+  const createMut = useMutation(trpc.<module>.create.mutationOptions());
+  const updateMut = useMutation(trpc.<module>.update.mutationOptions());
 
   // Form setup
   const form = useForm<<Feature>FormHandler>({
@@ -155,11 +159,13 @@ export function <Feature>Form({ <entity>Id }: <Feature>FormProps) {
       async () => {
         if (<entity>Id) {
           await updateMut.mutateAsync({ id: <entity>Id, ...data });
-          await trpcUtils.<module>.getById.invalidate({ id: <entity>Id });
+          await queryClient.invalidateQueries(
+            trpc.<module>.getById.queryFilter({ id: <entity>Id }),
+          );
         } else {
           await createMut.mutateAsync(data);
         }
-        await trpcUtils.<module>.list.invalidate();
+        await queryClient.invalidateQueries(trpc.<module>.pathFilter());
         router.push(appRoutes.<feature>.list);
       },
       { description: <entity>Id ? 'Updated successfully!' : 'Created successfully!' },

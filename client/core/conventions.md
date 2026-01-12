@@ -74,12 +74,15 @@ export default function ProfileForm() {
 
   // Mutations
   const updateMut = trpc.profile.update.useMutation()
-  const trpcUtils = trpc.useUtils()
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
 
   // Business logic
   const onSubmit = async (data: ProfileFormHandler) => {
     await updateMut.mutateAsync(data)
-    await trpcUtils.profile.getByCurrentUser.invalidate()
+    await queryClient.invalidateQueries(
+      trpc.profile.getByCurrentUser.queryFilter(),
+    )
     router.push(appRoutes.dashboard)
   }
 

@@ -231,7 +231,7 @@ export default function ProfileForm() {
   // Business logic
   const onSubmit = async (data: ProfileFormHandler) => {
     await updateMut.mutateAsync(data)
-    await trpcUtils.profile.invalidate()
+    await queryClient.invalidateQueries(trpc.profile.pathFilter())
     router.push(appRoutes.dashboard)
   }
 

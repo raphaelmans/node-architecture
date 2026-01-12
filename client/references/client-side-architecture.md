@@ -344,19 +344,23 @@ const professionalProfileQuery = trpc.professionalProfile.getByProfileId.useQuer
 ### 4.4 Mutation with Cache Invalidation
 
 ```typescript
-const trpcUtils = trpc.useUtils()
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
 const onSubmit = async (data: ProfileFormHandler) => {
-  const result = await profileMut.mutateAsync(data)
+  const result = await profileMut.mutateAsync(data);
 
-  // Invalidate related queries
+  // Invalidate related queries (type-safe)
   await Promise.all([
-    trpcUtils.profile.getByCurrentUser.invalidate(),
-    trpcUtils.professionalProfile.getByProfileId.invalidate({
-      profileId: result.id,
-    }),
-  ])
-}
+    queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter()),
+    queryClient.invalidateQueries(
+      trpc.professionalProfile.getByProfileId.queryFilter({ profileId: result.id }),
+    ),
+  ]);
+};
 ```
 
 ---

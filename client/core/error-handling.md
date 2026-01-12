@@ -127,7 +127,7 @@ const onSubmit = async (data: FormType) => {
   return catchErrorToast(
     async () => {
       await mutation.mutateAsync(data);
-      await trpcUtils.entity.invalidate();
+      await queryClient.invalidateQueries(trpc.entity.pathFilter());
       router.push(appRoutes.success);
     },
     { description: "Saved successfully!" },

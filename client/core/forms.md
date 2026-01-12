@@ -284,37 +284,44 @@ export default function ProfileForm() {
 ### Form with Mutation
 
 ```typescript
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
 export default function ProfileForm() {
-  const trpcUtils = trpc.useUtils()
-  const updateMut = trpc.profile.update.useMutation()
-  const router = useRouter()
-  const catchErrorToast = useCatchErrorToast()
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const catchErrorToast = useCatchErrorToast();
+
+  const updateMut = useMutation(trpc.profile.update.mutationOptions());
 
   const form = useForm<ProfileFormHandler>({
     resolver: zodResolver(profileFormSchema),
-  })
+  });
 
   const onSubmit = async (data: ProfileFormHandler) => {
     return catchErrorToast(
       async () => {
-        await updateMut.mutateAsync(data)
-        await trpcUtils.profile.getByCurrentUser.invalidate()
-        router.push(appRoutes.dashboard)
+        await updateMut.mutateAsync(data);
+        await queryClient.invalidateQueries(
+          trpc.profile.getByCurrentUser.queryFilter(),
+        );
+        router.push(appRoutes.dashboard);
       },
-      { description: 'Profile updated successfully!' },
-    )
-  }
+      { description: "Profile updated successfully!" },
+    );
+  };
 
   const onError = (errors: FieldErrors<ProfileFormHandler>) => {
     // Handle validation errors (optional)
-    console.error('Validation errors:', errors)
-  }
+    console.error("Validation errors:", errors);
+  };
 
   return (
     <StandardFormProvider form={form} onSubmit={onSubmit} onError={onError}>
       {/* ... */}
     </StandardFormProvider>
-  )
+  );
 }
 ```
 

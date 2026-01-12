@@ -185,37 +185,54 @@ const onSubmit = async (data: ProfileData) => {
 ### Mutation with Cache Invalidation
 
 ```typescript
-const trpcUtils = trpc.useUtils();
-const updateMut = trpc.profile.update.useMutation();
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
+
+const updateMut = useMutation(trpc.profile.update.mutationOptions());
 
 const onSubmit = async (data: ProfileData) => {
   const result = await updateMut.mutateAsync(data);
 
-  // Invalidate affected queries
-  await trpcUtils.profile.getByCurrentUser.invalidate();
-  await trpcUtils.profile.getById.invalidate({ id: result.id });
+  // Invalidate affected queries (type-safe)
+  await Promise.all([
+    queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter()),
+    queryClient.invalidateQueries(trpc.profile.getById.queryFilter({ id: result.id })),
+  ]);
 };
 ```
 
 ### Parallel Invalidation
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
+
 await Promise.all([
-  trpcUtils.profile.invalidate(),
-  trpcUtils.settings.invalidate(),
-  trpcUtils.notifications.invalidate(),
+  queryClient.invalidateQueries(trpc.profile.pathFilter()),
+  queryClient.invalidateQueries(trpc.settings.pathFilter()),
+  queryClient.invalidateQueries(trpc.notifications.pathFilter()),
 ]);
 ```
 
 ### Mutation with Navigation
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 const router = useRouter();
-const trpcUtils = trpc.useUtils();
 
 const onSubmit = async (data: FormData) => {
   await createMut.mutateAsync(data);
-  await trpcUtils.items.list.invalidate();
+  await queryClient.invalidateQueries(trpc.items.list.queryFilter());
   router.push(appRoutes.items.list);
 };
 ```
@@ -239,56 +256,83 @@ const handleUpload = async (file: File, profileId: string) => {
 ### Invalidation
 
 ```typescript
-const trpcUtils = trpc.useUtils();
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
 // Invalidate single query
-await trpcUtils.profile.getByCurrentUser.invalidate();
+await queryClient.invalidateQueries(trpc.profile.getByCurrentUser.queryFilter());
 
 // Invalidate with specific params
-await trpcUtils.user.getById.invalidate({ id: userId });
+await queryClient.invalidateQueries(trpc.user.getById.queryFilter({ id: userId }));
 
-// Invalidate all queries for a procedure
-await trpcUtils.profile.invalidate();
+// Invalidate all queries under a router
+await queryClient.invalidateQueries(trpc.profile.pathFilter());
 ```
 
 ### Optimistic Updates
 
 ```typescript
-const likeMut = trpc.post.like.useMutation({
-  onMutate: async (newLike) => {
-    // Cancel outgoing refetches
-    await trpcUtils.post.getById.cancel({ id: newLike.postId });
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
-    // Snapshot previous value
-    const previousPost = trpcUtils.post.getById.getData({ id: newLike.postId });
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 
-    // Optimistically update
-    trpcUtils.post.getById.setData({ id: newLike.postId }, (old) => ({
-      ...old!,
-      likes: old!.likes + 1,
-    }));
+const likeMut = useMutation(
+  trpc.post.like.mutationOptions({
+    onMutate: async (newLike) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries(
+        trpc.post.getById.queryFilter({ id: newLike.postId }),
+      );
 
-    return { previousPost };
-  },
-  onError: (err, newLike, context) => {
-    // Rollback on error
-    trpcUtils.post.getById.setData(
-      { id: newLike.postId },
-      context?.previousPost,
-    );
-  },
-  onSettled: () => {
-    trpcUtils.post.getById.invalidate();
-  },
-});
+      // Snapshot previous value
+      const previousPost = queryClient.getQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+      );
+
+      // Optimistically update
+      queryClient.setQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+        (old) => ({
+          ...old!,
+          likes: old!.likes + 1,
+        }),
+      );
+
+      return { previousPost };
+    },
+    onError: (_err, newLike, context) => {
+      // Rollback on error
+      queryClient.setQueryData(
+        trpc.post.getById.queryKey({ id: newLike.postId }),
+        context?.previousPost,
+      );
+    },
+    onSettled: (_data, _err, newLike) => {
+      queryClient.invalidateQueries(
+        trpc.post.getById.queryFilter({ id: newLike.postId }),
+      );
+    },
+  }),
+);
 ```
 
 ### Prefetching
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
+const trpc = useTRPC();
+const queryClient = useQueryClient();
+
 // Prefetch on hover
 const handleMouseEnter = () => {
-  trpcUtils.user.getById.prefetch({ id: userId });
+  void queryClient.prefetchQuery(trpc.user.getById.queryOptions({ id: userId }));
 };
 ```
 
@@ -384,7 +428,7 @@ const onSubmit = async (data: FormData) => {
 
 - Use `enabled` for dependent queries
 - Invalidate related queries after mutations
-- Use `trpcUtils` for cache operations
+- Use `queryClient` + `trpc.*.queryFilter()` / `pathFilter()` for cache operations
 - Handle loading and error states
 - Use skeletons for better UX
 

@@ -254,8 +254,9 @@ export default function ProfileForm() {
 
 ```typescript
 export default function ProfileForm() {
-  const trpcUtils = trpc.useUtils()
-  const updateMut = trpc.profile.update.useMutation()
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const updateMut = useMutation(trpc.profile.update.mutationOptions())
   const router = useRouter()
   const catchErrorToast = useCatchErrorToast()
 
@@ -267,7 +268,9 @@ export default function ProfileForm() {
     return catchErrorToast(
       async () => {
         await updateMut.mutateAsync(data)
-        await trpcUtils.profile.getByCurrentUser.invalidate()
+        await queryClient.invalidateQueries(
+          trpc.profile.getByCurrentUser.queryFilter(),
+        )
         router.push(appRoutes.dashboard)
       },
       { description: 'Profile updated successfully!' }

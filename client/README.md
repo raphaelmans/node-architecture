@@ -78,6 +78,7 @@ This documentation describes a **production-ready frontend architecture** that e
 | Document | Description |
 | --- | --- |
 | [Overview](./nextjs/overview.md) | App Router conventions, auth guards, route registry |
+| [Index](./nextjs/README.md) | Next.js documentation index |
 | [Auth + Routing Skill](./nextjs/skills/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
 
 ### References
@@ -100,13 +101,17 @@ Does it fetch data or own form state?
 ### Data Fetching
 
 ```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+
 // Query
+const trpc = useTRPC();
+const queryClient = useQueryClient();
 const { data, isLoading } = trpc.user.getById.useQuery({ id });
 
-// Mutation with cache invalidation
-const trpcUtils = trpc.useUtils();
+// Mutation with cache invalidation (type-safe)
 await mutation.mutateAsync(data);
-await trpcUtils.user.invalidate();
+await queryClient.invalidateQueries(trpc.user.pathFilter());
 ```
 
 ### Forms

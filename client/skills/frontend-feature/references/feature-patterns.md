@@ -131,7 +131,8 @@ export function <Feature>Card({ item }: <Feature>CardProps) {
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { trpc } from '@/lib/trpc/client';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 import appRoutes from '@/common/app-routes';
 import { useCatchErrorToast } from '@/common/hooks';
 import { <Feature>ViewSkeleton } from './<feature>-skeleton';
@@ -142,11 +143,14 @@ interface <Feature>ViewProps {
 
 export function <Feature>View({ <entity>Id }: <Feature>ViewProps) {
   const router = useRouter();
-  const trpcUtils = trpc.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const catchErrorToast = useCatchErrorToast();
 
-  const <entity>Query = trpc.<module>.getById.useQuery({ id: <entity>Id });
-  const deleteMut = trpc.<module>.delete.useMutation();
+  const <entity>Query = useQuery(
+    trpc.<module>.getById.queryOptions({ id: <entity>Id }),
+  );
+  const deleteMut = useMutation(trpc.<module>.delete.mutationOptions());
 
   const handleDelete = async () => {
     if (!confirm('Are you sure?')) return;
@@ -154,7 +158,7 @@ export function <Feature>View({ <entity>Id }: <Feature>ViewProps) {
     return catchErrorToast(
       async () => {
         await deleteMut.mutateAsync({ id: <entity>Id });
-        await trpcUtils.<module>.list.invalidate();
+        await queryClient.invalidateQueries(trpc.<module>.pathFilter());
         router.push(appRoutes.<feature>.list);
       },
       { description: 'Deleted successfully!' },
