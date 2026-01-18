@@ -422,6 +422,22 @@ const onSubmit = async (data: FormData) => {
 };
 ```
 
+## Non-tRPC HTTP Clients
+
+tRPC is the default for API calls, but some features use plain HTTP endpoints implemented via Next.js `route.ts`.
+
+Conventions:
+
+- Wrap requests with `ky` (Next.js-friendly Fetch wrapper)
+- Decode `ApiResponse<T>` / `ApiErrorResponse` envelopes
+- Define query keys with `@lukemorales/query-key-factory`
+- Expose React Query hooks (`useQuery` / `useMutation`) from the client package
+
+See:
+
+- `../nextjs/ky-fetch.md`
+- `../nextjs/query-keys.md`
+
 ## Best Practices
 
 ### Do

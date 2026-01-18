@@ -74,6 +74,27 @@ export default function ProfileForm() {
 
 ---
 
+## Form State Proxy Rules
+
+React Hook Form exposes `formState` via a Proxy. You must destructure the
+values you need to subscribe to updates:
+
+```typescript
+const {
+  formState: { isDirty, isValid, isSubmitting },
+} = form
+
+return <Button disabled={!isDirty || !isValid || isSubmitting} />
+```
+
+Avoid accessing `form.formState.*` inside inline conditionals.
+
+**Convention:** Destructure form helpers from `useForm` return values.
+
+```typescript
+const { setValue, reset, handleSubmit } = form
+```
+
 ## Validation Modes
 
 | Mode        | Description                      | Use Case           |

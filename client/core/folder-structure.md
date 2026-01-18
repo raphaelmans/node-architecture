@@ -101,6 +101,7 @@ src/
 │   │   │   ├── profile-form.tsx            # Business component
 │   │   │   └── profile-form-fields.tsx     # Presentation components
 │   │   ├── hooks.ts                        # URL state, custom hooks
+│   │   ├── helpers.ts                      # Pure feature helpers (transform/sort/group)
 │   │   └── schemas.ts                      # Zod schemas
 │   │
 │   └── <feature>/
@@ -112,6 +113,7 @@ src/
 │       ├── stores/                         # Zustand stores (if needed)
 │       │   └── <name>-store.ts
 │       ├── hooks.ts
+│       ├── helpers.ts                      # Pure feature helpers (transform/sort/group)
 │       └── schemas.ts
 │
 ├── hooks/                                  # Global React hooks
@@ -150,6 +152,21 @@ src/
     └── utils.ts                            # Utility functions
 ```
 
+## Shared API Clients (Non-tRPC)
+
+Some features need plain HTTP clients (not tRPC), usually backed by Next.js `route.ts` handlers.
+
+Place these clients under `src/shared/lib/clients/<client>/`:
+
+```
+src/shared/lib/clients/
+└── <client>/
+    ├── index.ts       # Client functions + React Query hooks
+    └── query-keys.ts  # @lukemorales/query-key-factory keys
+```
+
+Implementation details live in `client/nextjs/ky-fetch.md` and `client/nextjs/query-keys.md`.
+
 ## Route Groups
 
 | Group             | Purpose         | Auth Required |
@@ -173,6 +190,7 @@ src/features/<feature>/
 ├── stores/                          # Zustand stores (optional)
 │   └── <name>-store.ts
 ├── hooks.ts                         # URL state, feature hooks
+├── helpers.ts                       # Pure feature helpers (transform/sort/group)
 └── schemas.ts                       # Zod form schemas
 ```
 
@@ -190,6 +208,7 @@ src/features/<feature>/
 | UI primitive      | `<component>.tsx`      | `button.tsx`        |
 | Hook              | `use-<name>.ts`        | `use-toast.ts`      |
 | Store             | `<name>-store.ts`      | `customer-store.ts` |
+| Feature helpers   | `helpers.ts`           | `helpers.ts`        |
 | Schema            | `schemas.ts`           | `schemas.ts`        |
 | DTO               | `<entity>-dtos.ts`     | `profile-dtos.ts`   |
 

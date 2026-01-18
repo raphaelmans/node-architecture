@@ -160,6 +160,7 @@ src/features/
 │   │   ├── profile-form.tsx           # Business component
 │   │   └── profile-form-fields.tsx    # Presentation components
 │   ├── hooks.ts
+│   ├── helpers.ts                     # Pure feature helpers (transform/sort/group)
 │   └── schemas.ts
 │
 ├── company/
@@ -177,6 +178,7 @@ src/features/
     │   ├── <feature>-list.tsx
     │   └── <feature>-card.tsx
     ├── hooks.ts
+    ├── helpers.ts                     # Pure feature helpers (transform/sort/group)
     └── schemas.ts
 ```
 

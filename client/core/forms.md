@@ -36,6 +36,21 @@ Form handling uses:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Form State Subscriptions
+
+React Hook Form uses a Proxy-based subscription model for `formState`.
+To ensure updates are tracked correctly, destructure the values you read:
+
+- ✅ `const { isDirty, isValid } = form.formState`
+- ❌ `disabled={!form.formState.isDirty || !form.formState.isValid}`
+
+**Convention:** Destructure form helpers instead of calling through the form object.
+
+- ✅ `const { setValue, reset } = form`
+- ❌ `form.setValue(...)`
+
+These patterns match RHF docs and prevent missed subscriptions.
+
 ## Schema Architecture
 
 ### Three-Layer Schema Pattern

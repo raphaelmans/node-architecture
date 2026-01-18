@@ -229,15 +229,15 @@ const input = validate(CreateUserSchema, req.body);
 
 ### Client Response
 
+The standardized HTTP error response type is `ApiErrorResponse` (defined in `shared/kernel/response.ts`):
+
 ```typescript
-interface ErrorResponse {
-  code: string; // Error code (e.g., 'USER_NOT_FOUND')
+// shared/kernel/response.ts
+export interface ApiErrorResponse {
+  code: string; // Error code (e.g., "USER_NOT_FOUND")
   message: string; // Human-readable message
   requestId: string; // For support/debugging
-  details?: {
-    // Optional additional context
-    [key: string]: unknown;
-  };
+  details?: Record<string, unknown>; // Optional additional context
 }
 ```
 
@@ -277,23 +277,19 @@ interface ErrorResponse {
 
 ## Error Handler (Generic HTTP)
 
+For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../nextjs/route-handlers.md`](../nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
+
 ```typescript
 // shared/infra/http/error-handler.ts
 
 import { AppError } from "@/shared/kernel/errors";
 import { logger } from "@/shared/infra/logger";
-
-interface ErrorResponseBody {
-  code: string;
-  message: string;
-  requestId: string;
-  details?: Record<string, unknown>;
-}
+import type { ApiErrorResponse } from "@/shared/kernel/response";
 
 export function handleError(
   error: unknown,
   requestId: string,
-): { status: number; body: ErrorResponseBody } {
+): { status: number; body: ApiErrorResponse } {
   // Known application error
   if (error instanceof AppError) {
     logger.warn(

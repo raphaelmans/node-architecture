@@ -450,5 +450,6 @@ src/features/<feature>/
 ├── stores/                          # Zustand stores (if needed)
 │   └── <name>-store.ts
 ├── hooks.ts                         # URL state hooks
+├── helpers.ts                       # Pure feature helpers (transform/sort/group)
 └── schemas.ts                       # Zod schemas
 ```

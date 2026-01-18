@@ -39,10 +39,11 @@ This frontend follows a **feature-based architecture** with clear separation bet
 | Principle                          | Description                                                     |
 | ---------------------------------- | --------------------------------------------------------------- |
 | **Feature-based organization**     | Co-locate components, hooks, schemas by feature                 |
-| **Business/Presentation split**    | Data fetching in business components, rendering in presentation |
+| **Business/Presentation split**    | Data fetching in business/hooks, rendering in TSX               |
 | **Type-safe data flow**            | Zod schemas → tRPC → TanStack Query → Components                |
 | **URL as state**                   | Use nuqs for shareable, bookmarkable UI state                   |
 | **Standardized forms**             | StandardForm components reduce boilerplate                      |
+| **Logic extraction**               | Keep derived logic in hooks or `helpers.ts`                     |
 | **Composition over configuration** | Compose small components, use children for flexibility          |
 
 ## Technology Stack

@@ -83,7 +83,7 @@
 
 ## Error Response
 
-Defined in [Error Handling](./error-handling.md).
+Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse` in `shared/kernel/response.ts`.
 
 ```typescript
 {
@@ -106,6 +106,8 @@ Defined in [Error Handling](./error-handling.md).
   }
 }
 ```
+
+For Next.js route handlers (`app/api/**/route.ts`) that are not tRPC, return `ApiResponse<T>` for 2xx responses and `ApiErrorResponse` for non-2xx. See [`../nextjs/route-handlers.md`](../nextjs/route-handlers.md) for a complete template.
 
 ## Pagination Types & Schemas
 
@@ -171,6 +173,17 @@ export type PaginatedResponse<T> = {
 
 import { z } from "zod";
 
+export type ApiResponse<T> = {
+  data: T;
+};
+
+export interface ApiErrorResponse {
+  code: string;
+  message: string;
+  requestId: string;
+  details?: Record<string, unknown>;
+}
+
 /**
  * Creates a single resource response schema.
  */
@@ -179,10 +192,6 @@ export function createResponseSchema<T extends z.ZodType>(dataSchema: T) {
     data: dataSchema,
   });
 }
-
-export type ApiResponse<T> = {
-  data: T;
-};
 ```
 
 ## Pagination Helper

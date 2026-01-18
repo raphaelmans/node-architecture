@@ -167,12 +167,16 @@ export function ProfileFirstNameField() {
 - URL state management (nuqs)
 - Feature-specific custom logic
 - Derived state calculations
+- (Optional) Data fetching wrappers (tRPC / React Query) for a hook-first feature API
 
 **Rules:**
 
 - Reusable within the feature
 - May use nuqs for URL state
-- No direct data fetching (use tRPC hooks in components)
+- Prefer keeping transformations in `helpers.ts` (below)
+- Data fetching location is a project choice:
+  - Component-first: fetch in feature components
+  - Hook-first: fetch in feature hooks and return UI-ready data
 
 ```typescript
 // src/features/landing/hooks.ts
@@ -187,6 +191,64 @@ export const useQueryLandingState = () => {
     parseAsStringLiteral(landingStates).withOptions({ history: "push" }),
   );
 };
+```
+
+## Feature Helpers (helpers.ts)
+
+**Goal:** keep non-trivial business/derived logic out of TSX.
+
+**Location:** `src/features/<feature>/helpers.ts`
+
+**What goes here (examples):**
+
+- mapping backend payloads to UI DTOs ("adapter" functions)
+- data transformations: filtering, sorting, grouping, counting
+- option builders for selects/filters (e.g. province/city, sport options)
+- status mapping (backend enums -> UI enums)
+- small parsing/normalization utilities (trim/slug/date key)
+
+**Rules:**
+
+- Export multiple functions from a single `helpers.ts` (avoid one-file-per-helper).
+- Keep helpers pure when possible:
+  - no React hooks (`useX`)
+  - no component imports
+  - no direct `trpc` calls
+  - deterministic input -> output
+- `helpers.ts` may import from `src/shared/lib/*` (recommended).
+- If a helper becomes broadly useful across features, promote it to `src/shared/lib/*`.
+
+**Recommended pattern:** call helpers from hooks/components rather than inlining pipelines in TSX.
+
+```ts
+// src/features/reservations/helpers.ts
+
+export function buildReservationGroups(input: {
+  reservations: Reservation[];
+  now: Date;
+}) {
+  const pending = input.reservations.filter((r) => r.status === "PENDING");
+  const confirmed = input.reservations.filter((r) => r.status === "CONFIRMED");
+
+  return {
+    groups: {
+      pending,
+      confirmed,
+    },
+    counts: {
+      pending: pending.length,
+      confirmed: confirmed.length,
+    },
+  };
+}
+```
+
+```tsx
+// src/features/reservations/hooks.ts
+
+const query = trpc.reservation.list.useQuery(..., {
+  select: (data) => buildReservationGroups({ reservations: data, now: new Date() }),
+});
 ```
 
 ## Decision Flows
@@ -416,6 +478,7 @@ export type ProfileFormHandler = z.infer<typeof profileFormSchema>;
 | Feature component   | `<feature>-<type>.tsx`      | `profile-form.tsx`        |
 | Presentation fields | `<feature>-form-fields.tsx` | `profile-form-fields.tsx` |
 | Feature hooks       | `hooks.ts`                  | `hooks.ts`                |
+| Feature helpers     | `helpers.ts`                | `helpers.ts`              |
 | Feature schemas     | `schemas.ts`                | `schemas.ts`              |
 | UI primitive        | `<component>.tsx`           | `button.tsx`              |
 

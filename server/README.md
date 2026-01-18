@@ -216,20 +216,20 @@ export function makeUserService() {
 
 ### Response Envelope
 
+Non-tRPC HTTP endpoints use the standard envelope defined in `core/api-response.md`:
+
 ```typescript
 // Success response
 {
-  "success": true,
   "data": { ... }
 }
 
-// Error response
+// Error response (non-2xx)
 {
-  "success": false,
-  "error": {
-    "code": "USER_NOT_FOUND",
-    "message": "User not found"
-  }
+  "code": "USER_NOT_FOUND",
+  "message": "User not found",
+  "requestId": "req-abc-123",
+  "details": { ... }
 }
 ```
 
