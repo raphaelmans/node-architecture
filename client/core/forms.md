@@ -296,6 +296,42 @@ export default function ProfileForm() {
 }
 ```
 
+### Async Options + Select Defaults
+
+If a select depends on async options (e.g. provinces/cities) and the record data
+is also async, React Hook Form will mount with empty defaults first. To avoid
+the select showing a placeholder on the first render, wait for both the record
+and the options to be ready, then `reset` and render the form after that reset.
+
+```typescript
+const emptyDefaults: FormValues = {
+  province: "",
+  city: "",
+  // ...other fields
+}
+
+const [isFormReady, setIsFormReady] = useState(false)
+
+const form = useForm<FormValues>({
+  resolver: zodResolver(schema),
+  defaultValues: emptyDefaults,
+})
+
+useEffect(() => {
+  if (!record || !options) return
+  reset(resolveDefaults(record, options))
+  setIsFormReady(true)
+}, [record, options, reset])
+
+if (!isFormReady) return <FormSkeleton />
+
+return (
+  <StandardFormProvider form={form} onSubmit={onSubmit}>
+    {/* ... */}
+  </StandardFormProvider>
+)
+```
+
 ### Form with Mutation
 
 ```typescript
