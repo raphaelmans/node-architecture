@@ -101,6 +101,30 @@ export const imageUploadSchema = z.object({
 export type ImageAsset = z.infer<typeof imageAssetSchema>;
 ```
 
+### Cleared Inputs ("" -> undefined)
+
+Controlled inputs often emit an empty string (`""`) when a user clears a field.
+If the backend treats the field as optional, normalize `""` to `undefined` at the schema boundary.
+
+**Convention:**
+
+- Use `emptyToUndefined(...)` for optional fields where `""` should mean “not provided”.
+- Use `allowEmptyString(...)` only when `""` is a valid *value* (rare).
+
+```typescript
+import { z } from "zod";
+import { emptyToUndefined, S } from "@/shared/kernel/schemas";
+
+export const profileFormSchema = z.object({
+  displayName: S.profile.displayName,
+
+  // Input might be "" while editing; submit should send undefined
+  phoneNumber: emptyToUndefined(S.common.phone.optional()),
+});
+
+export type ProfileFormValues = z.infer<typeof profileFormSchema>; // phoneNumber: string | undefined
+```
+
 ## StandardForm Components
 
 ### Component Hierarchy

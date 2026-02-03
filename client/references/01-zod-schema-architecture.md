@@ -108,11 +108,84 @@ export const updateProfileDtoSchema = z.object({
 
 2. **Reuse primitive schemas**:
 
+If your project supports it, prefer a centralized primitives/constants system so both backend DTOs and frontend forms share the *exact* same rules and messages.
+
+**Recommended: Centralized `S` (schemas) + `V` (validation constants/messages)**
+
+```typescript
+// src/shared/kernel/validation-database.ts
+// One place for validation constants + user-friendly messages
+export const validationDatabase = {
+  organization: {
+    name: {
+      min: { value: 1, message: "Organization name is required" },
+      max: { value: 150, message: "Organization name must be 150 characters or less" },
+    },
+  },
+} as const;
+```
+
+```typescript
+// src/shared/kernel/schemas.ts
+// Shared Zod primitives built from V
+import { z } from "zod";
+import { validationDatabase as V } from "./validation-database";
+
+export const emptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.union([schema, z.literal("")]).transform((v) => (v === "" ? undefined : v));
+
+export const allowEmptyString = <T extends z.ZodTypeAny>(schema: T) =>
+  z.union([schema, z.literal("")]);
+
+export const S = {
+  organization: {
+    name: z
+      .string()
+      .trim()
+      .min(V.organization.name.min.value, { error: V.organization.name.min.message })
+      .max(V.organization.name.max.value, { error: V.organization.name.max.message }),
+  },
+} as const;
+
+export { V };
+```
+
+Then, DTOs and forms reuse `S`/`V` instead of inlining rules:
+
+```typescript
+import { z } from "zod";
+import { S, emptyToUndefined } from "@/shared/kernel/schemas";
+
+// DTO schema
+export const CreateOrganizationSchema = z.object({
+  name: S.organization.name,
+});
+
+// Form schema (controlled inputs often emit "" when cleared)
+export const CreateOrganizationFormSchema = z.object({
+  name: S.organization.name,
+  slug: emptyToUndefined(z.string().trim().optional()),
+});
+```
+
+For UI-only overrides, expose a typed `modifySchema(...)` helper so forms can start from the DTO schema and only override what is truly UI-specific:
+
+```typescript
+import { modifySchema, emptyToUndefined, S } from "@/shared/kernel/schemas";
+import { CreateOrganizationSchema } from "@/modules/organization/dtos";
+
+export const CreateOrganizationFormSchema = modifySchema(CreateOrganizationSchema, {
+  // Accept "" while editing, but submit undefined
+  slug: emptyToUndefined(S.organization.slug.optional()),
+});
+```
+
+**If you cannot introduce `S`/`V` yet**, keep a lightweight `common-schemas.ts` + `constants.ts` approach:
+
 ```typescript
 // src/lib/core/common-schemas.ts
-export const nameSchema = z.string().min(1).max(100)
-export const handleSchema = z.string().max(50).optional()
-export const bioSchema = z.string().max(1000, 'Bio must be less than 1000 characters')
+export const nameSchema = z.string().min(1).max(100);
+export const handleSchema = z.string().max(50).optional();
 ```
 
 3. **Use `zod-form-data` for file uploads**:

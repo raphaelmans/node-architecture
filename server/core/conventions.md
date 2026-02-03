@@ -23,9 +23,12 @@
 ```typescript
 // modules/user/user.router.ts
 
+import { z } from "zod";
+import { S } from "@/shared/kernel/schemas";
+
 export const userRouter = router({
   getById: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({ id: S.ids.generic }))
     .query(async ({ input }) => {
       const user = await makeUserService().findById(input.id);
       if (!user) {
@@ -408,10 +411,11 @@ export type User = z.infer<typeof UserSchema>;
 // modules/user/dtos/create-user.dto.ts
 
 import { z } from "zod";
+import { S } from "@/shared/kernel/schemas";
 
 export const CreateUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
+  email: S.common.email,
+  name: S.common.requiredText,
   role: z.enum(["admin", "member"]).default("member"),
 });
 
