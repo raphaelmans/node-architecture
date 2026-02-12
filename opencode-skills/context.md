@@ -126,6 +126,57 @@ cp -r opencode-skills/* ~/.config/opencode/skill/
 ls ~/.config/opencode/skill/
 ```
 
+## Add Skills to Codex
+
+Codex can load custom skills from:
+
+- `~/.codex/skills`
+- `~/.config/codex/skills`
+
+In this machine setup, keep canonical copies in `~/.agents/skills` and symlink into `~/.codex/skills`.
+
+### 1. Install one skill to Codex
+
+```bash
+mkdir -p ~/.agents/skills/<skill-name>
+cp opencode-skills/<skill-name>/SKILL.md ~/.agents/skills/<skill-name>/SKILL.md
+ln -s ../../.agents/skills/<skill-name> ~/.codex/skills/<skill-name>
+```
+
+### 2. Install migrated skills (`agent-context`, `agent-plan`, `user-stories`)
+
+```bash
+mkdir -p ~/.agents/skills/agent-context ~/.agents/skills/agent-plan ~/.agents/skills/user-stories
+cp opencode-skills/agent-context/SKILL.md ~/.agents/skills/agent-context/SKILL.md
+cp opencode-skills/agent-plan/SKILL.md ~/.agents/skills/agent-plan/SKILL.md
+cp opencode-skills/user-stories/SKILL.md ~/.agents/skills/user-stories/SKILL.md
+rm -rf ~/.codex/skills/agent-context ~/.codex/skills/agent-plan ~/.codex/skills/user-stories
+ln -s ../../.agents/skills/agent-context ~/.codex/skills/agent-context
+ln -s ../../.agents/skills/agent-plan ~/.codex/skills/agent-plan
+ln -s ../../.agents/skills/user-stories ~/.codex/skills/user-stories
+```
+
+### 3. Verify Codex install
+
+```bash
+ls -la ~/.codex/skills | rg 'agent-context|agent-plan|user-stories'
+ls -la ~/.agents/skills | rg 'agent-context|agent-plan|user-stories'
+```
+
+### 4. Restart Codex
+
+Restart Codex after installing or updating skills so the new skill set is loaded.
+
+### 5. Optional: custom skill directories
+
+If you want Codex to load skills from additional paths, configure `custom_skill_directories` in `~/.codex/config.toml`.
+
+## Codex Troubleshooting
+
+- Broken symlink: run `ls -la ~/.codex/skills/<name>` and recreate symlink if target is missing.
+- Duplicate folder + symlink with same name: keep one canonical source (`~/.agents/skills` or direct in `~/.codex/skills`), not both.
+- Skill not appearing: verify frontmatter has `name` and `description`, then restart Codex.
+
 ## Updating Skills
 
 When architecture docs change:
@@ -186,6 +237,15 @@ The `description` field is what the agent sees to decide whether to load a skill
 ├── backend-module/
 │   └── SKILL.md
 └── ...
+
+~/.agents/skills/              # Canonical custom skills (this setup)
+├── agent-context/
+│   └── SKILL.md
+└── ...
+
+~/.codex/skills/               # Codex-discovered skills (symlink target path)
+├── agent-context -> ../../.agents/skills/agent-context
+└── ...
 ```
 
 ## Quick Commands
@@ -200,6 +260,19 @@ cp -r opencode-skills/* ~/.config/opencode/skill/
 
 # List installed skills
 ls ~/.config/opencode/skill/
+
+# Install migrated skills to Codex
+mkdir -p ~/.agents/skills/agent-context ~/.agents/skills/agent-plan ~/.agents/skills/user-stories
+cp opencode-skills/agent-context/SKILL.md ~/.agents/skills/agent-context/SKILL.md
+cp opencode-skills/agent-plan/SKILL.md ~/.agents/skills/agent-plan/SKILL.md
+cp opencode-skills/user-stories/SKILL.md ~/.agents/skills/user-stories/SKILL.md
+rm -rf ~/.codex/skills/agent-context ~/.codex/skills/agent-plan ~/.codex/skills/user-stories
+ln -s ../../.agents/skills/agent-context ~/.codex/skills/agent-context
+ln -s ../../.agents/skills/agent-plan ~/.codex/skills/agent-plan
+ln -s ../../.agents/skills/user-stories ~/.codex/skills/user-stories
+
+# Verify Codex skill links
+ls -la ~/.codex/skills | rg 'agent-context|agent-plan|user-stories'
 
 # Remove a skill
 rm -rf ~/.config/opencode/skill/<name>
