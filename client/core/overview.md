@@ -41,6 +41,7 @@ This frontend follows a **feature-based architecture** with clear separation bet
 | **Feature-based organization**     | Co-locate components, hooks, schemas by feature                 |
 | **Business/Presentation split**    | Data fetching in business/hooks, rendering in TSX               |
 | **Type-safe data flow**            | Zod schemas → tRPC → TanStack Query → Components                |
+| **Coordinate high. Fetch low. Render dumb.** | Keep providers orchestration-only, colocate queries in business, keep presentation pure |
 | **URL as state**                   | Use nuqs for shareable, bookmarkable UI state                   |
 | **Standardized forms**             | StandardForm components reduce boilerplate                      |
 | **Logic extraction**               | Keep derived logic in hooks or `helpers.ts`                     |
@@ -148,6 +149,7 @@ User Interaction
 | Document                                  | Description                              |
 | ----------------------------------------- | ---------------------------------------- |
 | [Conventions](./conventions.md)           | Layer responsibilities, decision flows   |
+| [Composition](./composition.md)           | Coordinate high. Fetch low. Render dumb. (React Query colocation) |
 | [Data Fetching](./data-fetching.md)       | tRPC + TanStack Query patterns           |
 | [Forms](./forms.md)                       | Zod + RHF + StandardForm conventions     |
 | [State Management](./state-management.md) | URL state (nuqs), client state (Zustand) |

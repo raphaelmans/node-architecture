@@ -65,6 +65,7 @@ This documentation describes a **production-ready frontend architecture** that e
 | ---------------------------------------------- | ----------------------------------------------------- |
 | [Overview](./core/overview.md)                 | Architecture summary, principles, quick reference     |
 | [Conventions](./core/conventions.md)           | Layer responsibilities, decision flows, common module |
+| [Composition](./core/composition.md)           | Coordinate high. Fetch low. Render dumb. (React Query colocation) |
 | [Data Fetching](./core/data-fetching.md)       | tRPC + TanStack Query patterns                        |
 | [Forms](./core/forms.md)                       | Zod + react-hook-form + StandardForm                  |
 | [State Management](./core/state-management.md) | URL state (nuqs), client state (Zustand)              |

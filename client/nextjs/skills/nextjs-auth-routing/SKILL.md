@@ -10,7 +10,7 @@ Use this skill when you need **type-safe routing**, a **single source of truth f
 ## Architecture / Overview
 
 ```
-src/shared/lib/app-routes.ts          # route registry + helpers
+src/common/app-routes.ts              # route registry + helpers
 src/proxy.ts                          # Next.js 16 proxy (replaces middleware)
 src/shared/infra/auth/server-session.ts
 src/app/(auth)/layout.tsx             # server guard using headers()
@@ -31,7 +31,7 @@ src/app/(admin)/layout.tsx            # admin role guard
 
 ### 1) Create a Type-Safe Route Registry
 
-Create `src/shared/lib/app-routes.ts`:
+Create `src/common/app-routes.ts`:
 
 ```ts
 export type RouteType = "public" | "guest" | "protected" | "owner" | "admin";
@@ -75,7 +75,7 @@ Include helper builders for dynamic routes and `login.from(path)` helpers.
 Use `proxy.ts` to refresh the session, enforce route access, and inject `x-pathname` for layouts:
 
 ```ts
-import { appRoutes, isGuestRoute, isProtectedRoute } from "@/shared/lib/app-routes";
+import { appRoutes, isGuestRoute, isProtectedRoute } from "@/common/app-routes";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -109,7 +109,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/shared/infra/supabase/create-client";
 import { makeUserRoleRepository } from "@/modules/user-role/factories/user-role.factory";
-import { appRoutes } from "@/shared/lib/app-routes";
+import { appRoutes } from "@/common/app-routes";
 
 export async function getServerSession() { /* fetch user + role */ }
 export async function requireSession(pathname: string) { /* redirect */ }
@@ -127,7 +127,7 @@ In `src/app/(auth)/layout.tsx` (server component):
 ```ts
 import { headers } from "next/headers";
 import { requireSession, requireAdminSession } from "@/shared/infra/auth/server-session";
-import { appRoutes, getRouteType } from "@/shared/lib/app-routes";
+import { appRoutes, getRouteType } from "@/common/app-routes";
 
 export const dynamic = "force-dynamic";
 
