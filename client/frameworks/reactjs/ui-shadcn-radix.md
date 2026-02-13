@@ -1,4 +1,4 @@
-# UI Patterns
+# UI Patterns (shadcn/ui + Radix)
 
 > Conventions for UI components using shadcn/ui, Tailwind CSS, and component separation.
 
@@ -42,7 +42,7 @@ src/features/<feature>/components/
 - Form-specific abstractions
 - Built on react-hook-form + shadcn/ui
 - Reduce form boilerplate
-- See [Forms](./forms.md) for details
+- See [Forms](./forms-react-hook-form.md) for details
 
 ### Custom UI Components
 

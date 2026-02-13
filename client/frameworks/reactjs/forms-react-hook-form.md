@@ -1,6 +1,8 @@
-# Forms
+# Forms (react-hook-form + StandardForm)
 
-> Conventions for form handling using Zod, react-hook-form, and StandardForm components.
+> React-specific conventions for implementing forms using `react-hook-form` and StandardForm components.
+
+Zod validation conventions live in `client/core/validation-zod.md`.
 
 ## Overview
 

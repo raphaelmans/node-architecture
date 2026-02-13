@@ -9,7 +9,7 @@ This section documents **Next.js App Router** patterns that sit on top of the ge
 - Route structure and layout groups
 - Server-side auth guarding using `proxy.ts`
 - Type-safe route definitions and redirects
-- Client data fetching with tRPC React Query hooks
+- How backend IO adapters plug into the client API architecture (tRPC, route handlers)
 - Where server-only code lives in the app
 
 ## Next.js Routing Model
@@ -44,31 +44,35 @@ This section documents **Next.js App Router** patterns that sit on top of the ge
 | Server auth checks | `server-session.ts` helpers | `src/shared/infra/auth/server-session.ts` |
 | Layout groups | Route groups per access level | `src/app/(guest)/`, `src/app/(authenticated)/` |
 
-## tRPC Client (React Query Hooks)
+## Backend IO in Next.js (Client Perspective)
 
-| Concern | Pattern | Location |
-| --- | --- | --- |
-| Client entrypoint | `createTRPCReact<AppRouter>()` export as `trpc` | typically `src/lib/trpc/client.ts` |
-| Provider wiring | `TRPCProvider` wraps `trpc.Provider` + `QueryClientProvider` | `src/common/providers/trpc-provider.tsx` |
-| Queries | `trpc.<router>.<procedure>.useQuery(input?, opts?)` | client components/hooks |
-| Mutations | `trpc.<router>.<procedure>.useMutation({ onSuccess, onError })` | client components/hooks |
-| Invalidation | `const utils = trpc.useUtils()` + `utils.<router>.<procedure>.invalidate()` | client components/hooks |
+Next.js typically owns:
+
+- server routing + layouts (SSR/RSC)
+- server-only integrations and secrets
+- API surfaces (tRPC handlers, `route.ts`)
+
+Client features consume backend data through the **client API architecture**:
+
+- `client/core/client-api-architecture.md`
+
+For the current Next.js adapters:
+
+- tRPC strategy: `./trpc.md`
+- HTTP route handler strategy: `./ky-fetch.md`
 
 ### Usage Guidelines
 
-- Default: use `trpc.<router>.<procedure>.useQuery/useMutation` in feature components/hooks.
-- Writes: prefer `await mutation.mutateAsync(input)` for forms; `mutation.mutate(input)` is fine outside submit flows.
-- Use `select` to map API data into UI shapes (move non-trivial transforms into `features/<feature>/helpers.ts`).
-- Cache ops: prefer `trpc.useUtils()` (`utils.*.invalidate()`), but `queryClient.invalidateQueries(trpc.*.*.queryFilter(...))` is also OK.
-- Advanced: use `useTRPC()` + `queryOptions/mutationOptions/queryKey/queryFilter` when you need TanStack primitives (prefetching, optimistic updates, custom `useMutation`).
-- Avoid `useTRPCClient` unless you need imperative calls outside React Query (rare).
+- Queries/mutations are defined in the query adapter layer (React: `src/features/<feature>/hooks.ts`).
+- Components only wire loading/error/UI and never implement transport logic.
+- Prefer typed, injected interfaces at each layer to enable testing doubles.
 
 ## Forms & Validation
 
 Use shared form conventions for consistent UX:
 
 - Use `react-hook-form` + `zodResolver` for all forms.
-- Prefer StandardForm components (see `client/references/09-standard-form-components.md`).
+- Prefer StandardForm components (draft reference: `client/drafts/09-standard-form-components.md`).
 - Use `mutateAsync` in submit handlers; avoid `mutate` in forms.
 - Show server errors via toast only; never reset on error.
 - Reset form on success to clear dirty state.
@@ -105,7 +109,7 @@ Pages + Features
 
 | Document | Description |
 | --- | --- |
-| [Auth + Routing Skill](./skills/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
+| [Auth + Routing Skill](../../../../../skills/client/metaframeworks/nextjs/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
 
 ## Checklist for New Routes
 

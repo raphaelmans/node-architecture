@@ -51,15 +51,19 @@ node-architecture/
 └── client/                      # Frontend architecture
     ├── README.md                # Client overview + quick start
     ├── core/                    # Core patterns
-    │   ├── overview.md          # Architecture summary
+    │   ├── overview.md          # Core index
+    │   ├── architecture.md      # Agnostic principles
     │   ├── conventions.md       # Layer responsibilities
-    │   ├── data-fetching.md     # tRPC + TanStack Query
-    │   ├── forms.md             # Zod + RHF + StandardForm
-    │   ├── state-management.md  # URL state, Zustand
-    │   ├── ui-patterns.md       # shadcn/ui, components
-    │   ├── error-handling.md    # Toast, boundaries
+    │   ├── client-api-architecture.md # clientApi -> featureApi -> query adapter
+    │   ├── validation-zod.md    # Zod boundary rules
+    │   ├── server-state-tanstack-query.md # TanStack Query patterns
+    │   ├── state-management.md  # Conceptual state decision guide
+    │   ├── error-handling.md    # Error taxonomy and rules
     │   └── folder-structure.md  # Directory architecture
-    └── references/              # Original detailed docs
+    ├── frameworks/              # Framework-specific docs
+    │   └── reactjs/             # React-specific docs
+    │       └── metaframeworks/nextjs/ # Next.js-specific docs
+    └── drafts/                  # Original detailed docs (drafts)
 ```
 
 ## Project Folder Structure
@@ -140,7 +144,7 @@ src/
 
 1. Read [client/README.md](./client/README.md) for overview
 2. Follow [client/core/conventions.md](./client/core/conventions.md) for component patterns
-3. Use StandardForm components from [client/core/forms.md](./client/core/forms.md)
+3. Use forms conventions from [client/frameworks/reactjs/forms-react-hook-form.md](./client/frameworks/reactjs/forms-react-hook-form.md)
 
 ## Core Principles
 

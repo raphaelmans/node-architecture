@@ -1,6 +1,6 @@
 # Client-Side Architecture Analysis
 
-This document provides an overview of the client-side architecture patterns used in this codebase. For detailed implementation guides, see the individual documents in the `guides/` directory.
+This document provides an overview of the client-side architecture patterns used in this codebase. For detailed implementation guides, see the individual documents in this directory.
 
 ---
 
@@ -8,19 +8,19 @@ This document provides an overview of the client-side architecture patterns used
 
 | Guide                                                                     | Description                                      |
 | ------------------------------------------------------------------------- | ------------------------------------------------ |
-| [01-zod-schema-architecture.md](./guides/01-zod-schema-architecture.md)   | Three-layer schema strategy (DB → DTO → Feature) |
-| [02-react-hook-form-patterns.md](./guides/02-react-hook-form-patterns.md) | Form setup, field components, validation         |
-| [03-tanstack-query-trpc.md](./guides/03-tanstack-query-trpc.md)           | Data fetching, mutations, cache management       |
-| [04-shadcn-tailwind.md](./guides/04-shadcn-tailwind.md)                   | UI components, styling patterns                  |
-| [05-component-separation.md](./guides/05-component-separation.md)         | Business vs presentation components              |
-| [06-nuqs-url-state.md](./guides/06-nuqs-url-state.md)                     | URL query parameter state management             |
-| [07-dev-tools.md](./guides/07-dev-tools.md)                               | Development tools configuration                  |
-| [08-file-tree-architecture.md](./guides/08-file-tree-architecture.md)     | Directory structure and organization             |
-| [09-standard-form-components.md](./guides/09-standard-form-components.md) | Standardized form component abstraction          |
-| [10-zustand-state.md](./guides/10-zustand-state.md)                       | Client-side state management with Zustand        |
-| [11-environment-variables.md](./guides/11-environment-variables.md)       | Type-safe env vars with @t3-oss/env-nextjs       |
-| [12-date-handling.md](./guides/12-date-handling.md)                       | Date manipulation with date-fns                  |
-| [13-file-upload.md](./guides/13-file-upload.md)                           | File uploads with tRPC + zod-form-data           |
+| [01-zod-schema-architecture.md](./01-zod-schema-architecture.md)   | Three-layer schema strategy (DB → DTO → Feature) |
+| [02-react-hook-form-patterns.md](./02-react-hook-form-patterns.md) | Form setup, field components, validation         |
+| [03-tanstack-query-trpc.md](./03-tanstack-query-trpc.md)           | Data fetching, mutations, cache management       |
+| [04-shadcn-tailwind.md](./04-shadcn-tailwind.md)                   | UI components, styling patterns                  |
+| [05-component-separation.md](./05-component-separation.md)         | Business vs presentation components              |
+| [06-nuqs-url-state.md](./06-nuqs-url-state.md)                     | URL query parameter state management             |
+| [07-dev-tools.md](./07-dev-tools.md)                               | Development tools configuration                  |
+| [08-file-tree-architecture.md](./08-file-tree-architecture.md)     | Directory structure and organization             |
+| [09-standard-form-components.md](./09-standard-form-components.md) | Standardized form component abstraction          |
+| [10-zustand-state.md](./10-zustand-state.md)                       | Client-side state management with Zustand        |
+| [11-environment-variables.md](./11-environment-variables.md)       | Type-safe env vars with @t3-oss/env-nextjs       |
+| [12-date-handling.md](./12-date-handling.md)                       | Date manipulation with date-fns                  |
+| [13-file-upload.md](./13-file-upload.md)                           | File uploads with tRPC + zod-form-data           |
 
 > **Note:** The `src/lib/**` directory structure is **reference only** and most likely to change based on your backend architecture, ORM choice, and API layer preferences. The patterns within (DTOs, schemas, tRPC setup) are more important than the exact file locations.
 

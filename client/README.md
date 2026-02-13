@@ -1,6 +1,6 @@
 # Frontend Architecture Documentation
 
-> Feature-based architecture for React frontends with Next.js, tRPC, TanStack Query, and TypeScript.
+> Feature-based client architecture with a framework-agnostic core and framework/metaframework-specific layers.
 
 See [../README.md](../README.md) for the unified project folder structure and full documentation index.
 
@@ -9,7 +9,7 @@ See [../README.md](../README.md) for the unified project folder structure and fu
 This documentation describes a **production-ready frontend architecture** that emphasizes:
 
 - Feature-based organization
-- Type-safe data fetching with tRPC
+- A strict client API chain (`clientApi -> featureApi -> query adapter -> components`)
 - Standardized form patterns
 - Clear separation of business and presentation logic
 
@@ -59,32 +59,37 @@ This documentation describes a **production-ready frontend architecture** that e
 
 ## Documentation Structure
 
-### Core Documentation
-
-| Document                                       | Description                                           |
-| ---------------------------------------------- | ----------------------------------------------------- |
-| [Overview](./core/overview.md)                 | Architecture summary, principles, quick reference     |
-| [Conventions](./core/conventions.md)           | Layer responsibilities, decision flows, common module |
-| [Composition](./core/composition.md)           | Coordinate high. Fetch low. Render dumb. (React Query colocation) |
-| [Data Fetching](./core/data-fetching.md)       | tRPC + TanStack Query patterns                        |
-| [Forms](./core/forms.md)                       | Zod + react-hook-form + StandardForm                  |
-| [State Management](./core/state-management.md) | URL state (nuqs), client state (Zustand)              |
-| [UI Patterns](./core/ui-patterns.md)           | shadcn/ui, component separation                       |
-| [Error Handling](./core/error-handling.md)     | Toast, form errors, error boundaries                  |
-| [Environment](./core/environment.md)           | Type-safe environment variables (@t3-oss/env-nextjs)  |
-| [Folder Structure](./core/folder-structure.md) | Directory architecture                                |
-
-### Next.js Documentation
+### Core Documentation (Agnostic)
 
 | Document | Description |
 | --- | --- |
-| [Overview](./nextjs/overview.md) | App Router conventions, auth guards, route registry |
-| [Index](./nextjs/README.md) | Next.js documentation index |
-| [Auth + Routing Skill](./nextjs/skills/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
+| [Core Index](./core/overview.md) | Core index + links |
+| [Architecture](./core/architecture.md) | Core principles and boundaries |
+| [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
+| [Client API Architecture](./core/client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
+| [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
+| [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |
+| [State Management](./core/state-management.md) | Conceptual state decision guide |
+| [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
+| [Folder Structure](./core/folder-structure.md) | Framework-agnostic directory conventions |
 
-### References
+### Framework Documentation
 
-The `references/` folder contains detailed implementation guides from an existing codebase.
+| Document | Description |
+| --- | --- |
+| [Frameworks Index](./frameworks/README.md) | Framework-specific docs |
+| [ReactJS Index](./frameworks/reactjs/README.md) | React-specific implementation |
+| [Next.js Index](./frameworks/reactjs/metaframeworks/nextjs/README.md) | Next.js App Router + SSR/params + adapters |
+
+### Drafts
+
+The `drafts/` folder contains detailed implementation guides from an existing codebase.
+
+### Diagrams
+
+ASCII diagrams for structure, data flow, and state management live in:
+
+- [client/diagrams.md](./diagrams.md)
 
 ## Quick Start
 
@@ -102,17 +107,8 @@ Does it fetch data or own form state?
 ### Data Fetching
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
-
-// Query
-const trpc = useTRPC();
-const queryClient = useQueryClient();
-const { data, isLoading } = trpc.user.getById.useQuery({ id });
-
-// Mutation with cache invalidation (type-safe)
-await mutation.mutateAsync(data);
-await queryClient.invalidateQueries(trpc.user.pathFilter());
+// Preferred: follow the client API chain.
+// components -> query adapter -> featureApi -> clientApi -> network
 ```
 
 ### Forms
@@ -146,8 +142,8 @@ For detailed frontend-specific folder conventions, see [./core/folder-structure.
 | ------------------------------- | ------------------------------------------------------ |
 | **Feature-based**               | Co-locate components, hooks, schemas by feature        |
 | **Business/Presentation split** | Data in business components, rendering in presentation |
-| **Type-safe data flow**         | Zod → tRPC → TanStack Query → Components               |
-| **URL as state**                | Use nuqs for shareable UI state                        |
+| **Type-safe data flow**         | Zod + typed APIs + TanStack Query → Components         |
+| **URL as state**                | Use a metaframework URL-state adapter (Next.js: nuqs)  |
 | **Standardized forms**          | StandardForm components for consistency                |
 
 ## Checklist for New Features
