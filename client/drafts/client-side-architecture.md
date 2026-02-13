@@ -1,3 +1,13 @@
+# Draft / Legacy Note
+
+This document is a **draft/legacy reference** and may be outdated.
+
+If anything conflicts with canonical docs, follow:
+
+- `client/core/overview.md`
+- `client/frameworks/reactjs/README.md`
+- `client/frameworks/reactjs/metaframeworks/nextjs/README.md`
+
 # Client-Side Architecture Analysis
 
 This document provides an overview of the client-side architecture patterns used in this codebase. For detailed implementation guides, see the individual documents in this directory.

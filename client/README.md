@@ -87,6 +87,9 @@ This documentation describes a **production-ready frontend architecture** that e
 ### Drafts
 
 The `drafts/` folder contains detailed implementation guides from an existing codebase.
+These documents are **non-canonical** and may be outdated.
+
+Start here: [Drafts Overview](./drafts/overview.md)
 
 ### Diagrams
 
