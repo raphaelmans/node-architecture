@@ -34,7 +34,7 @@ In `src/features/<feature>/`:
 
 - `hooks.ts`: **all** TanStack Query / tRPC `useQuery` + `useMutation` hooks for the feature
 - `types.ts`: shared feature TypeScript types (non-DTO); component prop types may stay local when truly component-only
-- `dtos.ts`: DTO types/schemas + DTO-to-feature mapping helpers (DTOs never live in TSX or `hooks.ts`)
+- `schemas.ts`: Zod schemas + derived types + DTO-to-feature mapping helpers (schemas never live in TSX or `hooks.ts`)
 - `domain.ts`: business rules (pure, deterministic)
 - `helpers.ts`: small pure utilities (formatting, grouping, small transforms)
 
@@ -58,7 +58,7 @@ Colocation exception:
 | Screen-level orchestration (compose sections, own navigation) | `src/features/<feature>/components/<feature>-view.tsx` or `<feature>-form.tsx` |
 | Section business component (loading/error wiring) | `src/features/<feature>/components/<feature>-*.tsx` |
 | Server state hooks (queries/mutations) | `src/features/<feature>/hooks.ts` |
-| DTO schemas + mapping | `src/features/<feature>/dtos.ts` |
+| Schemas + mapping | `src/features/<feature>/schemas.ts` |
 | Feature types (non-DTO) | `src/features/<feature>/types.ts` |
 | Business rules | `src/features/<feature>/domain.ts` |
 | Small pure utilities | `src/features/<feature>/helpers.ts` |
@@ -89,10 +89,10 @@ export function SettingsView() {
 
 ```tsx
 // src/features/settings/components/account-section.tsx
-import { useAccountQuery } from '../hooks'
+import { useQuerySettingsAccount } from '../hooks'
 
 export function AccountSection() {
-  const query = useAccountQuery()
+  const query = useQuerySettingsAccount()
   if (query.isLoading) return <AccountSectionSkeleton />
   if (query.isError) return <ErrorDisplay error={query.error} />
   return <AccountSectionView value={query.data} />
@@ -105,9 +105,9 @@ If a business component starts coordinating many hooks, introduce a domain-level
 
 ```ts
 // src/features/chat/hooks.ts
-export function useChatSessionModel(input: { sessionId: string }) {
-  const messages = useMessagesQuery(input.sessionId)
-  const send = useSendMessageMutation(input.sessionId)
+export function useModChatSession(input: { sessionId: string }) {
+  const messages = useQueryChatMessagesBySessionId(input.sessionId)
+  const send = useMutChatSendMessage(input.sessionId)
   return { messages, send }
 }
 ```
@@ -144,7 +144,7 @@ export function SectionView(props: {
 ## Anti-patterns (don't do these)
 
 - Fetching in presentation components (`*-fields.tsx`, `*-card.tsx`, `*-list.tsx`).
-- Inlining `trpc.*.useQuery()` / `useQuery()` inside TSX components.
+- Inlining `useQuery()` / `useMutation()` inside TSX components.
 - Mega providers that fetch and store server data.
 - Duplicating server state in Zustand (store IDs + UI flags; derive server objects from queries).
 
@@ -158,7 +158,7 @@ export function SectionView(props: {
 
 - Provider layer is infra/coordination only (no server data fetching).
 - Queries/mutations live in `src/features/<feature>/hooks.ts` only.
-- DTO schemas/mapping live in `dtos.ts`; shared feature types live in `types.ts`.
+- Schemas/mapping live in `schemas.ts`; shared feature types live in `types.ts`.
 - Business rules live in `domain.ts`; small utilities live in `helpers.ts`.
 - Business components wire loading/error and call feature hooks.
 - Presentation components render from props/context only.

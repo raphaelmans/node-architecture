@@ -68,9 +68,12 @@ This documentation describes a **production-ready frontend architecture** that e
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
 | [Client API Architecture](./core/client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
+| [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |
+| [Query Keys](./core/query-keys.md) | Query key conventions (Query Key Factory) |
 | [State Management](./core/state-management.md) | Conceptual state decision guide |
 | [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
+| [Logging](./core/logging.md) | Client logging conventions (`debug`) |
 | [Folder Structure](./core/folder-structure.md) | Framework-agnostic directory conventions |
 
 ### Framework Documentation

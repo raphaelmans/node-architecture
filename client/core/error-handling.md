@@ -2,6 +2,73 @@
 
 Conventions for handling errors across the client architecture.
 
+## Core Rule: Normalize to `AppError`
+
+UI code must not depend on transport/provider-specific error types (Axios, tRPC, fetch wrappers, etc.).
+
+Instead:
+
+- adapters convert `unknown` -> `AppError`
+- application code only branches on `AppError.kind`
+
+## App Error Contract (Single Source of Truth)
+
+We use a discriminated union. Team preference: preserve the actual error message when safe/available.
+
+```ts
+export type AppError =
+  | {
+      kind: "network";
+      message: string;
+      cause?: unknown;
+    }
+  | {
+      kind: "unauthorized" | "forbidden" | "not_found" | "rate_limited";
+      message: string;
+      status?: number;
+      code?: string;
+      requestId?: string;
+      cause?: unknown;
+    }
+  | {
+      kind: "validation";
+      message: string;
+      fieldErrors?: Record<string, string>;
+      code?: string;
+      requestId?: string;
+      cause?: unknown;
+    }
+  | {
+      kind: "unknown";
+      message: string;
+      cause?: unknown;
+    };
+```
+
+## Adapter Pattern (Required)
+
+Adapter signature:
+
+- input: `unknown`
+- output: `AppError`
+
+```ts
+export function toAppError(err: unknown): AppError;
+```
+
+Provider-specific checks live **only** inside adapters.
+
+Runtime placement (Next.js convention):
+
+```text
+src/common/errors/
+  app-error.ts
+  to-app-error.ts
+  adapters/
+    trpc.ts
+    ky.ts
+```
+
 ## Error Types
 
 | Error Type        | Source                 | Handling                        |
@@ -17,7 +84,21 @@ Conventions for handling errors across the client architecture.
 - Validation errors should be mapped close to the user’s input.
 - Query adapter owns retry and invalidation policies; components only render states.
 
+## Notifications (Toast) Are a Facade Concern
+
+If you show errors via toast notifications, do it through a toast facade so feature code is not tied to a specific toast library.
+
+Runtime placement (Next.js convention):
+
+```text
+src/common/toast/
+  types.ts
+  provider.ts
+  adapters/
+    <toast-lib>.ts
+```
+
 Framework-specific wiring:
 
 - React forms: `client/frameworks/reactjs/forms-react-hook-form.md`
-
+ - React error handling facade: `client/frameworks/reactjs/error-handling.md`

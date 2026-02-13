@@ -218,20 +218,25 @@ className = "bg-blue-500";
 
 export default function ProfileForm() {
   // Data fetching
-  const profileQuery = trpc.profile.get.useQuery()
+  const profileQuery = useQueryProfileCurrent()
+  const queryClient = useQueryClient()
+  // Query keys: src/common/query-keys/profile.ts
+  // import { profileQueryKeys } from "@/common/query-keys/profile"
 
   // Form state ownership
-  const form = useForm<ProfileFormHandler>({
+  const form = useForm<ProfileFormShape>({
     resolver: zodResolver(profileFormSchema),
+    mode: "onSubmit",
   })
+  const { isSubmitting } = form.formState
 
   // Mutations
-  const updateMut = trpc.profile.update.useMutation()
+  const updateMut = useMutProfileUpdate()
 
   // Business logic
-  const onSubmit = async (data: ProfileFormHandler) => {
+  const onSubmit = async (data: ProfileFormShape) => {
     await updateMut.mutateAsync(data)
-    await queryClient.invalidateQueries(trpc.profile.pathFilter())
+    await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def })
     router.push(appRoutes.dashboard)
   }
 
@@ -239,7 +244,7 @@ export default function ProfileForm() {
     <StandardFormProvider form={form} onSubmit={onSubmit}>
       <ProfileFirstNameField />  {/* Presentation */}
       <ProfileLastNameField />   {/* Presentation */}
-      <Button type='submit'>Save</Button>
+      <Button type='submit' disabled={isSubmitting}>Save</Button>
     </StandardFormProvider>
   )
 }
@@ -252,14 +257,14 @@ export default function ProfileForm() {
 'use client'
 
 import { useFormContext } from 'react-hook-form'
-import type { ProfileFormHandler } from '../schemas'
+import type { ProfileFormShape } from '../schemas'
 
 export function ProfileFirstNameField() {
-  const { control } = useFormContext<ProfileFormHandler>()
+  const { control } = useFormContext<ProfileFormShape>()
 
   // Pure rendering - no business logic
   return (
-    <StandardFormInput<ProfileFormHandler>
+    <StandardFormInput<ProfileFormShape>
       name='firstName'
       label='First Name'
       placeholder='John'

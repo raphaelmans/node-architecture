@@ -13,6 +13,6 @@ This section focuses on App Router patterns, routing/params, SSR/RSC considerati
 | [URL State (nuqs)](./url-state-nuqs.md) | URL query state patterns |
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |
-| [Query Keys](./query-keys.md) | Query key conventions for non-tRPC React Query |
+| [Query Keys](../../../../core/query-keys.md) | Query key conventions (Query Key Factory) |
 | [Auth + Routing Skill](../../../../../skills/client/metaframeworks/nextjs/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
 | [Form Standards (Draft)](../../../../drafts/09-standard-form-components.md) | StandardForm components reference |

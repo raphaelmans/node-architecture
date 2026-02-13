@@ -2,6 +2,8 @@
 
 TanStack Query is treated as **core infrastructure** for server/IO state.
 
+Query key conventions live in `client/core/query-keys.md`.
+
 ## Core Rules
 
 - Share async/IO data via the query cache, not via “big data providers”.
@@ -15,4 +17,3 @@ TanStack Query is treated as **core infrastructure** for server/IO state.
 - Keep DTO mapping/normalization out of components.
 
 React implementation guidance lives under `client/frameworks/reactjs/`.
-

@@ -115,7 +115,7 @@ export async function previewGoogleLoc(url: string) {
 ```typescript
 import { useMutation } from "@tanstack/react-query";
 
-export function useGoogleLocPreviewMutation() {
+export function useMutGoogleLocPreview() {
   return useMutation({
     mutationFn: ({ url }: { url: string }) => previewGoogleLoc(url),
   });

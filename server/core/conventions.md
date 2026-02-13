@@ -472,6 +472,32 @@ export const UpdateUserSchema = z.object({
 export type UpdateUserDTO = z.infer<typeof UpdateUserSchema>;
 ```
 
+## Module Shared Code (`lib/modules/<module>/shared/`)
+
+Some modules need **shared, reusable code** that is still domain-specific (not kernel).
+
+Convention:
+
+- Put module-owned shared code in `lib/modules/<module>/shared/`.
+- Treat it as potentially **isomorphic**: safe to import from both server and client code when needed.
+
+Typical contents:
+
+- Zod schemas + inferred types that represent module concepts
+- deterministic calculations and invariants (pure functions)
+- domain-specific error types that do not depend on server infrastructure
+
+Rules:
+
+- Must not import `shared/infra/*` (DB, logger, auth, tRPC init).
+- Must not depend on framework-only code.
+- Keep it pure and portable so it can be extracted to a workspace package later.
+
+Example (pattern reference):
+
+- `modules/webhooks/shared/webhook.schemas.ts`
+- `modules/webhooks/shared/webhook.errors.ts`
+
 ### Mapping Rules
 
 - Controllers never receive entities directly (omit sensitive fields first)

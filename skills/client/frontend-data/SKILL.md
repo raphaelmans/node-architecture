@@ -53,6 +53,21 @@ function MyComponent() {
 }
 ```
 
+Preferred convention for server-state hooks (TanStack Query wrappers):
+
+- Query hooks: `useQuery<Feature><Noun><Qualifier?>`
+- Mutation hooks: `useMut<Feature><Verb><Object?>`
+- Composite hooks: `useMod<Descriptive>`
+
+Example (feature hook wrapper):
+
+```typescript
+// src/features/profile/hooks.ts
+export function useQueryProfileMe() {
+  return trpc.profile.getByCurrentUser.useQuery()
+}
+```
+
 #### Dependent Queries
 
 ```typescript

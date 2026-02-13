@@ -57,6 +57,9 @@ node-architecture/
     │   ├── client-api-architecture.md # clientApi -> featureApi -> query adapter
     │   ├── validation-zod.md    # Zod boundary rules
     │   ├── server-state-tanstack-query.md # TanStack Query patterns
+    │   ├── domain-logic.md      # Shared vs client-only domain transformations
+    │   ├── query-keys.md        # Query key conventions (Query Key Factory)
+    │   ├── logging.md           # Client logging conventions (debug)
     │   ├── state-management.md  # Conceptual state decision guide
     │   ├── error-handling.md    # Error taxonomy and rules
     │   └── folder-structure.md  # Directory architecture
@@ -125,6 +128,7 @@ src/
 │
 ├── common/                      # App-wide utilities
 │   ├── providers/               # React providers
+│   ├── query-keys/              # Query key factory definitions
 │   ├── app-routes.ts            # Route definitions
 │   ├── constants.ts             # Global constants
 │   └── hooks.ts                 # Shared hooks

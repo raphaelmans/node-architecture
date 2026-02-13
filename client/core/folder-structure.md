@@ -8,6 +8,10 @@ This document describes framework-agnostic client directory conventions.
 src/
   <routes>/            # Metaframework-owned routes (Next.js: app/)
   common/              # App-wide shared utilities
+    errors/            # AppError contract + adapters/facades
+    query-keys/        # Server-state cache keys (cross-feature)
+    toast/             # Toast facade + provider adapters
+    logging/           # Client logging (debug) + wrappers/adapters
   components/          # Shared UI components
   features/            # Feature modules (primary unit of organization)
   hooks/               # Global framework hooks (React only)
@@ -27,9 +31,8 @@ src/features/<feature>/
     <feature>-fields.tsx        # presentation components (render-only)
   hooks.ts                      # query adapter (framework-specific)
   api.ts                        # featureApi (endpoint-scoped)
-  dtos.ts                       # DTO schemas/types + mapping helpers
+  schemas.ts                    # Zod schemas + derived types + mapping helpers
   types.ts                      # non-DTO types
   domain.ts                     # pure business rules
   helpers.ts                    # small pure helpers
 ```
-

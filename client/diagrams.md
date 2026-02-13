@@ -17,9 +17,12 @@ client/
     conventions.md
     client-api-architecture.md
     validation-zod.md
+    domain-logic.md
     server-state-tanstack-query.md
+    query-keys.md
     state-management.md
     error-handling.md
+    logging.md
     folder-structure.md
 
   frameworks/                      # framework-specific
@@ -29,6 +32,7 @@ client/
       overview.md
       conventions.md
       composition-react.md
+      error-handling.md
       forms-react-hook-form.md
       ui-shadcn-radix.md
       state-zustand.md
@@ -42,7 +46,7 @@ client/
           url-state-nuqs.md
           trpc.md
           ky-fetch.md
-          query-keys.md
+          query-keys.md            # moved to client/core/query-keys.md (keep as redirect)
 
   drafts/                          # detailed legacy references (non-canonical)
     01-zod-schema-architecture.md
@@ -137,4 +141,3 @@ Rule of thumb:
 Do NOT duplicate server/IO state into a store.
 Store only IDs/flags and derive server objects from the query cache.
 ```
-

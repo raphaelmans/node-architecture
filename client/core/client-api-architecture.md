@@ -89,7 +89,7 @@ Recommended feature module layout:
 src/features/<feature>/
   hooks.ts       # query adapter (React: TanStack Query hooks + cache ops)
   api.ts         # featureApi (depends on clientApi)
-  dtos.ts        # DTO schemas/types + mapping helpers
+  schemas.ts     # Zod schemas + derived types + mapping helpers
   types.ts       # feature types (non-DTO)
   domain.ts      # business rules
   helpers.ts     # small pure utilities

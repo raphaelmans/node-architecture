@@ -43,8 +43,8 @@ Form handling uses:
 React Hook Form uses a Proxy-based subscription model for `formState`.
 To ensure updates are tracked correctly, destructure the values you read:
 
-- ✅ `const { isDirty, isValid } = form.formState`
-- ❌ `disabled={!form.formState.isDirty || !form.formState.isValid}`
+- ✅ `const { isSubmitting } = form.formState`
+- ❌ `disabled={form.formState.isSubmitting}`
 
 **Convention:** Destructure form helpers instead of calling through the form object.
 
@@ -80,7 +80,7 @@ import { imageUploadSchema } from "@/lib/core/common-schemas";
 export const profileFormSchema =
   updateProfileDtoSchema.merge(imageUploadSchema);
 
-export type ProfileFormHandler = z.infer<typeof profileFormSchema>;
+export type ProfileFormShape = z.infer<typeof profileFormSchema>;
 ```
 
 ### Common Schemas
@@ -124,7 +124,7 @@ export const profileFormSchema = z.object({
   phoneNumber: emptyToUndefined(S.common.phone.optional()),
 });
 
-export type ProfileFormValues = z.infer<typeof profileFormSchema>; // phoneNumber: string | undefined
+export type ProfileFormShape = z.infer<typeof profileFormSchema>; // phoneNumber: string | undefined
 ```
 
 ## StandardForm Components
@@ -239,12 +239,12 @@ import {
   StandardFormError,
   StandardFormInput,
 } from '@/components/form'
-import { profileFormSchema, type ProfileFormHandler } from '../schemas'
+import { profileFormSchema, type ProfileFormShape } from '../schemas'
 
 export default function ProfileForm() {
-  const form = useForm<ProfileFormHandler>({
+  const form = useForm<ProfileFormShape>({
     resolver: zodResolver(profileFormSchema),
-    mode: 'onChange',
+    mode: 'onSubmit',
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -252,30 +252,32 @@ export default function ProfileForm() {
     },
   })
 
-  const onSubmit = async (data: ProfileFormHandler) => {
+  const { isSubmitting } = form.formState
+
+  const onSubmit = async (data: ProfileFormShape) => {
     // Handle submission
   }
 
   return (
     <StandardFormProvider form={form} onSubmit={onSubmit}>
       <StandardFormError />
-      <StandardFormInput<ProfileFormHandler>
+      <StandardFormInput<ProfileFormShape>
         name='firstName'
         label='First Name'
         required
       />
-      <StandardFormInput<ProfileFormHandler>
+      <StandardFormInput<ProfileFormShape>
         name='lastName'
         label='Last Name'
         required
       />
-      <StandardFormInput<ProfileFormHandler>
+      <StandardFormInput<ProfileFormShape>
         name='email'
         label='Email'
         type='email'
         required
       />
-      <Button type='submit' disabled={form.formState.isSubmitting}>
+      <Button type='submit' disabled={isSubmitting}>
         Save
       </Button>
     </StandardFormProvider>
@@ -287,17 +289,18 @@ export default function ProfileForm() {
 
 ```typescript
 export default function ProfileForm() {
-  const profileQuery = trpc.profile.getByCurrentUser.useQuery()
+  const profileQuery = useQueryProfileCurrent()
 
-  const form = useForm<ProfileFormHandler>({
+  const form = useForm<ProfileFormShape>({
     resolver: zodResolver(profileFormSchema),
-    mode: 'onChange',
+    mode: 'onSubmit',
     defaultValues: {
       firstName: '',
       lastName: '',
     },
   })
 
+  const { isSubmitting } = form.formState
   const { reset } = form
 
   // Sync server data to form
@@ -336,8 +339,6 @@ const emptyDefaults: FormValues = {
   // ...other fields
 }
 
-const [isFormReady, setIsFormReady] = useState(false)
-
 const form = useForm<FormValues>({
   resolver: zodResolver(schema),
   defaultValues: emptyDefaults,
@@ -346,10 +347,9 @@ const form = useForm<FormValues>({
 useEffect(() => {
   if (!record || !options) return
   reset(resolveDefaults(record, options))
-  setIsFormReady(true)
 }, [record, options, reset])
 
-if (!isFormReady) return <FormSkeleton />
+if (!record || !options) return <FormSkeleton />
 
 return (
   <StandardFormProvider form={form} onSubmit={onSubmit}>
@@ -361,37 +361,44 @@ return (
 ### Form with Mutation
 
 ```typescript
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { profileQueryKeys } from "@/common/query-keys/profile";
 
 export default function ProfileForm() {
-  const trpc = useTRPC();
   const queryClient = useQueryClient();
   const router = useRouter();
   const catchErrorToast = useCatchErrorToast();
 
-  const updateMut = useMutation(trpc.profile.update.mutationOptions());
+  const updateMut = useMutProfileUpdate();
 
-  const form = useForm<ProfileFormHandler>({
+  const form = useForm<ProfileFormShape>({
     resolver: zodResolver(profileFormSchema),
+    mode: "onSubmit",
   });
 
-  const onSubmit = async (data: ProfileFormHandler) => {
-    return catchErrorToast(
+  const onSubmitInvalidateQueries = async () => {
+    return await Promise.all([
+      queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
+      // Add more invalidations here as needed.
+    ]);
+  };
+
+  const onSubmit = async (data: ProfileFormShape) => {
+    const result = await catchErrorToast(
       async () => {
         await updateMut.mutateAsync(data);
-        await queryClient.invalidateQueries(
-          trpc.profile.getByCurrentUser.queryFilter(),
-        );
+        await onSubmitInvalidateQueries();
         router.push(appRoutes.dashboard);
       },
       { description: "Profile updated successfully!" },
     );
+
+    if (!result.ok) return;
   };
 
-  const onError = (errors: FieldErrors<ProfileFormHandler>) => {
-    // Handle validation errors (optional)
-    console.error("Validation errors:", errors);
+  const onError = (errors: FieldErrors<ProfileFormShape>) => {
+    // Optional: show a toast summarizing validation errors.
+    // Usually, field-level messages + StandardFormError are enough.
   };
 
   return (
@@ -453,7 +460,7 @@ export default function ProfileForm() {
 ```typescript
 const form = useForm<FormType>({
   resolver: zodResolver(schema),
-  mode: "onChange",
+  mode: "onSubmit",
 });
 ```
 
@@ -461,14 +468,28 @@ const form = useForm<FormType>({
 
 ```typescript
 const {
-  formState: { isDirty, isSubmitting, isValid },
+  formState: { isSubmitting },
 } = form
 
 <Button
   type='submit'
-  disabled={isSubmitting || !isDirty || !isValid}
+  disabled={isSubmitting}
   isLoading={isSubmitting}
 >
+  Save
+</Button>
+```
+
+### Edit Form Exception (Optional)
+
+For edit forms, it can be reasonable to prevent a no-op submit:
+
+```typescript
+const {
+  formState: { isDirty, isSubmitting },
+} = form
+
+<Button type='submit' disabled={isSubmitting || !isDirty} isLoading={isSubmitting}>
   Save
 </Button>
 ```
@@ -521,7 +542,7 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 | Complex fields     | `StandardFormField` with children               |
 | Error display      | `StandardFormError` for root errors             |
 | Layout             | Provider default + per-field override           |
-| Validation mode    | `onChange` for real-time feedback               |
+| Validation mode    | `onSubmit` by default                           |
 
 ## Checklist
 
@@ -529,7 +550,8 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 - [ ] Form uses `zodResolver(schema)`
 - [ ] Form wrapped in `StandardFormProvider`
 - [ ] `StandardFormError` included for API errors
-- [ ] Button disabled when `!isDirty || !isValid || isSubmitting`
+- [ ] Button disabled only when `isSubmitting` (default)
+- [ ] Edit forms may disable when `!isDirty` (optional exception)
 - [ ] Loading state shows skeleton
 - [ ] Server data synced via `useEffect` + `reset`
 - [ ] Mutations invalidate relevant queries

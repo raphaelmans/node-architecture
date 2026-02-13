@@ -15,6 +15,29 @@ tRPC is an adapter choice for the **transport** layer. Depending on how you wire
 
 The sections below include the legacy “tRPC-first hooks” patterns for reference, but the preferred direction is to keep procedure calls behind `featureApi` interfaces so hooks can be tested with doubles.
 
+## Query Keys + Cache Management (tRPC vs Non-tRPC)
+
+This repo has **two** valid React Query cache patterns depending on how you call the backend:
+
+### If you use tRPC procedures (`@trpc/react-query`)
+
+- **Do not** define Query Key Factory keys for tRPC procedures.
+- tRPC already generates stable query keys and utilities.
+- Prefer cache invalidation via:
+  - `const utils = trpc.useUtils()`
+  - `await utils.<router>.<procedure>.invalidate(input?)`
+- Use React Query directly (and `trpc.*.queryKey/queryFilter/pathFilter/queryOptions`) as an advanced/escape hatch only.
+
+### If you use non-tRPC HTTP clients (e.g. `ky` calling Next.js `route.ts`)
+
+- Use Query Key Factory (`@lukemorales/query-key-factory`) as the single source of truth for keys.
+- Store keys in `src/common/query-keys/<feature>.ts` (so cross-feature components can invalidate/refetch without importing feature internals).
+
+See:
+
+- `./ky-fetch.md`
+- `../../../../core/query-keys.md`
+
 ## Overview
 
 Data fetching uses:
@@ -128,14 +151,14 @@ All TanStack Query / tRPC query + mutation hooks for a feature live in `src/feat
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useProfileQuery() {
+export function useQueryProfileMe() {
   return trpc.profile.getByCurrentUser.useQuery()
 }
 ```
 
 ```typescript
 // src/features/profile/components/profile-card.tsx
-const profileQuery = useProfileQuery()
+const profileQuery = useQueryProfileMe()
 
 if (profileQuery.isLoading) return <Skeleton />
 if (profileQuery.isError) return <Error error={profileQuery.error} />
@@ -146,7 +169,7 @@ return <Profile data={profileQuery.data} />
 
 ```typescript
 // src/features/user/hooks.ts
-export function useUserQuery(userId: string) {
+export function useQueryUserById(userId: string) {
   return trpc.user.getById.useQuery({ id: userId })
 }
 ```
@@ -155,7 +178,7 @@ export function useUserQuery(userId: string) {
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useProfileQuery() {
+export function useQueryProfileMe() {
   return trpc.profile.getByCurrentUser.useQuery(
     { signedAssets: true },
     {
@@ -175,8 +198,8 @@ Use `enabled` to wait for dependencies:
 
 ```typescript
 // src/features/settings/hooks.ts
-export function useSettingsModel() {
-  const profileQuery = useProfileQuery()
+export function useModSettings() {
+  const profileQuery = useQueryProfileMe()
 
   const settingsQuery = trpc.settings.getByProfileId.useQuery(
     { profileId: profileQuery.data?.id ?? '' },
@@ -198,7 +221,7 @@ Independent queries run in parallel:
 
 ```typescript
 // src/features/dashboard/hooks.ts
-export function useDashboardModel() {
+export function useModDashboard() {
   const profileQuery = trpc.profile.get.useQuery()
   const statsQuery = trpc.stats.get.useQuery()
   const notificationsQuery = trpc.notifications.list.useQuery()
@@ -213,7 +236,7 @@ export function useDashboardModel() {
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useUpdateProfileMutation() {
+export function useMutProfileUpdate() {
   return trpc.profile.update.useMutation()
 }
 ```
@@ -222,7 +245,7 @@ export function useUpdateProfileMutation() {
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useUpdateProfileMutation() {
+export function useMutProfileUpdate() {
   const utils = trpc.useUtils()
 
   return trpc.profile.update.useMutation({
@@ -241,6 +264,25 @@ export function useUpdateProfileMutation() {
 ```typescript
 // src/features/dashboard/hooks.ts
 export function useInvalidateDashboardCaches() {
+  const utils = trpc.useUtils()
+
+  return async () => {
+    await Promise.all([
+      utils.profile.invalidate(),
+      utils.settings.invalidate(),
+      utils.notifications.invalidate(),
+    ])
+  }
+}
+```
+
+### Parallel Invalidation (Advanced: React Query Filters)
+
+Use this when you specifically need to operate at the React Query layer (or you are bridging invalidation logic across adapters).
+
+```typescript
+// src/features/dashboard/hooks.ts
+export function useInvalidateDashboardCachesAdvanced() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
 
@@ -258,7 +300,7 @@ export function useInvalidateDashboardCaches() {
 
 ```typescript
 // src/features/items/hooks.ts
-export function useCreateItemMutation() {
+export function useMutItemsCreate() {
   const utils = trpc.useUtils()
 
   return trpc.items.create.useMutation({
@@ -269,7 +311,7 @@ export function useCreateItemMutation() {
 }
 
 // src/features/items/components/item-form.tsx
-const createMut = useCreateItemMutation()
+const createMut = useMutItemsCreate()
 
 const onSubmit = async (data: FormData) => {
   await createMut.mutateAsync(data)
@@ -281,7 +323,7 @@ const onSubmit = async (data: FormData) => {
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useUploadProfileImageMutation(profileId: string) {
+export function useMutProfileUploadImage(profileId: string) {
   const utils = trpc.useUtils()
 
   return trpc.profile.uploadImage.useMutation({
@@ -292,7 +334,7 @@ export function useUploadProfileImageMutation(profileId: string) {
 }
 
 // src/features/profile/components/profile-image-uploader.tsx
-const uploadMut = useUploadProfileImageMutation(profileId)
+const uploadMut = useMutProfileUploadImage(profileId)
 
 const handleUpload = async (file: File) => {
   const formData = new FormData()
@@ -323,7 +365,7 @@ export function useInvalidateProfileCaches() {
 
 ```typescript
 // src/features/posts/hooks.ts
-export function useLikePostMutation() {
+export function useMutPostsLike() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
 
@@ -368,7 +410,7 @@ export function useLikePostMutation() {
 
 ```typescript
 // src/features/user/hooks.ts
-export function usePrefetchUser() {
+export function useModUserPrefetchById() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
 
@@ -377,7 +419,7 @@ export function usePrefetchUser() {
 }
 
 // src/features/user/components/user-link.tsx
-const prefetchUser = usePrefetchUser()
+const prefetchUser = useModUserPrefetchById()
 const handleMouseEnter = () => void prefetchUser(userId)
 ```
 
@@ -387,7 +429,7 @@ const handleMouseEnter = () => void prefetchUser(userId)
 
 ```typescript
 function ProfilePage() {
-  const profileQuery = useProfileQuery()
+  const profileQuery = useQueryProfileMe()
 
   if (profileQuery.isLoading) {
     return <ProfileSkeleton />
@@ -405,7 +447,7 @@ function ProfilePage() {
 
 ```typescript
 function Dashboard() {
-  const model = useDashboardModel()
+  const model = useModDashboard()
   const isLoading = model.profileQuery.isLoading || model.statsQuery.isLoading
 
   if (isLoading) return <DashboardSkeleton />
@@ -443,7 +485,7 @@ export function ProfileFormSkeleton() {
 
 ```typescript
 // src/features/profile/hooks.ts
-export function useProfileQuery() {
+export function useQueryProfileMe() {
   return trpc.profile.get.useQuery(undefined, {
     retry: (attempt, error) => {
       // Don't retry on 404
@@ -458,16 +500,18 @@ export function useProfileQuery() {
 
 ```typescript
 const catchErrorToast = useCatchErrorToast()
-const mutation = useUpdateProfileMutation()
+const mutation = useMutProfileUpdate()
 
 const onSubmit = async (data: FormData) => {
-  return catchErrorToast(
+  const result = await catchErrorToast(
     async () => {
       await mutation.mutateAsync(data)
       router.push(appRoutes.success)
     },
     { description: 'Profile updated successfully!' },
   )
+
+  if (!result.ok) return
 }
 ```
 
@@ -479,13 +523,13 @@ Conventions:
 
 - Wrap requests with `ky` (Next.js-friendly Fetch wrapper)
 - Decode `ApiResponse<T>` / `ApiErrorResponse` envelopes
-- Define query keys with `@lukemorales/query-key-factory`
+- Define query keys with Query Key Factory (`@lukemorales/query-key-factory`) in `src/common/query-keys/<feature>.ts`
 - Expose React Query hooks from a dedicated `hooks.ts` (feature hooks or shared client hooks)
 
 See:
 
-- `../nextjs/ky-fetch.md`
-- `../nextjs/query-keys.md`
+- `./ky-fetch.md`
+- `../../../../core/query-keys.md`
 
 ## Best Practices
 

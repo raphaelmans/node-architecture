@@ -37,7 +37,7 @@ Does not own:
 Owns:
 
 - query/mutation definitions
-- query keys
+- query keys (defined in `src/common/query-keys/<feature>.ts`)
 - invalidation / optimistic updates
 
 Depends on:
@@ -61,14 +61,22 @@ In `src/features/<feature>/`:
 
 - `hooks.ts`: query adapter (framework-specific)
 - `api.ts`: `featureApi` implementation (endpoint-scoped; depends on `clientApi`)
-- `dtos.ts`: DTO schemas/types + DTO-to-feature mapping helpers
+- `schemas.ts`: Zod schemas + derived types + DTO-to-feature mapping helpers
 - `types.ts`: shared feature types (non-DTO)
 - `domain.ts`: business rules (pure, deterministic)
 - `helpers.ts`: small pure utilities (formatting, grouping, transforms)
+
+## Domain Logic Placement (Precedence)
+
+When you need domain-specific rules or transformations:
+
+1. Prefer module-owned shared code (reusable across server + client): `src/lib/modules/<module>/shared/*`
+2. Otherwise keep it client-only in the feature: `src/features/<feature>/(domain.ts|helpers.ts)`
+
+More details: `client/core/domain-logic.md`.
 
 ## Key Rules
 
 - Components never talk to HTTP directly.
 - Cache rules live in the query adapter layer.
 - Zod parses at boundaries (recommended).
-
