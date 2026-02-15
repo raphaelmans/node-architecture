@@ -2,6 +2,19 @@
 
 > Next.js serverless deployment with tRPC specifics.
 
+## Scope and Migration Context
+
+- This document is transport-specific to `tRPC`.
+- Current production transport is `tRPC`.
+- OpenAPI is a planned/parallel transport for migration scenarios.
+- Shared API contracts remain `Zod`-first and transport-agnostic.
+
+Use these docs together:
+
+- `server/core/api-contracts-zod-first.md` (canonical contracts)
+- `server/runtime/nodejs/libraries/openapi/README.md` (OpenAPI adapter flow)
+- `server/runtime/nodejs/libraries/openapi/parity-testing.md` (coexistence quality gate)
+
 ## Runtime Considerations
 
 ### Serverless Constraints
@@ -258,6 +271,28 @@ export const publicProcedure = baseProcedure;
 export const protectedProcedure = baseProcedure.use(authMiddleware);
 ```
 
+## Transport-Specific Additions
+
+### Rate Limiting
+
+Apply rate limits in tRPC middleware/procedure factories, not inside services.
+
+See:
+
+- [tRPC Rate Limiting](./rate-limiting.md)
+- [Core Rate Limiting Contract](../../../../core/rate-limiting.md)
+
+### Non-JSON Content (FormData, File, Blob)
+
+tRPC v11 supports non-JSON content types natively. Use link splitting so non-JSON operations bypass batching:
+
+- JSON payloads → `httpBatchLink`
+- Non-JSON payloads (`FormData`, `File`, `Blob`) → `httpLink`
+
+In Next.js implementations, canonical transport guidance lives at:
+
+- [Next.js FormData Transport](../../metaframeworks/nextjs/formdata-transport.md)
+
 ## Router Structure
 
 tRPC routers map to modules. Procedures call factories directly.
@@ -495,10 +530,18 @@ src/
 | Error Mapping | `handleError` function | tRPC `errorFormatter` |
 | DB Client | Created in container | Global singleton for serverless |
 
+## tRPC vs OpenAPI (Important)
+
+- tRPC procedures are RPC-style and type-coupled to TypeScript clients.
+- OpenAPI endpoints are HTTP resource operations with explicit status/verb/path contracts.
+- Both must call the same domain path (`usecase/service/repository`) and share Zod contracts.
+- During coexistence, run parity tests before shifting traffic between transports.
+
 ## Checklist
 
 - [ ] Drizzle client uses global singleton pattern
 - [ ] Factories use lazy singleton pattern
+- [ ] Shared contract schemas are imported from canonical Zod definitions
 - [ ] tRPC context includes `requestId`, `session`, `log`
 - [ ] Logger middleware logs request lifecycle
 - [ ] Auth middleware narrows context to `AuthenticatedContext`
@@ -506,3 +549,4 @@ src/
 - [ ] Input validation uses Zod schemas in `.input()`
 - [ ] Routers follow: reads → services, writes → services or use cases
 - [ ] Root router aggregates all module routers
+- [ ] If OpenAPI also exposes the capability, parity tests are present

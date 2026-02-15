@@ -6,7 +6,7 @@
 
 ## 1. Architecture Alignment
 
-This follows the webhook flow defined in `server/webhook/architecture.md`:
+This follows the webhook flow defined in `server/core/webhook/architecture.md`:
 
 1. Verify signature
 2. Parse base event (Zod)
@@ -70,7 +70,7 @@ If signature verification fails:
 
 - `WEBHOOK_VERIFICATION_FAILED`
 
-These codes are documented in `server/webhook/architecture.md`.
+These codes are documented in `server/core/webhook/architecture.md`.
 
 ---
 

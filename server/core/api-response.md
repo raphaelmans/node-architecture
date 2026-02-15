@@ -1,13 +1,14 @@
 # API Response Structure
 
-> Standard HTTP response structure, pagination patterns, and tRPC integration.
+> Standard response contract and pagination patterns across tRPC and OpenAPI adapters.
 
 ## Principles
 
 - Envelope pattern for all responses
 - OpenAPI-aligned structure
 - Consistent shape for frontend consumption
-- Pagination compatible with tRPC `useInfiniteQuery`
+- Pagination compatible with tRPC `useInfiniteQuery` and REST/OpenAPI clients
+- Contract schemas are defined once (Zod-first) and reused by both transports
 
 ## Success Response - Single Resource
 
@@ -107,7 +108,7 @@ Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse`
 }
 ```
 
-For Next.js route handlers (`app/api/**/route.ts`) that are not tRPC, return `ApiResponse<T>` for 2xx responses and `ApiErrorResponse` for non-2xx. See [`../nextjs/route-handlers.md`](../nextjs/route-handlers.md) for a complete template.
+For OpenAPI-style Next.js route handlers (`app/api/**/route.ts`), return `ApiResponse<T>` for 2xx responses and `ApiErrorResponse` for non-2xx. See [`../runtime/nodejs/metaframeworks/nextjs/route-handlers.md`](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md) for a complete template.
 
 ## Pagination Types & Schemas
 
@@ -265,9 +266,9 @@ export const ListUsersInputSchema = PaginationInputSchema.extend({
 export type ListUsersInput = z.infer<typeof ListUsersInputSchema>;
 ```
 
-## tRPC Integration
+## Transport Examples
 
-### Router Example
+### tRPC Router Example
 
 ```typescript
 // modules/user/user.router.ts
@@ -300,7 +301,7 @@ export const userRouter = router({
 });
 ```
 
-### Service Example
+### Shared Service Example
 
 ```typescript
 // modules/user/services/user.service.ts
@@ -349,7 +350,7 @@ export class UserService {
 }
 ```
 
-### Client Usage with `useInfiniteQuery`
+### tRPC Client Usage with `useInfiniteQuery`
 
 ```typescript
 // Client-side (React)
@@ -392,6 +393,30 @@ function UserList() {
       )}
     </div>
   );
+}
+```
+
+### OpenAPI Route Handler Example
+
+```typescript
+// app/api/profiles/route.ts
+
+import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import type { ApiResponse, ApiErrorResponse } from "@/shared/kernel/response";
+import { wrapResponse } from "@/shared/utils/response";
+import { handleError } from "@/shared/infra/http/error-handler";
+
+export async function GET(req: Request) {
+  const requestId = req.headers.get("x-request-id") ?? randomUUID();
+
+  try {
+    const result = await makeProfileService().list(/* parsed query */);
+    return NextResponse.json<ApiResponse<typeof result>>(wrapResponse(result));
+  } catch (error) {
+    const { status, body } = handleError(error, requestId);
+    return NextResponse.json<ApiErrorResponse>(body, { status });
+  }
 }
 ```
 

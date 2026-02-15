@@ -46,7 +46,7 @@ Expected outcome:
 - first run: `processed: true`
 - second run: `processed: false` (skipped) with a reason
 
-This aligns with the response structure in `server/webhook/architecture.md`.
+This aligns with the response structure in `server/core/webhook/architecture.md`.
 
 ### 2.3 Error Path Tests
 
@@ -81,4 +81,4 @@ If you assert logs, focus on structured context (not strings):
 - `provider`, `eventType`, `eventId`, `requestId`
 - event names: `webhook.received`, `webhook.processed`, `webhook.skipped`, `webhook.failed`
 
-These expectations are documented in `server/webhook/architecture.md`.
+These expectations are documented in `server/core/webhook/architecture.md`.

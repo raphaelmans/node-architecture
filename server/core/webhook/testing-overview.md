@@ -2,6 +2,10 @@
 
 > **Purpose**: Provide a practical, tool-agnostic testing strategy for inbound webhooks that keeps our system stable while the vendor is unstable.
 
+This guide is a specialized extension of the global server testing standard:
+
+- [Testing Service Layer](../testing-service-layer.md)
+
 ---
 
 ## 1. What We’re Trying to Prove
@@ -77,4 +81,4 @@ These docs do not attempt to:
 - Validate the vendor’s uptime or retry guarantees
 - Replace proper staging environments
 - Mandate a specific test runner (Jest/Vitest/etc.)
-- Standardize an outbox/eventing architecture (explicitly deferred)
+- Redefine global service-layer testing rules (see core testing standard)

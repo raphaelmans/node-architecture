@@ -134,6 +134,11 @@ This wraps an async operation and:
 - on success: shows a toast using the provided toast options
 - on failure: normalizes the error to `AppError`, shows an error toast using the normalized message, and returns a typed result
 
+Behavior notes:
+
+- `successToast` is optional; omit it when you want error handling without success notification.
+- Error toast behavior is driven by normalized `AppError` and remains toast-provider-agnostic.
+
 ### Result type
 
 ```ts
@@ -161,7 +166,9 @@ const onSubmit = async (data: ProfileFormShape) => {
     async () => {
       await updateMut.mutateAsync(data);
       await onSubmitInvalidateQueries();
-      router.push(appRoutes.dashboard);
+      await onSubmitRefetch();
+      // Optional route transition:
+      // router.push(appRoutes.dashboard);
     },
     { description: "Profile updated successfully!", durationMs: 2500 },
   );
@@ -178,6 +185,7 @@ Notes:
 
 - The only place that knows about provider-specific errors is the adapter layer (`toAppError`).
 - `useCatchErrorToast` uses the toast facade (`ToastFacade.show`) under the hood, so it stays toast-library-agnostic.
+- Success toast fires only after the wrapped async callback resolves (for example after mutation + invalidate + refetch sequence).
 
 ## Do / Don't
 
@@ -193,4 +201,3 @@ Don't:
 - Sprinkle provider-specific checks across UI
 - Put async error objects into Context to share them
 - Leak provider-specific error shapes into views
-

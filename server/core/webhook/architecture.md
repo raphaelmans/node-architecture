@@ -55,7 +55,7 @@ src/
 ## Request Flow
 
 ```
-Webhook Route (Next.js API route)
+Webhook Route (HTTP endpoint)
   → Verify signature (provider SDK)
   → Parse base event (Zod)
   → Route by event.type
@@ -552,7 +552,8 @@ if (existing) {
 6. Create route: `<provider>.route.ts`
    - Follow the standard flow
 
-7. Register route in Next.js: `app/api/webhooks/<provider>/route.ts`
+7. Register route in your metaframework/router
+   - Example (Next.js): `app/api/webhooks/<provider>/route.ts`
 
 ## Future Considerations
 

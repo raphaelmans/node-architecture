@@ -6,10 +6,12 @@
 
 This backend follows a **disciplined layered architecture** with explicit boundaries, manual dependency injection, and clear separation of concerns.
 
+Testability is a first-class quality gate: modules are expected to follow interface-driven boundaries and layer-appropriate tests.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Router/Controller                       │
-│                    (HTTP/tRPC concerns)                      │
+│               (HTTP/tRPC/OpenAPI concerns)                   │
 └─────────────────────────────┬───────────────────────────────┘
                               │
               ┌───────────────┴───────────────┐
@@ -44,15 +46,15 @@ This backend follows a **disciplined layered architecture** with explicit bounda
 
 ## Technology Stack
 
-| Concern    | Technology           |
-| ---------- | -------------------- |
-| Runtime    | Node.js (serverless) |
-| Framework  | Next.js              |
-| API Layer  | tRPC                 |
-| Database   | PostgreSQL           |
-| ORM        | Drizzle              |
-| Validation | Zod                  |
-| Logging    | Pino                 |
+| Concern    | Technology                               |
+| ---------- | ---------------------------------------- |
+| Runtime    | Node.js (serverless)                     |
+| Framework  | Next.js                                  |
+| API Layer  | tRPC (current), OpenAPI (migration path) |
+| Database   | PostgreSQL                               |
+| ORM        | Drizzle                                  |
+| Validation | Zod (canonical contracts)                |
+| Logging    | Pino                                     |
 
 ## Layer Responsibilities
 
@@ -91,8 +93,8 @@ Is it a write operation?
 Client Request
      │
      ▼
-┌─────────────────┐
-│  tRPC Router    │ ─── Validates input (Zod)
+┌────────────────────────────────────┐
+│  tRPC Router OR OpenAPI Controller │ ─── Validates input (Zod)
 └────────┬────────┘
          │
          ▼
@@ -127,9 +129,10 @@ Server-side code is organized at the `src/` level, with `shared/` for cross-cutt
 src/
 ├─ app/
 │  └─ api/
-│     └─ trpc/
-│        └─ [trpc]/
-│           └─ route.ts         # tRPC HTTP handler
+│     ├─ trpc/
+│     │  └─ [trpc]/
+│     │     └─ route.ts         # tRPC HTTP handler
+│     └─ <resource>/route.ts    # Optional OpenAPI-style handler during migration
 │
 ├─ shared/                       # Cross-cutting infrastructure
 │  ├─ kernel/
@@ -159,6 +162,7 @@ src/
 ├─ modules/                      # Domain modules
 │  └─ <module>/
 │     ├─ <module>.router.ts     # tRPC router
+│     ├─ <module>.controller.ts # Optional OpenAPI controller/handler adapter
 │     ├─ dtos/                  # Input/output schemas
 │     │  ├─ <action>.dto.ts
 │     │  └─ index.ts
@@ -195,12 +199,24 @@ src/
 | [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
 | [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
 | [Transaction](./transaction.md)             | Transaction manager, patterns, context      |
+| [Testing Service Layer](./testing-service-layer.md) | MUST-level testability standards per layer |
 | [Logging](./logging.md)                     | Pino configuration, levels, business events |
+| [API Contracts (Zod-First)](./api-contracts-zod-first.md) | Canonical transport-agnostic contract source |
+| [Zod -> OpenAPI Generation](./zod-openapi-generation.md) | Standard for generated public API docs/spec artifacts |
 | [API Response](./api-response.md)           | Envelope pattern, pagination                |
+| [Endpoint Naming](./endpoint-naming.md)     | Naming and mapping rules for tRPC and OpenAPI |
 | [ID Generation](./id-generation.md)         | Database UUID strategy                      |
-| [tRPC Integration](../trpc/integration.md)  | Serverless, routers, procedures             |
-| [Authentication](../trpc/authentication.md) | Session management, authorization           |
-| [Webhooks](../webhook/architecture.md)      | Inbound webhook handling                    |
+| [Rate Limiting](./rate-limiting.md)         | Agnostic limits, identifiers, error contract |
+| [Async Jobs + Outbox](./async-jobs-outbox.md) | Transactional enqueue + retry model       |
+| [Webhooks](./webhook/architecture.md)       | Inbound webhook handling                    |
+| [Webhook Testing](./webhook/testing-overview.md) | Testing strategy + Vendor Simulator    |
+| [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md)  | Serverless, routers, procedures   |
+| [OpenAPI Integration](../runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter over shared domain layers |
+| [OpenAPI Parity Testing](../runtime/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
+| [tRPC Rate Limiting](../runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tier patterns        |
+| [Authentication](../runtime/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
+| [Supabase](../runtime/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
+| [Next.js](../runtime/nodejs/metaframeworks/nextjs/README.md)         | Metaframework route handling      |
 
 ## Quick Reference
 
@@ -242,7 +258,6 @@ const result = await makeRegisterUserUseCase().execute(input);
 
 These are explicitly out of scope for now:
 
-- Async outbox pattern
 - Event-driven architecture
 - Microservices
 - Full CQRS
@@ -257,5 +272,6 @@ These are explicitly out of scope for now:
 - [ ] Create domain-specific errors in `errors/`
 - [ ] Create DTOs with Zod schemas
 - [ ] Create factory with lazy singletons
-- [ ] Create tRPC router
-- [ ] Add router to root router
+- [ ] Create transport adapter (`tRPC`, `OpenAPI`, or both)
+- [ ] Add adapter to transport root/route registration
+- [ ] If both transports exist, add parity tests

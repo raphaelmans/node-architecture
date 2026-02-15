@@ -70,7 +70,7 @@ See: [Schema Validation](./testing-schema-validation.md)
 You can implement the simulator as:
 
 - a separate service (recommended for isolation), or
-- a route group within your Next.js app
+- a route group within your app/metaframework
 
 Example endpoints (conceptual):
 

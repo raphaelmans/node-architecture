@@ -1,6 +1,6 @@
 # Backend Architecture Documentation
 
-> Disciplined layered architecture for Node.js backends with Next.js, tRPC, Drizzle ORM, and PostgreSQL.
+> Disciplined layered architecture for Node.js backends with Next.js, Zod-first contracts, tRPC (current), and OpenAPI migration readiness.
 
 See [../README.md](../README.md) for the unified project folder structure and full documentation index.
 
@@ -11,12 +11,12 @@ This documentation describes a **production-ready backend architecture** that em
 - Explicit dependency injection with factories
 - Clear layer boundaries and responsibilities
 - Framework-agnostic business logic
-- Type-safe API contracts with tRPC and Zod
+- Type-safe API contracts with Zod-first schemas and transport adapters
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Router/Controller                       │
-│                    (HTTP/tRPC concerns)                      │
+│               (HTTP/tRPC/OpenAPI concerns)                   │
 └─────────────────────────────┬───────────────────────────────┘
                               │
               ┌───────────────┴───────────────┐
@@ -43,19 +43,19 @@ This documentation describes a **production-ready backend architecture** that em
 
 > **Note:** This documentation serves as an architectural reference. Always check `package.json` for actual package versions in your project.
 
-| Concern    | Technology           |
-| ---------- | -------------------- |
-| Runtime    | Node.js (serverless) |
-| Framework  | Next.js              |
-| API Layer  | tRPC                 |
-| Database   | PostgreSQL           |
-| ORM        | Drizzle              |
-| Validation | Zod                  |
-| Logging    | Pino                 |
+| Concern    | Technology                               |
+| ---------- | ---------------------------------------- |
+| Runtime    | Node.js (serverless)                     |
+| Framework  | Next.js                                  |
+| API Layer  | tRPC (current), OpenAPI (migration path) |
+| Database   | PostgreSQL                               |
+| ORM        | Drizzle                                  |
+| Validation | Zod (canonical contracts)                |
+| Logging    | Pino                                     |
 
 ## Documentation Structure
 
-### Core Documentation
+### Core Documentation (Agnostic)
 
 | Document                                   | Description                                             |
 | ------------------------------------------ | ------------------------------------------------------- |
@@ -63,26 +63,40 @@ This documentation describes a **production-ready backend architecture** that em
 | [Conventions](./core/conventions.md)       | Layer responsibilities, DI patterns, kernel rules       |
 | [Error Handling](./core/error-handling.md) | Error classes, validation, response structure           |
 | [Transaction](./core/transaction.md)       | Transaction manager, patterns, RequestContext           |
+| [Testing Service Layer](./core/testing-service-layer.md) | MUST-level testability for controller/usecase/service/repository |
 | [Logging](./core/logging.md)               | Pino configuration, levels, business events             |
+| [API Contracts (Zod-First)](./core/api-contracts-zod-first.md) | Canonical contracts for tRPC/OpenAPI coexistence |
+| [Zod -> OpenAPI Generation](./core/zod-openapi-generation.md) | Build-time public API spec generation standard |
 | [API Response](./core/api-response.md)     | Envelope pattern, pagination helpers                    |
+| [Endpoint Naming](./core/endpoint-naming.md) | Capability naming for tRPC and OpenAPI mapping       |
 | [ID Generation](./core/id-generation.md)   | Database UUID strategy                                  |
+| [Rate Limiting](./core/rate-limiting.md)   | Agnostic rate-limiting contract and boundaries          |
+| [Async Jobs + Outbox](./core/async-jobs-outbox.md) | Transactional enqueue, retries, idempotency      |
+| [Webhooks](./core/webhook/architecture.md) | Inbound webhook handling, idempotency                   |
+| [Webhook Testing](./core/webhook/testing-overview.md) | Testing guide + Vendor Simulator              |
 
-### Integration Documentation
+### Runtime + Library Documentation
 
 | Document                                   | Description                                   |
 | ------------------------------------------ | --------------------------------------------- |
-| [tRPC Integration](./trpc/integration.md)  | Serverless patterns, routers, Drizzle setup   |
-| [Authentication](./trpc/authentication.md) | Session/JWT management, auth middleware, RBAC |
-| [Webhooks](./webhook/architecture.md)      | Inbound webhook handling, idempotency         |
-| [Webhook Testing](./webhook/testing-overview.md) | Testing guide + Vendor Simulator              |
-| [Supabase](./supabase/README.md)           | Auth, Storage, Database integration patterns  |
+| [Runtime Index](./runtime/README.md)       | Runtime hierarchy (`nodejs`, metaframeworks) |
+| [Node.js Runtime](./runtime/nodejs/README.md) | Node.js runtime libraries and metaframeworks |
+| [tRPC Integration](./runtime/nodejs/libraries/trpc/integration.md)  | Serverless patterns, routers, Drizzle setup   |
+| [OpenAPI Integration](./runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter model over shared domain layers |
+| [OpenAPI Parity Testing](./runtime/nodejs/libraries/openapi/parity-testing.md) | tRPC/OpenAPI coexistence quality gate |
+| [tRPC Rate Limiting](./runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tiers and enforcement patterns |
+| [Authentication](./runtime/nodejs/libraries/trpc/authentication.md) | Session/JWT management, auth middleware, RBAC |
+| [Supabase](./runtime/nodejs/libraries/supabase/README.md)           | Auth, Storage, Database integration patterns  |
+| [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md)         | Route handler patterns and conventions         |
+| [Express (placeholder)](./runtime/nodejs/metaframeworks/express/README.md) | Reserved metaframework slot           |
+| [NestJS (placeholder)](./runtime/nodejs/metaframeworks/nestjs/README.md)    | Reserved metaframework slot           |
 
 ### Skills (AI-Assisted Development)
 
 | Skill                                                | When to Use                                             |
 | ---------------------------------------------------- | ------------------------------------------------------- |
-| [backend-module](./skills/backend-module/SKILL.md)   | Creating new domain modules (entities, resources)       |
-| [backend-feature](./skills/backend-feature/SKILL.md) | Adding features to existing modules (endpoints, fields) |
+| [backend-module](../skills/server/backend-module/SKILL.md)   | Creating new domain modules (entities, resources)       |
+| [backend-feature](../skills/server/backend-feature/SKILL.md) | Adding features to existing modules (endpoints, fields) |
 
 ## Quick Start
 
@@ -96,6 +110,13 @@ Is it a write operation?
         ├── No → Call Service directly (service owns transaction)
         └── Yes → Call Use Case (use case owns transaction)
 ```
+
+### Testing Baseline (MUST)
+
+- Use interface-based dependencies for service/usecase/repository boundaries.
+- Follow `controller -> usecase (optional) -> service -> repository`.
+- Add layer tests with appropriate doubles/fixtures per `core/testing-service-layer.md`.
+- When capability exists in both tRPC and OpenAPI, enforce parity tests.
 
 ### Factory Usage
 
@@ -140,7 +161,10 @@ All server-side code lives under `src/lib/`.
 
 ```
 src/
-├─ app/api/trpc/[trpc]/route.ts    # tRPC HTTP handler
+├─ app/
+│  └─ api/
+│     ├─ trpc/[trpc]/route.ts      # tRPC HTTP handler
+│     └─ <resource>/route.ts       # Optional OpenAPI-style route handler during migration
 ├─ lib/                             # All server-side code
 │  ├─ shared/
 │  │  ├─ kernel/                    # Core types and interfaces
@@ -159,6 +183,7 @@ src/
 │  ├─ modules/
 │  │  └─ <module>/
 │  │     ├─ <module>.router.ts      # tRPC router
+│  │     ├─ <module>.controller.ts  # Optional OpenAPI controller/handler adapter
 │  │     ├─ dtos/                   # Module-specific DTOs
 │  │     ├─ errors/                 # Domain-specific errors
 │  │     ├─ use-cases/              # Multi-service orchestration
@@ -235,7 +260,7 @@ Non-tRPC HTTP endpoints use the standard envelope defined in `core/api-response.
 
 ## Creating New Modules
 
-See the [backend-module skill](./skills/backend-module/SKILL.md) for step-by-step instructions or use the scaffolding script:
+See the [backend-module skill](../skills/server/backend-module/SKILL.md) for step-by-step instructions or use the scaffolding script:
 
 ```bash
 python scripts/scaffold-module.py <module-name> <Entity>
@@ -245,12 +270,23 @@ python scripts/scaffold-module.py <module-name> <Entity>
 
 These are explicitly out of scope for now:
 
-- Async outbox pattern
 - Event-driven architecture
 - Microservices
 - Full CQRS
 - OpenTelemetry tracing (prepared for, not implemented)
 
-## References
+## Drafts
 
-The `references/` folder contains the original detailed documentation that was consolidated into this structure. These files are preserved for historical context.
+The `drafts/` folder contains detailed legacy references from earlier documentation.
+These documents are **non-canonical** and may be outdated.
+
+If anything conflicts, follow the canonical docs under:
+
+- `server/core/`
+- `server/core/webhook/`
+- `server/runtime/nodejs/libraries/trpc/`
+- `server/runtime/nodejs/libraries/openapi/`
+- `server/runtime/nodejs/libraries/supabase/`
+- `server/runtime/nodejs/metaframeworks/nextjs/`
+
+Start here: [server/drafts/overview.md](./drafts/overview.md)

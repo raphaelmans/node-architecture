@@ -19,6 +19,21 @@ Where the hooks get data from is an adapter choice:
 
 - Next.js + tRPC: see `client/frameworks/reactjs/metaframeworks/nextjs/trpc.md`
 - Next.js + route handlers (HTTP): see `client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md`
+- Cookbook (mixed ownership patterns): `client/frameworks/reactjs/server-state-patterns-react.md`
+
+Feature API contract for hook dependencies:
+
+- query hooks should depend on `I<Feature>Api` contracts
+- feature API implementations stay in `src/features/<feature>/api.ts` as `class <Feature>Api implements I<Feature>Api`
+
+### Invalidation Ownership (Mixed, Explicit)
+
+Two patterns are valid:
+
+- Preferred default: hook-owned invalidation (reusable mutation behavior).
+- Allowed: component-coordinator invalidation (route/form-local orchestration).
+
+Choose component-coordinator when sequencing (submit -> invalidate -> navigate) is specific to one screen flow.
 
 ## Hook Naming (Server-State Only)
 
@@ -62,8 +77,24 @@ Examples:
 - `useModDashboard()` returns `{ profileQuery, statsQuery, notificationsQuery, ...derived }`
 - `useModSettings()` returns `{ profileQuery, settingsQuery, preferencesQuery, ... }`
 
+## Testing Conventions (React)
+
+- Query hook tests: mock `I<Feature>Api` methods, assert query keys/invalidation behavior.
+- Business component tests: mock feature hooks from `src/features/<feature>/hooks.ts`.
+- Presentation component tests: render with props/fixtures only.
+- Avoid transport-library mocks in component tests (`fetch`, `axios`, `trpc.*`).
+
 ## Forms
 
 All form implementation details live in:
 
 - `client/frameworks/reactjs/forms-react-hook-form.md`
+
+## Migration Status (Known Drift)
+
+These naming and SRP rules are canonical targets.
+Existing codebases may still contain legacy names or mixed-responsibility hooks.
+
+- New hooks and modified hooks should follow `useQuery*` / `useMut*` / `useMod*`.
+- Legacy hooks migrate incrementally as files are touched.
+- See `client/core/overview.md` for the current drift summary.

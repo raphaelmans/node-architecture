@@ -277,7 +277,7 @@ export interface ApiErrorResponse {
 
 ## Error Handler (Generic HTTP)
 
-For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../nextjs/route-handlers.md`](../nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
+For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../runtime/nodejs/metaframeworks/nextjs/route-handlers.md`](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
 
 ```typescript
 // shared/infra/http/error-handler.ts
@@ -335,7 +335,7 @@ export function handleError(
 
 ## tRPC Error Formatter
 
-For tRPC integration, see [tRPC Integration](../trpc/integration.md).
+For tRPC integration, see [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md).
 
 ```typescript
 // shared/infra/trpc/trpc.ts

@@ -1,6 +1,6 @@
 # Node.js Architecture Documentation
 
-> Reference architecture for full-stack Node.js applications with Next.js, tRPC, and TypeScript.
+> Reference architecture for full-stack applications with a core-first client/server documentation model.
 
 ## Purpose
 
@@ -8,12 +8,16 @@ This repository contains **architectural patterns and conventions** for building
 
 > **Important:** This documentation describes patterns and conventions, not specific package versions. Always check `package.json` in your project for actual versions.
 
+## Contributing
+
+For contribution standards (including adding new client frameworks like Vue/Svelte or new server runtimes/languages like Go), see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Technology Stack
 
 | Layer   | Technologies                                        |
 | ------- | --------------------------------------------------- |
 | Server  | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino   |
-| Client  | Next.js, React, tRPC, TanStack Query, Zod, Tailwind |
+| Client  | Next.js/React, TanStack Query, Zod, Tailwind, adapter-based API layer |
 | Auth    | Supabase Auth (or custom)                           |
 | Storage | Supabase Storage (or custom)                        |
 
@@ -32,25 +36,31 @@ node-architecture/
 │   │   ├── transaction.md       # Transaction patterns
 │   │   ├── logging.md           # Pino configuration
 │   │   ├── api-response.md      # Response envelope
-│   │   └── id-generation.md     # UUID strategy
-│   ├── trpc/                    # tRPC integration
-│   │   ├── integration.md       # Router setup, Drizzle
-│   │   └── authentication.md    # Auth middleware, RBAC
-│   ├── webhook/                 # Webhook handling
-│   │   └── architecture.md      # Inbound webhooks, idempotency
-│   ├── supabase/                # Supabase integration
-│   │   ├── README.md            # Quick reference
-│   │   └── integration.md       # Auth, Storage, Database
-│   ├── skills/                  # AI-assisted development
-│   │   ├── backend-module/      # Creating new modules
-│   │   ├── backend-feature/     # Adding features
-│   │   ├── backend-auth/        # Auth implementation
-│   │   └── backend-webhook/     # Webhook implementation
-│   └── references/              # Original detailed docs
+│   │   ├── id-generation.md     # UUID strategy
+│   │   └── webhook/             # Agnostic webhook architecture + testing
+│   ├── runtime/                 # Runtime-specific docs
+│   │   └── nodejs/
+│   │       ├── libraries/
+│   │       │   ├── trpc/        # tRPC integration + auth
+│   │       │   └── supabase/    # Supabase integration docs
+│   │       └── metaframeworks/
+│   │           ├── nextjs/      # Next.js route handlers
+│   │           ├── express/     # Placeholder
+│   │           └── nestjs/      # Placeholder
+│   └── drafts/                  # Original detailed docs (legacy, non-canonical)
+│
+├── skills/                      # Shared AI-assisted development skills
+│   ├── server/
+│   │   ├── backend-module/
+│   │   ├── backend-feature/
+│   │   ├── backend-auth/
+│   │   └── backend-webhook/
+│   └── client/
 │
 └── client/                      # Frontend architecture
     ├── README.md                # Client overview + quick start
     ├── core/                    # Core patterns
+    │   ├── onboarding.md        # New project + contributor startup checklist
     │   ├── overview.md          # Core index
     │   ├── architecture.md      # Agnostic principles
     │   ├── conventions.md       # Layer responsibilities
@@ -71,69 +81,28 @@ node-architecture/
 
 ## Project Folder Structure
 
-This architecture expects the following project structure:
+This architecture expects a core-aligned project structure.
+Treat this as a contract-oriented reference, not an exact required tree.
 
 ```
 src/
-├── app/                         # Next.js App Router
-│   ├── (api)/api/               # API routes
-│   │   ├── trpc/[...trpc]/      # tRPC handler
-│   │   └── webhooks/            # Webhook endpoints
-│   ├── (authenticated)/         # Protected routes
-│   └── (guest)/                 # Public routes
-│
-├── lib/                         # Server code & integrations
-│   ├── shared/                  # Shared kernel (server)
-│   │   ├── kernel/              # Core types & contracts
-│   │   │   ├── context.ts       # RequestContext
-│   │   │   ├── transaction.ts   # TransactionManager
-│   │   │   ├── errors.ts        # Base error classes
-│   │   │   ├── pagination.ts    # Pagination types
-│   │   │   └── dtos/            # Cross-module DTOs
-│   │   │       └── common.ts    # ImageAssetSchema, etc.
-│   │   └── infra/               # Infrastructure
-│   │       ├── db/              # Drizzle client, schema
-│   │       ├── trpc/            # tRPC setup, middleware
-│   │       ├── supabase/        # Supabase client
-│   │       └── logger/          # Pino configuration
-│   │
-│   ├── modules/                 # Backend domain modules
-│   │   └── <module>/
-│   │       ├── <module>.router.ts   # tRPC router
-│   │       ├── dtos/            # Module-specific DTOs
-│   │       ├── errors/          # Domain errors
-│   │       ├── services/        # Business logic
-│   │       ├── repositories/    # Data access
-│   │       ├── use-cases/       # Multi-service orchestration
-│   │       └── factories/       # Dependency creation
-│   │
-│   ├── trpc/                    # tRPC client setup
-│   │   ├── client.ts            # Client export
-│   │   └── query-client.ts      # QueryClient factory
-│   │
-│   └── env/                     # Environment config
-│       └── index.ts             # @t3-oss/env-nextjs
-│
-├── features/                    # Frontend feature modules
+├── <routes>/                    # Metaframework-owned routes (Next.js: app/)
+├── features/                    # Client feature modules (business unit)
 │   └── <feature>/
-│       ├── components/          # Feature components
-│       ├── hooks.ts             # URL state, custom hooks
-│       ├── schemas.ts           # Form schemas
-│       └── stores/              # Zustand stores (optional)
-│
+│       ├── components/          # view + fields (business/presentation split)
+│       ├── api.ts               # featureApi
+│       ├── hooks.ts             # query adapter
+│       ├── schemas.ts           # zod schemas + derived types
+│       ├── domain.ts            # deterministic domain rules (optional)
+│       └── helpers.ts           # pure transforms (optional)
 ├── components/                  # Shared UI components
-│   ├── ui/                      # shadcn/ui primitives
-│   ├── form/                    # StandardForm components
-│   └── custom-ui/               # Composed components
-│
-├── common/                      # App-wide utilities
-│   ├── providers/               # React providers
-│   ├── query-keys/              # Query key factory definitions
-│   ├── app-routes.ts            # Route definitions
-│   ├── constants.ts             # Global constants
-│   └── hooks.ts                 # Shared hooks
-│
-└── hooks/                       # Global React hooks
+├── common/                      # Cross-feature contracts/utilities
+│   ├── query-keys/              # Query key contracts
+│   ├── errors/                  # AppError contract + adapters
+│   ├── toast/                   # Toast facade + adapters
+│   └── logging/                 # Logger facade + adapters
+└── lib/                         # Server code and server/client shared module logic
+    └── modules/<module>/shared/ # Shared domain transforms and contracts
 ```
 
 ## Quick Start
@@ -142,13 +111,14 @@ src/
 
 1. Read [server/README.md](./server/README.md) for overview
 2. Follow [server/core/conventions.md](./server/core/conventions.md) for layer patterns
-3. Use [server/skills/](./server/skills/) for AI-assisted scaffolding
+3. Use [skills/server/](./skills/server/) for AI-assisted scaffolding
 
 ### For Client Development
 
 1. Read [client/README.md](./client/README.md) for overview
-2. Follow [client/core/conventions.md](./client/core/conventions.md) for component patterns
-3. Use forms conventions from [client/frameworks/reactjs/forms-react-hook-form.md](./client/frameworks/reactjs/forms-react-hook-form.md)
+2. Start with [client/core/onboarding.md](./client/core/onboarding.md)
+3. Follow [client/core/conventions.md](./client/core/conventions.md) and [client/core/client-api-architecture.md](./client/core/client-api-architecture.md)
+4. Apply framework details from [client/frameworks/reactjs/README.md](./client/frameworks/reactjs/README.md) and [client/frameworks/reactjs/metaframeworks/nextjs/README.md](./client/frameworks/reactjs/metaframeworks/nextjs/README.md)
 
 ## Core Principles
 
@@ -175,4 +145,4 @@ When implementing features:
 
 1. Start with the relevant README (server or client)
 2. Deep-dive into `core/` docs for specific patterns
-3. Check `references/` for detailed implementation examples
+3. Check `drafts/` for detailed legacy examples (non-canonical)

@@ -22,9 +22,9 @@ This documentation describes a **production-ready frontend architecture** that e
               ┌───────────────┴───────────────┐
               ▼                               ▼
 ┌─────────────────────────┐     ┌─────────────────────────────┐
-│   Feature Component     │     │      Feature Hook           │
-│  (Business logic,       │     │  (URL state, custom logic)  │
-│   data fetching)        │     │                             │
+│   Feature Component     │     │  Query Adapter Hook         │
+│  (Business orchestration│     │  (useQuery/useMut/useMod,   │
+│   + form wiring)        │     │   cache/invalidation)       │
 └───────────┬─────────────┘     └─────────────────────────────┘
             │
             ▼
@@ -48,7 +48,7 @@ This documentation describes a **production-ready frontend architecture** that e
 | ------------- | -------------------- |
 | Framework     | Next.js (App Router) |
 | React         | React                |
-| API Layer     | tRPC                 |
+| API Layer     | Adapter choice (tRPC / route handlers) |
 | Server State  | TanStack Query       |
 | Validation    | Zod                  |
 | Forms         | react-hook-form      |
@@ -63,6 +63,7 @@ This documentation describes a **production-ready frontend architecture** that e
 
 | Document | Description |
 | --- | --- |
+| [Onboarding](./core/onboarding.md) | New project + contributor startup checklist |
 | [Core Index](./core/overview.md) | Core index + links |
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
@@ -98,6 +99,8 @@ ASCII diagrams for structure, data flow, and state management live in:
 - [client/diagrams.md](./diagrams.md)
 
 ## Quick Start
+
+Start with: [client/core/onboarding.md](./core/onboarding.md)
 
 ### Component Decision Flow
 
@@ -155,9 +158,11 @@ For detailed frontend-specific folder conventions, see [./core/folder-structure.
 ## Checklist for New Features
 
 - [ ] Create `src/features/<feature>/` folder
+- [ ] Define `api.ts` with `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`
 - [ ] Define schemas in `schemas.ts`
 - [ ] Create business component for data/forms
 - [ ] Create presentation components for fields
 - [ ] Add URL state hooks in `hooks.ts` if needed
+- [ ] Add tests: `api.test.ts` (mock deps), `domain/helpers` pure tests
 - [ ] Add route to `app-routes.ts`
-- [ ] Create page in `app/(authenticated)/<feature>/`
+- [ ] Create page in the appropriate route group under `app/` (project-defined, e.g. `app/(protected)/<feature>/`)

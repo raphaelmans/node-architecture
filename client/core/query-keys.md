@@ -2,7 +2,12 @@
 
 TanStack Query cache behavior depends on **stable query keys**.
 
-We use `@lukemorales/query-key-factory` as the **single source of truth** for query keys.
+Scope note:
+
+- This document is the default for non-tRPC adapters.
+- If a transport already provides query keys/utilities (for example `@trpc/react-query`), use those generated keys/utilities instead of defining Query Key Factory keys for those procedures.
+
+For non-tRPC adapters, we use `@lukemorales/query-key-factory` as the canonical query key contract.
 
 Reference: https://github.com/lukemorales/query-key-factory
 

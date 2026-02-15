@@ -30,6 +30,19 @@ Avoid by default:
 
 - Presentation components (`*-fields.tsx`, render-only components).
 
+## Correlation Context
+
+Carry request correlation metadata through boundary logs whenever available:
+
+- `requestId` (primary)
+- optional path context (for example current pathname)
+- optional actor context (`userId`, `sessionId`) when safe
+
+Convention:
+
+- attach correlation metadata at transport/metaframework boundaries
+- pass metadata into logger calls rather than rebuilding ad-hoc context per component
+
 ## Namespace Structure
 
 Use a predictable namespace convention:
@@ -176,4 +189,3 @@ Don't:
 - Import `debug` directly inside features.
 - Leave long-term `console.log` sprinkled throughout the codebase.
 - Log sensitive data (tokens, passwords, PII).
-

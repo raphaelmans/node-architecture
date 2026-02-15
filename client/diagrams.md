@@ -80,14 +80,15 @@ UI interaction
 [Query adapter (server/IO state)]
   - defines queryKey + useQuery/useMutation
   - owns invalidation / optimistic updates
-  - depends on featureApi (interface)
+  - depends on I<Feature>Api contract
   |
   v
-[featureApi (endpoint-scoped)]
-  - one per feature domain (profileApi, billingApi, ...)
-  - owns endpoint paths + request/response typing
+[featureApi boundary]
+  - one per feature domain: I<Feature>Api + class <Feature>Api + create<Feature>Api(...)
+  - owns endpoint paths + request/response schemas
   - parses at boundaries (Zod)
   - maps DTO -> feature model
+  - normalizes unknown -> AppError via toAppError
   - depends on clientApi (interface)
   |
   v
@@ -141,3 +142,77 @@ Rule of thumb:
 Do NOT duplicate server/IO state into a store.
 Store only IDs/flags and derive server objects from the query cache.
 ```
+
+---
+
+## 4) Request and Error Correlation (Boundary-Owned)
+
+```text
+Request
+  |
+  v
+Route / proxy boundary
+  - attach/propagate request metadata (e.g. requestId, pathname)
+  |
+  v
+Server transport handler (tRPC / route.ts)
+  - enforce security/rate limits
+  - return structured error envelope (code/message/requestId/details)
+  |
+  v
+clientApi / transport adapter
+  - map transport error -> typed client error
+  |
+  v
+toAppError(err)
+  - normalize to AppError
+  |
+  +--> logger facade (correlated logs)
+  |
+  +--> toast facade (user-facing message)
+  |
+  v
+UI branches on AppError.kind only
+```
+
+---
+
+## 5) Edit/Update Form Success Flow (External Data Re-Sync)
+
+```text
+Edit/Update Form (reads external query data)
+  |
+  v
+useForm(...) + useQueryProfileCurrent()
+  |
+  +--> useProfileFormSyncFromQueryData({ data: query.data, reset })
+  |       - whenever query.data changes:
+  |         reset(mapQueryDataToFormDefaults(query.data))
+  |
+  v
+onSubmit = useCatchErrorToast(async () => {
+  await updateMut.mutateAsync(payload)
+  await onSubmitInvalidateQueries()    // Promise.all([...]) when needed
+  await onSubmitRefetch()              // query.refetch()
+  // optional navigation
+})
+  |
+  v
+query.data refreshes from server
+  |
+  v
+sync hook runs reset(...) with fresh values
+  |
+  v
+UI now matches persisted server truth
+(same state as page refresh; checkbox/config values included)
+```
+
+Rules:
+
+- Edit/update forms do not reset to empty defaults on success.
+- Success path re-syncs from refreshed external data.
+- Keep each unit single-responsibility:
+  - `onSubmitInvalidateQueries`: invalidation only
+  - `onSubmitRefetch`: refetch only
+  - `useProfileFormSyncFromQueryData`: query-data -> form reset only

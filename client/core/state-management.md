@@ -16,6 +16,7 @@ Use a server-state cache (TanStack Query in this architecture) for async/IO data
 Rule:
 
 - Share server/IO state via the query cache and stable query keys, not via “big data providers”.
+- Do not duplicate server state into client stores; store IDs/flags and derive server objects from query data.
 
 ### B) Client Coordination State
 
@@ -45,4 +46,3 @@ Use component-local state when:
 - React client state (Zustand): `client/frameworks/reactjs/state-zustand.md`
 - Next.js URL state (nuqs): `client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md`
 - React forms: `client/frameworks/reactjs/forms-react-hook-form.md`
-

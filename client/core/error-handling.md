@@ -83,6 +83,20 @@ src/common/errors/
 - Prefer typed, inspectable errors emitted from `clientApi`.
 - Validation errors should be mapped close to the user’s input.
 - Query adapter owns retry and invalidation policies; components only render states.
+- Preserve safe metadata from transport errors when available: `message`, `code`, `status`, `requestId`.
+- Normalize once at adapter boundary, then branch only on `AppError.kind`.
+- Inject `toAppError` into `featureApi` classes so normalization behavior is testable and consistent.
+
+## Transport Metadata Pass-Through
+
+When provider-specific errors include useful metadata, adapters should preserve it:
+
+- `message`: preserve actual user-safe message
+- `code`: preserve machine-readable code when present
+- `status`: preserve HTTP status when present
+- `requestId`: preserve request correlation identifier when present
+
+This keeps UI handling consistent while still allowing support/debugging workflows.
 
 ## Notifications (Toast) Are a Facade Concern
 
@@ -101,4 +115,4 @@ src/common/toast/
 Framework-specific wiring:
 
 - React forms: `client/frameworks/reactjs/forms-react-hook-form.md`
- - React error handling facade: `client/frameworks/reactjs/error-handling.md`
+- React error handling facade: `client/frameworks/reactjs/error-handling.md`

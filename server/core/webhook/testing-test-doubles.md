@@ -2,6 +2,12 @@
 
 > **Purpose**: Establish shared language and clear guidelines for “mocking” in webhook tests.
 
+Global doubles policy lives in:
+
+- [Testing Service Layer](../testing-service-layer.md)
+
+This document applies that policy to webhook-specific boundaries.
+
 ---
 
 ## 1. Key Idea

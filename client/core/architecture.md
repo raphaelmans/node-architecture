@@ -11,6 +11,7 @@ Core rules that should survive framework changes (React/Vue/Svelte) and metafram
   - server/IO state is fetched close to the consuming feature section
   - presentation remains render-only
 - **Explicit boundaries:** IO happens behind interfaces; cache behavior is defined in one place.
+- **Testable feature APIs:** feature endpoints are exposed via `I<Feature>Api` + class implementations with injected dependencies.
 
 ## Layer Boundaries (Conceptual)
 
@@ -20,4 +21,3 @@ Core rules that should survive framework changes (React/Vue/Svelte) and metafram
 | Feature business | orchestration, forms, loading/error wiring | transport details |
 | Presentation | render-only UI | fetching/mutations |
 | UI primitives | generic, reusable UI | business rules |
-

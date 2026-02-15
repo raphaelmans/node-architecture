@@ -1,3 +1,15 @@
+# Draft / Legacy Note
+
+This document is a **draft/legacy reference** and may be outdated.
+
+If anything conflicts with canonical docs, follow:
+
+- `server/core/overview.md`
+- `server/core/webhook/architecture.md`
+- `server/runtime/nodejs/libraries/trpc/integration.md`
+- `server/runtime/nodejs/libraries/trpc/authentication.md`
+- `server/runtime/nodejs/libraries/supabase/README.md`
+
 # Backend Architecture Overview
 
 > **Purpose**: High-level overview of the backend architecture, linking to detailed documentation for each concern.

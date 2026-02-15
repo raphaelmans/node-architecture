@@ -32,7 +32,7 @@ Anti-pattern:
 
 In `src/features/<feature>/`:
 
-- `hooks.ts`: **all** TanStack Query / tRPC `useQuery` + `useMutation` hooks for the feature
+- `hooks.ts`: **all** server-state hooks for the feature (`useQuery*`, `useMut*`, and optional `useMod*` composition hooks)
 - `types.ts`: shared feature TypeScript types (non-DTO); component prop types may stay local when truly component-only
 - `schemas.ts`: Zod schemas + derived types + DTO-to-feature mapping helpers (schemas never live in TSX or `hooks.ts`)
 - `domain.ts`: business rules (pure, deterministic)
@@ -139,12 +139,14 @@ export function SectionView(props: {
 - Implement queries/mutations in `src/features/<feature>/hooks.ts`.
 - Prefer `select` for UI shaping; call pure functions from `domain.ts` / `helpers.ts`.
 - Use `enabled` for dependent queries.
-- Prefer invalidation inside mutation hooks (so components don't duplicate cache logic).
+- Prefer invalidation inside mutation hooks for reusable behavior.
+- Component-coordinator invalidation is allowed for route-local orchestration.
+- See `./server-state-patterns-react.md` for decision rules and cookbook scenarios.
 
 ## Anti-patterns (don't do these)
 
 - Fetching in presentation components (`*-fields.tsx`, `*-card.tsx`, `*-list.tsx`).
-- Inlining `useQuery()` / `useMutation()` inside TSX components.
+- Inlining transport/query library hooks directly inside TSX components.
 - Mega providers that fetch and store server data.
 - Duplicating server state in Zustand (store IDs + UI flags; derive server objects from queries).
 
@@ -152,7 +154,9 @@ export function SectionView(props: {
 
 - Unit test presentation components with fixtures: render `*-fields.tsx` / `*-card.tsx` with props.
 - Test business components by mocking feature hooks (`src/features/<feature>/hooks.ts`) rather than mocking network calls.
-- Test `domain.ts` / `helpers.ts` as normal pure functions.
+- Test query hooks by mocking `I<Feature>Api` contracts, not transport providers.
+- Test `api.ts` class implementations by mocking injected deps (`clientApi`, `toAppError`).
+- Test `domain.ts` / `helpers.ts` as pure functions (no mocks).
 
 ## Checklist
 

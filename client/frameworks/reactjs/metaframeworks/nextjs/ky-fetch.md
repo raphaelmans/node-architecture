@@ -16,7 +16,7 @@ Non-tRPC endpoints must follow the server conventions:
 - **Success (2xx)**: `ApiResponse<T>` → `{ data: T }`
 - **Error (non-2xx)**: `ApiErrorResponse` → `{ code, message, requestId, details? }`
 
-Both are defined in `shared/kernel/response.ts`.
+Both are defined in your shared response-contract module (commonly `lib/shared/kernel/response.ts`).
 
 ## Ky instance
 
@@ -36,7 +36,10 @@ export const api = ky.create({
 Throw a typed error so UI + hooks can inspect `code` and `requestId`.
 
 ```typescript
-import type { ApiErrorResponse } from "@/shared/kernel/response";
+// Import from your shared response-contract module.
+// Example path:
+// "@/path/to/shared/response-contract"
+import type { ApiErrorResponse } from "@/path/to/shared/response-contract";
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -77,7 +80,7 @@ const isApiErrorResponse = (value: unknown): value is ApiErrorResponse => {
 ## Example client function
 
 ```typescript
-import type { ApiErrorResponse, ApiResponse } from "@/shared/kernel/response";
+import type { ApiErrorResponse, ApiResponse } from "@/path/to/shared/response-contract";
 
 export async function previewGoogleLoc(url: string) {
   const response = await api.post("api/poc/google-loc", {
@@ -121,6 +124,90 @@ export function useMutGoogleLocPreview() {
   });
 }
 ```
+
+## Feature API Contract (Recommended)
+
+Do not expose raw transport functions directly to hooks long-term.
+Wrap them behind `I<Feature>Api` + class in `src/features/<feature>/api.ts`.
+
+```typescript
+export interface IGoogleLocApi {
+  preview(input: { url: string }): Promise<{ lat?: number; lng?: number }>;
+}
+
+export class GoogleLocApi implements IGoogleLocApi {
+  constructor(private readonly deps: { clientApi: typeof api }) {}
+
+  async preview(input: { url: string }) {
+    return previewGoogleLoc(input.url);
+  }
+}
+```
+
+Testing implication:
+
+- API class tests mock transport boundary
+- query hook tests mock `IGoogleLocApi`
+
+## Invalidation Ownership (Mixed)
+
+For non-tRPC adapters, query keys come from `src/common/query-keys/<feature>.ts`.
+
+Variant A (preferred): hook-owned invalidation
+
+```typescript
+export function useMutGoogleLocPreview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ url }: { url: string }) => previewGoogleLoc(url),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: googleLocQueryKeys.preview._def,
+      });
+    },
+  });
+}
+```
+
+Variant B (allowed): component-coordinator invalidation
+
+```typescript
+const queryClient = useQueryClient();
+const previewMut = useMutGoogleLocPreview();
+
+const onInvalidate = async () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.preview._def }),
+    queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.history._def }),
+  ]);
+
+const onSubmit = async ({ url }: { url: string }) => {
+  await previewMut.mutateAsync({ url });
+  await onInvalidate();
+};
+```
+
+Choose based on orchestration scope:
+
+- Shared mutation behavior across screens: hook-owned.
+- Route-local submit flow sequencing: component-coordinator.
+
+Detailed scenario matrix:
+
+- `client/frameworks/reactjs/server-state-patterns-react.md`
+
+## Error Normalization Handoff
+
+This layer should emit a typed transport error (for example `ApiClientError`), then hand off normalization to the app error adapter:
+
+```text
+Network failure / non-2xx response
+  -> ApiClientError (transport-typed)
+  -> toAppError(err) adapter
+  -> UI branches on AppError.kind only
+```
+
+Preserve `requestId` when present so support/debug logs can correlate client and server events.
 
 ## Notes
 

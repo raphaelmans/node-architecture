@@ -212,42 +212,64 @@ className = "bg-blue-500";
 
 ### Business Component Example
 
+Both patterns below are valid. Prefer A for reuse; choose B when route-local orchestration needs to stay in the component.
+
+Variant A: hook-owned invalidation (preferred)
+
 ```typescript
 // src/features/profile/components/profile-form.tsx
 'use client'
 
 export default function ProfileForm() {
-  // Data fetching
   const profileQuery = useQueryProfileCurrent()
-  const queryClient = useQueryClient()
-  // Query keys: src/common/query-keys/profile.ts
-  // import { profileQueryKeys } from "@/common/query-keys/profile"
 
-  // Form state ownership
   const form = useForm<ProfileFormShape>({
     resolver: zodResolver(profileFormSchema),
     mode: "onSubmit",
   })
   const { isSubmitting } = form.formState
 
-  // Mutations
+  // Hook owns invalidation behavior
   const updateMut = useMutProfileUpdate()
 
-  // Business logic
   const onSubmit = async (data: ProfileFormShape) => {
     await updateMut.mutateAsync(data)
-    await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def })
     router.push(appRoutes.dashboard)
   }
-
-  return (
-    <StandardFormProvider form={form} onSubmit={onSubmit}>
-      <ProfileFirstNameField />  {/* Presentation */}
-      <ProfileLastNameField />   {/* Presentation */}
-      <Button type='submit' disabled={isSubmitting}>Save</Button>
-    </StandardFormProvider>
-  )
 }
+```
+
+Variant B: component-coordinator invalidation (allowed)
+
+```typescript
+export default function ProfileForm() {
+  const queryClient = useQueryClient()
+  const updateMut = useMutProfileUpdate()
+
+  const onSubmitInvalidateQueries = async () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
+    ])
+
+  const onSubmit = async (data: ProfileFormShape) => {
+    await updateMut.mutateAsync(data)
+    await onSubmitInvalidateQueries()
+    router.push(appRoutes.dashboard)
+  }
+}
+```
+
+See `./server-state-patterns-react.md` for complete decision rules and scenarios.
+
+```typescript
+// Shared render structure (inside either variant)
+return (
+  <StandardFormProvider form={form} onSubmit={onSubmit}>
+    <ProfileFirstNameField />  {/* Presentation */}
+    <ProfileLastNameField />   {/* Presentation */}
+    <Button type='submit' disabled={isSubmitting}>Save</Button>
+  </StandardFormProvider>
+)
 ```
 
 ### Presentation Component Example

@@ -19,6 +19,14 @@ Use this for:
 - view-model shaping for a specific screen (grouping, sorting, labeling)
 - UX-only reconciliation (placeholders, bucketing, presentation concerns)
 
+## Implementation Rule
+
+Domain files stay function-based:
+
+- `domain.ts` and `helpers.ts` export pure functions
+- avoid feature API classes in domain files
+- keep mutable IO collaborators in `api.ts` (`I<Feature>Api` + class)
+
 ## Precedence Rule
 
 When deciding where logic goes:
@@ -67,6 +75,20 @@ Keep client-only transforms inside the feature:
 - `src/features/<feature>/helpers.ts`: small pure helpers
 
 Use this layer for view-model shaping and screen-specific decisions.
+
+## Testing Strategy
+
+For `domain.ts` / `helpers.ts`:
+
+- unit test as pure functions (no mocks, no network, no framework runtime)
+- prefer table-driven cases for edge conditions
+- keep tests deterministic and fast
+
+For shared module logic (`src/lib/modules/<module>/shared/*`):
+
+- keep the same pure test style
+- if extracted to a monorepo package later, move tests with the package
+- consumer apps (client/server) should not duplicate the same invariant tests
 
 ## Example: Ledger Breakdown
 
