@@ -1,124 +1,155 @@
-# OpenCode Integration Guide
-
-This guide explains how to integrate project rules into OpenCode for new projects while minimizing stale instructions.
+# OpenCode Integration Guide (Shared Rules + External References)
 
 Primary reference:
 
-- https://opencode.ai/docs/rules/#custom-instructions
+- https://opencode.ai/docs/rules/#referencing-external-files
 
-## Goal: Avoid Stale Instructions
+This guide explains how to integrate project rules into OpenCode while minimizing stale instructions and keeping rule reuse easy across many repos.
 
-Use one canonical source of truth for architecture and coding rules, then reference those files from OpenCode config.
+## What OpenCode Loads (Additive)
 
-Recommended precedence for maintainability:
+OpenCode loads rule text from multiple sources and combines them.
 
-1. `opencode.json` `instructions` field (primary)
-2. `AGENTS.md` explicit external-file loader instructions (fallback / compatibility)
+1) `AGENTS.md` (auto-loaded)
 
-Rule:
+- OpenCode searches from the current directory upward.
+- The nearest matching file wins for the local slot (`AGENTS.md` preferred over `CLAUDE.md`).
+- A global file may also apply: `~/.config/opencode/AGENTS.md`.
 
-- Avoid duplicating long policy text in multiple files.
-- Keep `opencode.json` and `AGENTS.md` as pointer layers that reference canonical docs.
+2) `opencode.json` `instructions` (explicit includes)
 
-## Using `opencode.json`
+- Any files (or globs) listed in `instructions` are loaded in addition to `AGENTS.md`.
+- Remote URLs are supported, fetched with a short timeout (~5s).
 
-This is the recommended approach from OpenCode docs.
+Design rule:
 
-`opencode.json` example:
+- Keep `AGENTS.md` small and repo-specific.
+- Put reusable, canonical rules in separate files and include them via `opencode.json`.
+
+## Recommended Pattern
+
+1. Canonical docs live in modular files (one concern per file).
+2. Each repo keeps a thin `AGENTS.md` for repo facts + caveats.
+3. Each repo uses `opencode.json` `instructions` to include canonical docs.
+
+Avoid:
+
+- Duplicating the same policy text across multiple files.
+- A large `AGENTS.md` that drifts from the canonical docs.
+
+## Using `opencode.json` (Preferred)
+
+Example (repo-relative paths):
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "instructions": [
     "CONTRIBUTING.md",
-    "client/core/onboarding.md",
-    "client/core/overview.md",
-    "client/core/conventions.md",
-    "server/core/overview.md"
+    "docs/rules/*.md",
+    "packages/*/AGENTS.md"
   ]
 }
 ```
 
-Why this is best for freshness:
+Notes:
 
-- You update canonical docs once.
-- OpenCode loads current instructions from file paths/globs.
-- Teams share the same committed instruction map.
-- Instruction files from `instructions` are combined with `AGENTS.md` files at runtime, so keeping `AGENTS.md` thin avoids drift.
+- `instructions` accepts file paths, glob patterns, and remote URLs.
+- Remote URLs are best-effort due to the short timeout; keep critical rules local.
 
-Also supported by OpenCode:
+## Referencing External Files ("@...") and Lazy Loading
 
-- globs (for example `docs/rules/*.md`)
-- remote URLs in `instructions` (useful for shared org-wide standards)
+OpenCode does not automatically parse `@file.md` references inside `AGENTS.md`.
+If you want an `@...` "read on demand" workflow, you must explicitly instruct the agent to treat `@...` references as files to read lazily.
 
-Operational note:
-
-- Remote instruction fetch uses a short timeout, so keep critical core rules in local files.
-
-## Manual Instructions in `AGENTS.md`
-
-OpenCode does not automatically parse file references in `AGENTS.md`; use explicit instructions that tell the agent when and how to load files.
-
-`AGENTS.md` example:
+Minimal `AGENTS.md` snippet:
 
 ```md
-# Project Rules Loader
-
-## External File Loading
-
-CRITICAL: When a task references a rule file, read it using the Read tool on a need-to-know basis.
-
-Instructions:
-
+## External File Loading (Lazy)
+CRITICAL: When you encounter a reference like `@path/to/rules.md`, use your Read tool to load it only if it is relevant to the current task.
 - Do not preload every referenced file.
-- Load only files relevant to the current task.
-- Treat loaded files as mandatory project instructions.
-
-Core references:
-
-- @CONTRIBUTING.md
-- @client/core/onboarding.md
-- @client/core/overview.md
-- @client/core/conventions.md
-- @server/core/overview.md
+- When loaded, treat it as mandatory instructions.
 ```
 
-Use this approach when:
+Implementation detail:
 
-- you cannot rely on `opencode.json` yet
-- you need explicit lazy-loading behavior in project-level instructions
-- you want to keep `AGENTS.md` concise while referencing modular rule files
+- In some OpenCode templates (commands/agents), `@...` tokens may be resolved automatically. Do not rely on this behavior for `AGENTS.md`.
 
-## Best-Practice Pattern for This Repo
+## Sharing Rules Across Repos (Options)
 
-Canonical contracts live in:
+1) Git submodule (recommended)
 
-- Client core: `client/core/*`
+- Add this repo as a submodule, for example `vendor/node-architecture/`.
+- Use repo-relative globs in `opencode.json`.
+
+Pros: portable, versionable, CI-friendly; enables recursive `**` globs.
+Cons: submodule workflow overhead.
+
+2) Symlink (local-only)
+
+- Symlink a shared rules directory into the repo.
+
+Pros: quick locally.
+Cons: often breaks across OS/CI; not reliably shareable.
+
+3) Remote URL (org-wide baseline)
+
+```json
+{
+  "instructions": [
+    "https://raw.githubusercontent.com/my-org/shared-rules/<sha>/entry.md"
+  ]
+}
+```
+
+Pros: centralized updates.
+Cons: 5s timeout; availability risk; pin to SHA/tag.
+
+4) Absolute paths (last resort)
+
+- Useful for one machine; not portable across team/CI.
+
+## Globs: Relative vs Absolute (Important)
+
+Relative globs are the safest and most powerful (including recursive `**`).
+
+Absolute-path `instructions` have a limitation:
+
+- Globbing only applies to the basename (final path segment).
+- Do not use wildcards in the directory portion.
+
+Works:
+
+- `/Users/you/rules/*.md`
+
+Does not work as intended:
+
+- `/Users/you/rules/**/core/*.md`
+- `/Users/you/**/rules/*.md`
+
+If you need recursion (`**`), use repo-relative patterns (submodule/vendor) so `**` applies.
+
+## This Repo (node-architecture) Canonical Docs
+
+- Client core: `client/core/*.md`
 - Client framework specifics: `client/frameworks/*`
 - Server core: `server/core/*`
 - Server runtime specifics: `server/runtime/*`
 
-Pointer layers should stay minimal:
-
-- `opencode.json` points to canonical docs
-- `AGENTS.md` instructs how to load canonical docs
-
 ## New Project Bootstrap
 
-1. Create canonical architecture docs first (`core` + framework/runtime docs).
-2. Add `opencode.json` with `instructions` pointing to those docs.
-3. Add minimal `AGENTS.md` fallback loader instructions if needed.
-4. Validate by running a task and confirming OpenCode reads the intended files.
+1. Add/confirm a thin project `AGENTS.md`.
+2. Add `opencode.json` with `instructions` pointing at canonical docs.
+3. Validate by starting OpenCode in the repo and confirming expected instructions are present.
 
 ## Stale-Prevention Checklist
 
-- [ ] One canonical file per rule/concern
-- [ ] `opencode.json` contains only pointers (no duplicated policy text)
-- [ ] `AGENTS.md` contains loading behavior + pointers only
-- [ ] Canonical docs are updated first when rules change
-- [ ] Periodic consistency audit checks for contradictory guidance
+- [ ] One canonical file per concern
+- [ ] `opencode.json` contains pointers only
+- [ ] `AGENTS.md` contains repo facts + minimal loader rules
+- [ ] Shared rules are referenced via relative paths (preferred) or pinned URLs
 
 ## References
 
-- OpenCode Rules: https://opencode.ai/docs/rules/#custom-instructions
-- OpenCode Rules (full page): https://opencode.ai/docs/rules/
+- OpenCode Rules: https://opencode.ai/docs/rules/
+- OpenCode Config: https://opencode.ai/docs/config/#instructions
