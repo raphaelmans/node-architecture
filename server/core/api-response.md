@@ -86,6 +86,8 @@
 
 Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse` in `shared/kernel/response.ts`.
 
+`message` must always be public-safe text. Internal diagnostics (SQL/provider errors, stack traces) must never be serialized to clients.
+
 ```typescript
 {
   code: string,
@@ -105,6 +107,12 @@ Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse`
   "details": {
     "userId": "550e8400-e29b-41d4-a716-446655440000"
   }
+}
+
+{
+  "code": "INTERNAL_ERROR",
+  "message": "An unexpected error occurred",
+  "requestId": "req-abc-123"
 }
 ```
 
@@ -180,7 +188,7 @@ export type ApiResponse<T> = {
 
 export interface ApiErrorResponse {
   code: string;
-  message: string;
+  message: string; // Public-safe user-facing message
   requestId: string;
   details?: Record<string, unknown>;
 }

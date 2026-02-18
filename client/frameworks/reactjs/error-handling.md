@@ -89,7 +89,7 @@ ErrorHandling Facade              <-- FACADE
 
 - On submit error: normalize to `AppError`.
 - If `kind === "validation"`: map field errors via `setError(...)`.
-- Otherwise: show the actual error message in UI/toast.
+- Otherwise: show a safe user-facing message in UI/toast (generic fallback for internal failures).
 
 ### Global handling (optional)
 
@@ -174,7 +174,7 @@ const onSubmit = async (data: ProfileFormShape) => {
   );
 
   if (!result.ok) {
-    // Error toast has already been shown using AppError.message.
+    // Error toast has already been shown using a safe AppError-derived message.
     // Optional: branch on result.error.kind for additional handling.
     return;
   }
@@ -193,7 +193,7 @@ Do:
 
 - Normalize once -> `AppError`
 - Keep provider checks inside adapters only
-- Preserve the actual error message in `AppError.message` when safe/available
+- Preserve only user-safe messages in `AppError.message`; use generic fallback for internal failures
 - Use facade helpers for consistent UX
 
 Don't:

@@ -13,7 +13,7 @@ Instead:
 
 ## App Error Contract (Single Source of Truth)
 
-We use a discriminated union. Team preference: preserve the actual error message when safe/available.
+We use a discriminated union. Preserve only user-safe messages; use generic fallbacks for internal failures.
 
 ```ts
 export type AppError =
@@ -84,6 +84,8 @@ src/common/errors/
 - Validation errors should be mapped close to the user’s input.
 - Query adapter owns retry and invalidation policies; components only render states.
 - Preserve safe metadata from transport errors when available: `message`, `code`, `status`, `requestId`.
+- Treat `message` as public-safe text, not raw diagnostics.
+- For internal/unexpected/server failures (`5xx` / `INTERNAL_*`), render a generic message (for example: `Something went wrong`).
 - Normalize once at adapter boundary, then branch only on `AppError.kind`.
 - Inject `toAppError` into `featureApi` classes so normalization behavior is testable and consistent.
 
@@ -91,7 +93,7 @@ src/common/errors/
 
 When provider-specific errors include useful metadata, adapters should preserve it:
 
-- `message`: preserve actual user-safe message
+- `message`: preserve only user-safe message
 - `code`: preserve machine-readable code when present
 - `status`: preserve HTTP status when present
 - `requestId`: preserve request correlation identifier when present

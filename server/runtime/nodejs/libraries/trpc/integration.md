@@ -84,6 +84,24 @@ import { AppError } from '@/shared/kernel/errors';
 import { logger } from '@/shared/infra/logger';
 import type { Context } from './context';
 
+const INTERNAL_CODES = new Set([
+  'INTERNAL_ERROR',
+  'BAD_GATEWAY',
+  'SERVICE_UNAVAILABLE',
+  'GATEWAY_TIMEOUT',
+]);
+
+function isInternalError(error: AppError): boolean {
+  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
+}
+
+function toPublicMessage(error: AppError): string {
+  if (isInternalError(error)) {
+    return 'An unexpected error occurred';
+  }
+  return error.message;
+}
+
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
     const cause = error.cause;
@@ -102,11 +120,13 @@ const t = initTRPC.context<Context>().create({
 
       return {
         ...shape,
+        message: toPublicMessage(cause),
         data: {
           ...shape.data,
           code: cause.code,
+          httpStatus: cause.httpStatus,
           requestId,
-          details: cause.details,
+          ...(cause.details && !isInternalError(cause) && { details: cause.details }),
         },
       };
     }
@@ -115,8 +135,10 @@ const t = initTRPC.context<Context>().create({
 
     return {
       ...shape,
+      message: 'An unexpected error occurred',
       data: {
         ...shape.data,
+        httpStatus: 500,
         code: 'INTERNAL_ERROR',
         requestId,
       },

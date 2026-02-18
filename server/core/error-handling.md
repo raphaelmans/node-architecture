@@ -10,6 +10,15 @@
 - Internal details are logged, never exposed
 - Domain-specific errors for clear API contracts
 
+## Public Error Message Policy
+
+Use a hybrid policy so clients get actionable messages for expected failures, while internal details stay private:
+
+- Expected client-correctable errors (typically `4xx`): return a user-safe message.
+- Internal or infrastructure failures (`5xx`, unexpected exceptions): return a generic message.
+- Never serialize raw SQL/provider/stack messages in response bodies.
+- Always log full error context server-side with `requestId`.
+
 ## Base Error Class
 
 ```typescript
@@ -235,7 +244,7 @@ The standardized HTTP error response type is `ApiErrorResponse` (defined in `sha
 // shared/kernel/response.ts
 export interface ApiErrorResponse {
   code: string; // Error code (e.g., "USER_NOT_FOUND")
-  message: string; // Human-readable message
+  message: string; // Public-safe user-facing message
   requestId: string; // For support/debugging
   details?: Record<string, unknown>; // Optional additional context
 }
@@ -286,6 +295,28 @@ import { AppError } from "@/shared/kernel/errors";
 import { logger } from "@/shared/infra/logger";
 import type { ApiErrorResponse } from "@/shared/kernel/response";
 
+const INTERNAL_CODES = new Set([
+  "INTERNAL_ERROR",
+  "BAD_GATEWAY",
+  "SERVICE_UNAVAILABLE",
+  "GATEWAY_TIMEOUT",
+]);
+
+function isInternalError(error: AppError): boolean {
+  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
+}
+
+function toPublicMessage(error: AppError): string {
+  if (isInternalError(error)) {
+    return "An unexpected error occurred";
+  }
+  return error.message;
+}
+
+function shouldExposeDetails(error: AppError): boolean {
+  return !isInternalError(error);
+}
+
 export function handleError(
   error: unknown,
   requestId: string,
@@ -306,9 +337,10 @@ export function handleError(
       status: error.httpStatus,
       body: {
         code: error.code,
-        message: error.message,
+        message: toPublicMessage(error),
         requestId,
-        ...(error.details && { details: error.details }),
+        ...(shouldExposeDetails(error) &&
+          error.details && { details: error.details }),
       },
     };
   }
