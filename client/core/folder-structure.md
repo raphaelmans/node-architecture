@@ -52,12 +52,13 @@ Recommended files:
 - `domain.ts` for deterministic domain rules
 - `helpers.ts` for small pure transforms
 - `types.ts` for non-DTO feature-owned types
-- `api.test.ts` for `<Feature>Api` dependency-injection tests
 
 Optional:
 
 - `stores/*` only for client coordination state (not primary server data)
-- `domain.test.ts` / `helpers.test.ts` for pure function tests
+
+Tests for these files go in `src/__tests__/features/<feature>/` — never colocated.
+See Testing Layout below and `client/core/testing.md`.
 
 ## Ownership Boundaries by Path
 
@@ -69,15 +70,30 @@ Optional:
 - `src/common/toast/*`: notification facade + provider adapters.
 - `src/common/logging/*`: logger contract + adapters/wrappers.
 
-## Testing Layout (Recommended)
+## Testing Layout
+
+Tests live in `src/__tests__/` and **mirror the source tree exactly**. Never colocate test files next to source files.
 
 ```text
-src/features/<feature>/
-  api.test.ts       # mock clientApi + toAppError, assert class behavior
-  hooks.test.ts     # mock I<Feature>Api, assert query/invalidation behavior
-  domain.test.ts    # pure table-driven tests (no mocks)
-  helpers.test.ts   # pure table-driven tests (no mocks)
+src/
+  __tests__/
+    features/
+      <feature>/
+        api.test.ts       # mock clientApi + toAppError, assert class behavior
+        hooks.test.ts     # mock I<Feature>Api, assert query/invalidation behavior
+        domain.test.ts    # pure table-driven tests (no mocks)
+        helpers.test.ts   # pure table-driven tests (no mocks)
+    common/
+      errors/
+        error-adapter.test.ts
+    lib/
+      modules/
+        <module>/
+          shared/
+            domain.test.ts
 ```
+
+Full testing standard: `client/core/testing.md`.
 
 ## Cross-Feature Promotion Rules
 

@@ -90,6 +90,13 @@ For shared module logic (`src/lib/modules/<module>/shared/*`):
 - if extracted to a monorepo package later, move tests with the package
 - consumer apps (client/server) should not duplicate the same invariant tests
 
+Test files live in `src/__tests__/` mirroring the source tree:
+
+- `src/features/<feature>/domain.ts` → `src/__tests__/features/<feature>/domain.test.ts`
+- `src/lib/modules/<module>/shared/domain.ts` → `src/__tests__/lib/modules/<module>/shared/domain.test.ts`
+
+Full testing standard (AAA pattern, table-driven, test doubles, naming): `client/core/testing.md`.
+
 ## Example: Ledger Breakdown
 
 Scenario: the server returns ledger entities/records, and the client needs to compute a breakdown and render it.

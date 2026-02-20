@@ -163,6 +163,6 @@ For detailed frontend-specific folder conventions, see [./core/folder-structure.
 - [ ] Create business component for data/forms
 - [ ] Create presentation components for fields
 - [ ] Add URL state hooks in `hooks.ts` if needed
-- [ ] Add tests: `api.test.ts` (mock deps), `domain/helpers` pure tests
+- [ ] Add tests in `src/__tests__/features/<feature>/`: `api.test.ts` (mock deps), `domain.test.ts` / `helpers.test.ts` (pure, no mocks) — see `client/core/testing.md`
 - [ ] Add route to `app-routes.ts`
 - [ ] Create page in the appropriate route group under `app/` (project-defined, e.g. `app/(protected)/<feature>/`)

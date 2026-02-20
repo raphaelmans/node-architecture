@@ -157,6 +157,9 @@ Test by boundary:
 - `hooks.ts`: test query behavior by mocking `I<Feature>Api`, not transport.
 - business components: mock feature hooks, not network clients.
 
+All test files live in `src/__tests__/` mirroring the source tree.
+Full testing standard (AAA pattern, table-driven tests, test doubles, naming): `client/core/testing.md`.
+
 ## Conventions
 
 - Zod parse at boundaries: `featureApi` parses responses and returns safe data.

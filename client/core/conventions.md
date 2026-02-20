@@ -110,6 +110,9 @@ Testing rules:
 - unit test class behavior by mocking injected dependencies
 - query adapter tests mock `I<Feature>Api` (not transport providers)
 - domain helpers stay function-based and are tested without mocks
+- all test files live in `src/__tests__/` mirroring the source tree (never colocated)
+
+Full standard: `client/core/testing.md`.
 
 ## Domain Logic Placement (Precedence)
 
@@ -192,4 +195,5 @@ Colocation:
 - [ ] Domain transforms follow precedence (`lib/modules/<module>/shared` first, then feature-local)
 - [ ] `domain.ts` / `helpers.ts` tests are pure (no mocks)
 - [ ] `api.ts` unit tests mock injected dependencies (`clientApi`, `toAppError`)
+- [ ] Test files are in `src/__tests__/` mirroring source tree (not colocated)
 - [ ] Shared contracts are in `src/common/*` only when truly cross-feature

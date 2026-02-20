@@ -15,6 +15,7 @@ Use this order for a new project or contributor onboarding:
 6. `client/core/server-state-tanstack-query.md`
 7. `client/core/error-handling.md`
 8. `client/core/logging.md`
+9. `client/core/testing.md`
 
 Then read framework details:
 
@@ -58,3 +59,4 @@ Rule:
 | [State Management](./state-management.md) | Conceptual state decision guide |
 | [Error Handling](./error-handling.md) | Error taxonomy + handling rules |
 | [Logging](./logging.md) | Client logging conventions (`debug`) |
+| [Testing](./testing.md) | Unit testing standard: `__tests__` layout, AAA, test doubles |

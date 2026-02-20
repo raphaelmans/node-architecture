@@ -2,6 +2,32 @@
 
 > Canonical testing standard for controller/usecase/service/repository layers.
 
+## Folder Structure: `__tests__` Mirror Layout
+
+All test files live in `src/__tests__/` and mirror the source tree exactly.
+Never colocate test files next to source files.
+
+```text
+src/
+  __tests__/
+    modules/
+      <module>/
+        <module>.controller.test.ts   # input validation, error mapping
+        <module>.service.test.ts      # domain rules, SRP behavior
+        <module>.repository.test.ts   # persistence contract, query semantics
+        <module>.usecase.test.ts      # orchestration (if usecase layer present)
+    common/
+      errors/
+        error-handler.test.ts
+    lib/
+      modules/
+        <module>/
+          shared/
+            domain.test.ts            # shared pure domain rules
+```
+
+Navigation rule: `src/modules/<module>/<module>.service.ts` → `src/__tests__/modules/<module>/<module>.service.test.ts`.
+
 ## Architecture Flow (Canonical)
 
 The server flow is:
@@ -152,3 +178,4 @@ Recommended test split:
 - `./error-handling.md`
 - `./rate-limiting.md`
 - `./webhook/testing-overview.md` (specialized extension for webhook domain)
+- `client/core/testing.md` (shared concepts: AAA pattern, test doubles policy, anti-patterns, naming convention)

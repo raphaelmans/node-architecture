@@ -62,12 +62,28 @@ else
     echo -e "${YELLOW}  Warning: server/ not found${NC}"
 fi
 
-# Copy README.md
-if [ -f "$SCRIPT_DIR/README.md" ]; then
-    echo "  Copying README.md..."
-    cp "$SCRIPT_DIR/README.md" "$GUIDES_DIR/README.md"
+# Copy GUIDES-README.md as guides/README.md (DO NOT EDIT warning for consumer repos)
+if [ -f "$SCRIPT_DIR/GUIDES-README.md" ]; then
+    echo "  Copying GUIDES-README.md -> README.md..."
+    cp "$SCRIPT_DIR/GUIDES-README.md" "$GUIDES_DIR/README.md"
 else
-    echo -e "${YELLOW}  Warning: README.md not found${NC}"
+    echo -e "${YELLOW}  Warning: GUIDES-README.md not found${NC}"
+fi
+
+# Copy AGENTS-MD-ALIGNMENT.md
+if [ -f "$SCRIPT_DIR/AGENTS-MD-ALIGNMENT.md" ]; then
+    echo "  Copying AGENTS-MD-ALIGNMENT.md..."
+    cp "$SCRIPT_DIR/AGENTS-MD-ALIGNMENT.md" "$GUIDES_DIR/AGENTS-MD-ALIGNMENT.md"
+else
+    echo -e "${YELLOW}  Warning: AGENTS-MD-ALIGNMENT.md not found${NC}"
+fi
+
+# Copy UPDATE-ARCHITECTURE.md
+if [ -f "$SCRIPT_DIR/UPDATE-ARCHITECTURE.md" ]; then
+    echo "  Copying UPDATE-ARCHITECTURE.md..."
+    cp "$SCRIPT_DIR/UPDATE-ARCHITECTURE.md" "$GUIDES_DIR/UPDATE-ARCHITECTURE.md"
+else
+    echo -e "${YELLOW}  Warning: UPDATE-ARCHITECTURE.md not found${NC}"
 fi
 
 echo ""
@@ -77,4 +93,9 @@ echo "Structure:"
 echo "  $GUIDES_DIR/"
 echo "  ├── client/"
 echo "  ├── server/"
-echo "  └── README.md"
+echo "  ├── README.md                  (DO NOT EDIT — generated)"
+echo "  ├── AGENTS-MD-ALIGNMENT.md     (configure AGENTS.md / CLAUDE.md)"
+echo "  └── UPDATE-ARCHITECTURE.md     (how to update these guides)"
+echo ""
+echo -e "${YELLOW}Next step:${NC} Open guides/AGENTS-MD-ALIGNMENT.md and follow"
+echo "           the steps to update your AGENTS.md or CLAUDE.md."
