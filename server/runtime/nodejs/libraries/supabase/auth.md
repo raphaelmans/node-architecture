@@ -772,6 +772,19 @@ export interface AuthenticatedContext extends Context {
   userId: string;
 }
 
+const USER_ROLES = ["admin", "member", "viewer"] as const;
+
+function isUserRole(role: unknown): role is Session["role"] {
+  return USER_ROLES.some((allowedRole) => allowedRole === role);
+}
+
+function normalizeUserRole(
+  role: unknown,
+  fallback: Session["role"] = "member",
+): Session["role"] {
+  return isUserRole(role) ? role : fallback;
+}
+
 export async function createContext({ req }: FetchCreateContextFnOptions): Promise<Context> {
   const requestId = req.headers.get("x-request-id") ?? randomUUID();
   const cookieStore = await cookies();
@@ -808,7 +821,7 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
       session = {
         userId: user.id,
         email: user.email!,
-        role: (userRole?.role as Session["role"]) ?? "member",
+        role: normalizeUserRole(userRole?.role),
       };
     }
   } catch {

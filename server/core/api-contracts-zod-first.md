@@ -76,3 +76,13 @@ See:
 - OpenAPI Specification: https://spec.openapis.org/oas/latest.html
 - OpenAPI Paths Object: https://spec.openapis.org/oas/latest.html#paths-object
 - OpenAPI Operation Object: https://spec.openapis.org/oas/latest.html#operation-object
+
+## Adapter Boundary Enforcement
+
+Zod-first contracts remain canonical, and adapter boundaries must expose them explicitly:
+
+- Route/controller adapters should bind success envelopes to concrete response types.
+- Avoid transport-level `unknown` response payload types for external APIs.
+- OpenAPI operation responses must be derived from the same contract intent and stay synchronized with route behavior.
+
+This keeps coexistence practical: same domain behavior, same validation intent, same envelope semantics across tRPC and OpenAPI.

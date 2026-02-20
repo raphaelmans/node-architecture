@@ -47,3 +47,16 @@ See `./parity-testing.md`.
 
 - OpenAPI Specification: https://spec.openapis.org/oas/latest.html
 - OpenAPI Initiative: https://www.openapis.org/
+
+## External Contract Hardening (Required)
+
+For externally consumed OpenAPI surfaces:
+
+- Success response schemas must be explicit per operation (or per clearly scoped response family).
+- Do not publish operation success schemas with `data: unknown`.
+- Keep envelope parity with runtime route handlers (`ApiResponse<T>` for 2xx, shared error envelope for non-2xx).
+- Treat route behavior + OpenAPI document updates as a single change unit to avoid drift.
+
+Practical rule:
+
+- If route payload changes, update operation response schema in the same PR.

@@ -59,3 +59,18 @@ Before switching client traffic from tRPC to OpenAPI for a capability:
 - parity tests pass in CI
 - observability confirms equivalent failure/success rates
 - fallback path to previous transport is documented
+
+## Additional Contract Gates
+
+Beyond behavior parity, enforce contract hardening gates before rollout:
+
+- Zero `ApiResponse<unknown>` / `ApiResponse<any>` usage in external route handlers.
+- No `data: unknown` success schema for covered external OpenAPI operations.
+- Fixture assertions must validate envelope shape (`{ data: ... }`) and key payload fields, not only status codes.
+
+Suggested checks:
+
+```bash
+rg -n "ApiResponse<unknown>|ApiResponse<any>" src/app/api --glob '**/route.ts'
+rg -n "data:\\s*z\\.unknown\\(" src/lib/**/openapi*.ts
+```

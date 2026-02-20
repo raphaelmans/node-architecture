@@ -85,6 +85,7 @@ src/common/errors/
 - Query adapter owns retry and invalidation policies; components only render states.
 - Preserve safe metadata from transport errors when available: `message`, `code`, `status`, `requestId`.
 - Treat `message` as public-safe text, not raw diagnostics.
+- Treat response-decoding schema failures (for example `ZodError` while parsing API payloads) as transport contract violations; map to a safe `validation`/`api.invalid_response` message and keep detailed issues in non-UI metadata/logs.
 - For internal/unexpected/server failures (`5xx` / `INTERNAL_*`), render a generic message (for example: `Something went wrong`).
 - Normalize once at adapter boundary, then branch only on `AppError.kind`.
 - Inject `toAppError` into `featureApi` classes so normalization behavior is testable and consistent.

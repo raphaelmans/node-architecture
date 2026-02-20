@@ -480,3 +480,26 @@ src/lib/
 - [ ] Endpoint DTOs extend `PaginationInputSchema` with custom filters
 - [ ] Services implement search on relevant fields
 - [ ] Routers return consistent envelope structure
+
+## External Route Contract Hardening (Required)
+
+For externally consumed HTTP endpoints (for example mobile/public APIs), route adapters MUST keep success contracts explicit at compile time.
+
+- Do not use `ApiResponse<unknown>` or `ApiResponse<any>`.
+- Do not hide payload types inside wrappers such as `{ data: { method: unknown } }`.
+- Prefer method-level aliases derived from service interfaces:
+
+```typescript
+type GetThingResponse = Awaited<ReturnType<IThingService["getThing"]>>;
+return NextResponse.json<ApiResponse<GetThingResponse>>(wrapResponse(result));
+```
+
+- Migration fallback (temporary): `ApiResponse<typeof result>` is acceptable when service interface aliasing is not yet wired.
+- Keep route handlers thin and derive contracts from service/use-case boundaries, not route-local ad-hoc types.
+
+Recommended CI gates:
+
+```bash
+rg -n "ApiResponse<unknown>|ApiResponse<any>" src/app/api --glob '**/route.ts'
+rg -n "ApiResponse<\\{[^\\n}]*unknown" src/app/api --glob '**/route.ts'
+```

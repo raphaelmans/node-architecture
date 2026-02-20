@@ -59,3 +59,30 @@ export async function GET(req: Request) {
 - Keep route handlers thin: parse + validate input, call one service/use-case, return response.
 - Don’t return `{ data: null }` for not-found. Throw `NotFoundError`.
 - Don’t include stack traces in the response.
+
+## Response Type Derivation Rules (Required)
+
+For external route handlers (`app/api/**/route.ts`), enforce compile-time response contracts from domain boundaries.
+
+- Preferred: derive response alias from service interface method return type.
+- Use one alias per route method when a file has multiple methods.
+- Transitional fallback: `ApiResponse<typeof result>` until interface aliasing is in place.
+- Never use `ApiResponse<unknown>` / `ApiResponse<any>` on externally consumed endpoints.
+
+Pattern:
+
+```typescript
+type ListPlacesResponse = Awaited<ReturnType<IPlaceService["list"]>>;
+
+export async function GET(req: Request) {
+  const result = await makePlaceService().list();
+  return NextResponse.json<ApiResponse<ListPlacesResponse>>(wrapResponse(result));
+}
+```
+
+Minimum contract gates:
+
+```bash
+rg -n "ApiResponse<unknown>|ApiResponse<any>" src/app/api --glob '**/route.ts'
+rg -n "ApiResponse<\\{[^\\n}]*unknown" src/app/api --glob '**/route.ts'
+```
