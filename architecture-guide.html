@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Node Architecture — Interactive Guide</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;
+  --router:#58a6ff;--usecase:#bc8cff;--service:#3fb950;
+  --repo:#e3b341;--db:#79c0ff;--pres:#ec4899;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+
+/* NAV */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:20px}
+.logo{font-size:15px;font-weight:700;padding:16px 0;white-space:nowrap}.logo span{color:var(--router)}
+nav{display:flex;gap:2px;overflow-x:auto}
+nav button{background:none;border:none;color:var(--muted);cursor:pointer;padding:16px 10px;font-size:13px;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+nav button:hover{color:var(--text)}
+nav button.active{color:var(--text);border-bottom-color:var(--router)}
+
+/* LAYOUT */
+.section{display:none;max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+.section.active{display:block}
+h1{font-size:28px;font-weight:700;margin-bottom:8px}
+h2{font-size:18px;font-weight:600;margin-bottom:12px}
+h3{font-size:14px;font-weight:600}
+p{color:var(--muted);font-size:14px;line-height:1.7}
+.sub{font-size:15px;color:var(--muted);margin-bottom:36px}
+hr{border:none;border-top:1px solid var(--border);margin:36px 0}
+
+/* CARDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+@media(max-width:680px){.grid-2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+.card p{margin-top:6px}
+.card-icon{font-size:22px;margin-bottom:8px}
+
+/* BADGES */
+.badge-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* LAYER EXPLORER */
+.explorer{display:grid;grid-template-columns:268px 1fr;gap:20px;align-items:start;margin-top:24px}
+@media(max-width:700px){.explorer{grid-template-columns:1fr}}
+.layer-stack{display:flex;flex-direction:column;gap:4px}
+.layer-btn{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 14px;cursor:pointer;text-align:left;transition:all .2s;color:var(--text)}
+.layer-btn:hover{background:var(--surface2)}
+.layer-btn.active{background:var(--surface2);border-color:currentColor}
+.layer-bar{width:4px;height:34px;border-radius:2px;flex-shrink:0}
+.layer-name{font-size:13px;font-weight:600;display:block}
+.layer-short{font-size:11px;color:var(--muted);display:block;margin-top:1px}
+.connector{width:2px;height:6px;background:var(--border);margin:0 0 0 28px}
+
+/* DETAIL PANEL */
+.detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;position:sticky;top:68px}
+.detail-content{display:none;padding:22px}
+.detail-content.active{display:block}
+.layer-tag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+.detail-content h2{font-size:17px;margin-bottom:8px}
+.detail-content>p{margin-bottom:16px}
+.owns-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+@media(max-width:800px){.owns-grid{grid-template-columns:1fr}}
+.owns-box{background:var(--surface2);border-radius:6px;padding:12px}
+.owns-box h4{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.owns-box.yes h4{color:#3fb950}.owns-box.no h4{color:#f85149}
+.owns-box ul{list-style:none}
+.owns-box li{font-size:12px;color:var(--muted);padding:2px 0;display:flex;gap:6px}
+.owns-box li::before{content:'•';flex-shrink:0}
+.owns-box.yes li::before{color:#3fb950}.owns-box.no li::before{color:#f85149}
+
+/* CODE */
+.code-block{background:#010409;border:1px solid var(--border);border-radius:6px;padding:16px;overflow-x:auto;margin-top:14px}
+.code-block pre{font-family:'Cascadia Code','JetBrains Mono','Fira Code',monospace;font-size:12px;line-height:1.7;color:#e6edf3;white-space:pre;tab-size:2}
+.code-label{font-size:11px;color:var(--muted);font-family:monospace;margin-bottom:8px;display:block}
+.kw{color:#ff7b72}.ty{color:#ffa657}.st{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.fn{color:#d2a8ff}.nu{color:#79c0ff}
+
+/* OVERVIEW ARCH STACKS */
+.arch-wrap{display:flex;gap:28px;margin:28px 0;flex-wrap:wrap}
+.arch-col{flex:1;min-width:180px}
+.arch-col h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.arch-layer{padding:12px 14px;border-radius:6px;margin-bottom:5px;font-size:12px;font-weight:500;text-align:center;border-left:3px solid}
+
+/* RULES */
+.rule-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:20px 0}
+.rule-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px}
+.rule-num{font-size:18px;font-weight:800;color:var(--router);flex-shrink:0;line-height:1}
+.rule-text{font-size:12px;color:var(--muted);line-height:1.5}
+.rule-text strong{color:var(--text);display:block;margin-bottom:2px}
+
+/* DATA FLOW */
+.flow-wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px}
+@media(max-width:680px){.flow-wrap{grid-template-columns:1fr}}
+.flow-node{display:flex;align-items:center;gap:10px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:11px 16px;cursor:pointer;transition:all .3s;max-width:400px;margin:0 auto;user-select:none}
+.flow-node:hover{transform:translateY(-1px)}
+.flow-node.lit{border-color:currentColor;box-shadow:0 0 18px currentColor44}
+.node-icon{font-size:18px;flex-shrink:0}
+.node-name{font-size:13px;font-weight:600}
+.node-desc{font-size:11px;color:var(--muted)}
+.flow-arrow{text-align:center;color:var(--border);font-size:16px;margin:3px 0;display:flex;align-items:center;justify-content:center;gap:8px;transition:color .3s}
+.flow-arrow.lit{color:var(--router)}
+.arrow-label{font-size:10px;color:var(--muted);font-family:monospace}
+.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s}
+.btn:hover{background:var(--border)}
+.btn.primary{background:#238636;border-color:#2ea043}
+.btn.primary:hover{background:#2ea043}
+.flow-tip{display:none;background:#010409;border:1px solid var(--border);border-radius:6px;padding:14px;font-size:13px;color:var(--muted);min-height:80px}
+.flow-tip.active{display:block}
+.flow-tip strong{color:var(--text)}
+.flow-tip code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:11px;font-family:monospace;color:var(--db)}
+.flow-code{display:none}
+.flow-code.active{display:block}
+.btns{display:flex;gap:8px;margin-bottom:16px}
+
+/* PATTERNS */
+.patterns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pat-header{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .2s}
+.pat-header:hover{background:var(--surface2)}
+.pat-left{display:flex;align-items:center;gap:10px}
+.pat-icon{font-size:20px}
+.pat-title{font-size:13px;font-weight:600}
+.pat-tag{font-size:10px;color:var(--muted);margin-top:1px}
+.pat-chev{color:var(--muted);font-size:11px;transition:transform .2s}
+.pat-card.open .pat-chev{transform:rotate(180deg)}
+.pat-body{max-height:0;overflow:hidden;transition:max-height .3s;border-top:1px solid transparent}
+.pat-card.open .pat-body{max-height:700px;border-top-color:var(--border)}
+.pat-inner{padding:14px 18px 18px}
+.pat-inner p{margin-bottom:12px}
+
+/* ERRORS */
+.err-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.err-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.ldot{width:9px;height:9px;border-radius:50%}
+.err-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:default;transition:background .2s;margin:3px 0}
+.err-row:hover{background:var(--surface2)}
+.e-code{font-family:monospace;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.e-desc{font-size:12px;color:var(--muted)}
+.e-status{margin-left:auto;font-size:11px;font-weight:700;flex-shrink:0}
+.err-indent{margin-left:20px;border-left:2px solid var(--border);padding-left:14px}
+
+/* FILE TREE */
+.file-tree{font-family:'Cascadia Code',monospace;font-size:12px;background:#010409;border:1px solid var(--border);border-radius:8px;padding:18px;line-height:1.9;overflow-x:auto}
+.ft-folder{color:var(--router)}
+.ft-file{color:var(--text)}
+.ft-dim{color:var(--muted)}
+.ft-cmt{color:var(--muted);font-style:italic}
+.ft-badge{display:inline;padding:1px 6px;border-radius:3px;font-size:10px;margin-left:6px}
+.ft-req{background:#238636;color:#fff}
+.ft-opt{background:#30363d;color:var(--muted)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.tbl th{padding:9px 12px;text-align:left;color:var(--muted);font-weight:600;background:var(--surface2)}
+.tbl td{padding:9px 12px;border-top:1px solid var(--border);color:var(--muted)}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 currentColor33}50%{box-shadow:0 0 20px 3px currentColor33}}
+.flow-node.lit{animation:pulse 1.5s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Node<span>Arch</span></div>
+  <nav>
+    <button class="active" onclick="showTab('overview',this)">Overview</button>
+    <button onclick="showTab('backend',this)">Backend Layers</button>
+    <button onclick="showTab('frontend',this)">Frontend Layers</button>
+    <button onclick="showTab('dataflow',this)">Data Flow</button>
+    <button onclick="showTab('patterns',this)">Design Patterns</button>
+    <button onclick="showTab('errors',this)">Error Handling</button>
+    <button onclick="showTab('modules',this)">Module Structure</button>
+  </nav>
+</header>
+
+<!-- ═══════════════ OVERVIEW ═══════════════ -->
+<div class="section active" id="tab-overview">
+  <h1>Production Node.js Architecture</h1>
+  <p class="sub">A disciplined, layered full-stack system — explicit, testable, and framework-agnostic at the core.</p>
+
+  <div class="arch-wrap">
+    <div class="arch-col">
+      <h3>Backend</h3>
+      <div class="arch-layer" style="background:#58a6ff11;border-color:#58a6ff;color:#58a6ff">🌐 Router / Controller</div>
+      <div class="arch-layer" style="background:#bc8cff11;border-color:#bc8cff;color:#bc8cff">🎯 Use Case</div>
+      <div class="arch-layer" style="background:#3fb95011;border-color:#3fb950;color:#3fb950">⚙️ Service</div>
+      <div class="arch-layer" style="background:#e3b34111;border-color:#e3b341;color:#e3b341">🗄️ Repository</div>
+      <div class="arch-layer" style="background:#79c0ff11;border-color:#79c0ff;color:#79c0ff">💾 Database (PostgreSQL)</div>
+    </div>
+    <div class="arch-col">
+      <h3>Frontend</h3>
+      <div class="arch-layer" style="background:#58a6ff11;border-color:#58a6ff;color:#58a6ff">📄 Route / Page</div>
+      <div class="arch-layer" style="background:#bc8cff11;border-color:#bc8cff;color:#bc8cff">🧩 Feature Component</div>
+      <div class="arch-layer" style="background:#3fb95011;border-color:#3fb950;color:#3fb950">🪝 Query Adapter (Hooks)</div>
+      <div class="arch-layer" style="background:#e3b34111;border-color:#e3b341;color:#e3b341">🔌 Feature API</div>
+      <div class="arch-layer" style="background:#79c0ff11;border-color:#79c0ff;color:#79c0ff">📡 Client API (Transport)</div>
+    </div>
+    <div class="arch-col">
+      <h3>Shared Kernel</h3>
+      <div class="arch-layer" style="background:#30363d;border-color:var(--border);color:var(--text)">✅ Zod Schemas (contracts)</div>
+      <div class="arch-layer" style="background:#30363d;border-color:var(--border);color:var(--text)">🔑 AppError types</div>
+      <div class="arch-layer" style="background:#30363d;border-color:var(--border);color:var(--text)">📦 RequestContext</div>
+      <div class="arch-layer" style="background:#30363d;border-color:var(--border);color:var(--text)">🔄 TransactionManager</div>
+      <div class="arch-layer" style="background:#30363d;border-color:var(--border);color:var(--text)">📋 Pagination / Response</div>
+    </div>
+  </div>
+
+  <h2>Core Principles</h2>
+  <div class="grid-3">
+    <div class="card"><div class="card-icon">🔍</div><h3>Explicit over Implicit</h3><p>No IoC magic. Dependencies are wired manually in factories — every object creation is traceable.</p></div>
+    <div class="card"><div class="card-icon">🧱</div><h3>Strict Layer Boundaries</h3><p>Each layer has one responsibility. Dependencies only flow downward. No layer skips its neighbor.</p></div>
+    <div class="card"><div class="card-icon">🧪</div><h3>Testability First</h3><p>Interface-based layers + manual DI means every layer is testable in isolation with simple mocks.</p></div>
+    <div class="card"><div class="card-icon">📜</div><h3>Zod as Source of Truth</h3><p>Schemas define contracts. Types are inferred — no duplication between runtime validation and TypeScript.</p></div>
+    <div class="card"><div class="card-icon">🚫</div><h3>Framework-Agnostic Core</h3><p>Services and use cases are pure TypeScript. They don't know about Next.js, tRPC, or any framework.</p></div>
+    <div class="card"><div class="card-icon">🔒</div><h3>Public-Safe Errors</h3><p>5xx errors never reveal internals. Stack traces and SQL are logged server-side only.</p></div>
+  </div>
+
+  <h2 style="margin-top:36px">Tech Stack</h2>
+  <div class="grid-2" style="margin-top:14px">
+    <div>
+      <p style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Backend</p>
+      <div class="badge-row">
+        <span class="badge"><span class="dot" style="background:#3fb950"></span>Node.js</span>
+        <span class="badge"><span class="dot" style="background:#fff"></span>Next.js</span>
+        <span class="badge"><span class="dot" style="background:#398ccb"></span>tRPC</span>
+        <span class="badge"><span class="dot" style="background:#5865f2"></span>Drizzle ORM</span>
+        <span class="badge"><span class="dot" style="background:#336791"></span>PostgreSQL</span>
+        <span class="badge"><span class="dot" style="background:#ef4444"></span>Zod</span>
+        <span class="badge"><span class="dot" style="background:#d4763b"></span>Pino Logger</span>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Frontend</p>
+      <div class="badge-row">
+        <span class="badge"><span class="dot" style="background:#61dafb"></span>React 18</span>
+        <span class="badge"><span class="dot" style="background:#fff"></span>Next.js App Router</span>
+        <span class="badge"><span class="dot" style="background:#ef4444"></span>TanStack Query</span>
+        <span class="badge"><span class="dot" style="background:#7c3aed"></span>react-hook-form</span>
+        <span class="badge"><span class="dot" style="background:#38bdf8"></span>Tailwind CSS</span>
+        <span class="badge"><span class="dot" style="background:#e2e8f0"></span>shadcn/ui</span>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+  <h2>Golden Rules</h2>
+  <div class="rule-grid">
+    <div class="rule-item"><div class="rule-num">1</div><div class="rule-text"><strong>One direction</strong>Dependencies flow downward only. Router → Service → Repo. Never up.</div></div>
+    <div class="rule-item"><div class="rule-num">2</div><div class="rule-text"><strong>Routers call one thing</strong>A router procedure calls exactly one use case or one service — never both.</div></div>
+    <div class="rule-item"><div class="rule-num">3</div><div class="rule-text"><strong>Services don't call services</strong>If two services must coordinate, create a Use Case.</div></div>
+    <div class="rule-item"><div class="rule-num">4</div><div class="rule-text"><strong>Repos return entities</strong>Repositories return raw domain entities, never shaped DTOs.</div></div>
+    <div class="rule-item"><div class="rule-num">5</div><div class="rule-text"><strong>Transactions via context</strong>RequestContext carries the tx — services opt-in to participate via ctx.tx.</div></div>
+    <div class="rule-item"><div class="rule-num">6</div><div class="rule-text"><strong>Kernel stays pure</strong>shared/kernel/ imports only Zod. No framework, no infra.</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ BACKEND ═══════════════ -->
+<div class="section" id="tab-backend">
+  <h1>Backend Layers</h1>
+  <p class="sub">Click a layer to explore its responsibilities, rules, and a code example.</p>
+
+  <div class="explorer">
+    <div class="layer-stack">
+      <div class="layer-btn active" style="color:var(--router)" onclick="selectBe(0,this)">
+        <div class="layer-bar" style="background:var(--router)"></div>
+        <div><span class="layer-name">Router / Controller</span><span class="layer-short">HTTP &amp; tRPC concerns</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--usecase)" onclick="selectBe(1,this)">
+        <div class="layer-bar" style="background:var(--usecase)"></div>
+        <div><span class="layer-name">Use Case</span><span class="layer-short">Multi-service orchestration</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--service)" onclick="selectBe(2,this)">
+        <div class="layer-bar" style="background:var(--service)"></div>
+        <div><span class="layer-name">Service</span><span class="layer-short">Business logic &amp; rules</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--repo)" onclick="selectBe(3,this)">
+        <div class="layer-bar" style="background:var(--repo)"></div>
+        <div><span class="layer-name">Repository</span><span class="layer-short">Data access layer</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--db)" onclick="selectBe(4,this)">
+        <div class="layer-bar" style="background:var(--db)"></div>
+        <div><span class="layer-name">Database</span><span class="layer-short">PostgreSQL via Drizzle</span></div>
+      </div>
+    </div>
+
+    <div class="detail-panel">
+      <!-- 0: Router -->
+      <div class="detail-content active" id="be-d0">
+        <div class="layer-tag" style="background:#58a6ff22;color:#58a6ff">🌐 Layer 1</div>
+        <h2 style="color:#58a6ff">Router / Controller</h2>
+        <p>The entry point for all HTTP/tRPC traffic. Parses and validates input with Zod, calls exactly one use case or service, then shapes the response. It knows about HTTP — nothing below it does.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Input parsing &amp; Zod validation</li>
+            <li>Calling exactly one use case or service</li>
+            <li>Mapping errors to HTTP responses</li>
+            <li>Omitting sensitive fields from responses</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Business logic of any kind</li>
+            <li>Database or ORM access</li>
+            <li>Service-to-service calls</li>
+            <li>Transaction management</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/lib/modules/user/user.router.ts</span>
+          <pre><span class="kw">export const</span> userRouter = router({
+  register: publicProcedure
+    .input(RegisterUserInput)  <span class="cm">// ← Zod validates here</span>
+    .mutation(<span class="kw">async</span> ({ input, ctx }) => {
+      <span class="cm">// Call EXACTLY one use case</span>
+      <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">makeRegisterUserUseCase</span>()
+        .<span class="fn">execute</span>(input);
+
+      <span class="cm">// Shape response — omit sensitive fields</span>
+      <span class="kw">return</span> { id: user.id, email: user.email };
+    }),
+});</pre>
+        </div>
+      </div>
+
+      <!-- 1: Use Case -->
+      <div class="detail-content" id="be-d1">
+        <div class="layer-tag" style="background:#bc8cff22;color:#bc8cff">🎯 Layer 2</div>
+        <h2 style="color:#bc8cff">Use Case</h2>
+        <p>Orchestrates multi-service workflows. When a single user action requires multiple services to coordinate — like registration (create user + add to workspace + send email) — that belongs here. Not every operation needs a Use Case; simple single-service ops skip this layer.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Multi-service orchestration</li>
+            <li>Transaction boundaries (multi-service ops)</li>
+            <li>Triggering side effects (emails, audit logs)</li>
+            <li>Complex workflow logic</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>HTTP / tRPC details</li>
+            <li>ORM-specific code</li>
+            <li>Business rules of individual services</li>
+            <li>Simple single-service operations</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/lib/modules/user/use-cases/register-user.use-case.ts</span>
+          <pre><span class="kw">export class</span> <span class="ty">RegisterUserUseCase</span> {
+  <span class="kw">async</span> <span class="fn">execute</span>(input: <span class="ty">RegisterUserDTO</span>) {
+    <span class="cm">// Own the tx across multiple services</span>
+    <span class="kw">const</span> user = <span class="kw">await</span> this.txManager.<span class="fn">run</span>(<span class="kw">async</span> (tx) => {
+      <span class="kw">const</span> u = <span class="kw">await</span> this.userService.<span class="fn">create</span>(input, { tx });
+      <span class="kw">await</span> this.workspaceService.<span class="fn">addMember</span>(wsId, u.id, { tx });
+      <span class="kw">return</span> u;
+    });
+
+    <span class="cm">// Side effects OUTSIDE the transaction</span>
+    <span class="kw">await</span> this.emailService.<span class="fn">sendWelcome</span>(user.email);
+    <span class="kw">return</span> user;
+  }
+}</pre>
+        </div>
+      </div>
+
+      <!-- 2: Service -->
+      <div class="detail-content" id="be-d2">
+        <div class="layer-tag" style="background:#3fb95022;color:#3fb950">⚙️ Layer 3</div>
+        <h2 style="color:#3fb950">Service</h2>
+        <p>The home of business logic. A service handles a single domain concept — all rules, validations, and transformations for "User" live here. It can participate in transactions started by Use Cases, or own them for simple operations.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Business rules &amp; validation</li>
+            <li>Entity transformations</li>
+            <li>Business events (logging)</li>
+            <li>Transaction participation or ownership</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Calls to other services (Use Case does this)</li>
+            <li>HTTP details</li>
+            <li>ORM specifics (Repository does this)</li>
+            <li>Transaction creation for multi-service ops</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/lib/modules/user/services/user.service.ts</span>
+          <pre><span class="kw">async</span> <span class="fn">create</span>(data: <span class="ty">UserInsert</span>, ctx?: <span class="ty">RequestContext</span>) {
+  <span class="cm">// Business rule: email must be unique</span>
+  <span class="kw">const</span> existing = <span class="kw">await</span> this.repo.<span class="fn">findByEmail</span>(data.email, ctx);
+  <span class="kw">if</span> (existing) <span class="kw">throw new</span> <span class="ty">UserEmailConflictError</span>(data.email);
+
+  <span class="kw">const</span> run = (tx) =>
+    this.repo.<span class="fn">create</span>({ ...data, id: <span class="fn">newId</span>() }, { tx });
+
+  <span class="cm">// Participate in external tx if provided, else own it</span>
+  <span class="kw">if</span> (ctx?.tx) <span class="kw">return</span> <span class="fn">run</span>(ctx.tx);
+  <span class="kw">return</span> this.txManager.<span class="fn">run</span>((tx) => <span class="fn">run</span>(tx));
+}</pre>
+        </div>
+      </div>
+
+      <!-- 3: Repository -->
+      <div class="detail-content" id="be-d3">
+        <div class="layer-tag" style="background:#e3b34122;color:#e3b341">🗄️ Layer 4</div>
+        <h2 style="color:#e3b341">Repository</h2>
+        <p>The only layer that talks to the database. Repositories abstract away the ORM (Drizzle) so business logic never contains SQL. They accept an optional transaction context and always return plain entities.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>SQL / ORM queries</li>
+            <li>Entity ↔ database row mapping</li>
+            <li>Transaction participation via context</li>
+            <li>Null handling (return null or throw)</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Business logic</li>
+            <li>Transaction creation</li>
+            <li>Logging</li>
+            <li>Returning DTOs or shaped objects</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/lib/modules/user/repositories/user.repository.ts</span>
+          <pre><span class="kw">async</span> <span class="fn">findByEmail</span>(
+  email: <span class="ty">string</span>,
+  ctx?: <span class="ty">RequestContext</span>
+): <span class="ty">Promise</span>&lt;<span class="ty">User</span> | <span class="kw">null</span>&gt; {
+  <span class="cm">// Use tx from context if provided, else use db directly</span>
+  <span class="kw">const</span> client = ctx?.tx ?? this.db;
+
+  <span class="kw">const</span> [row] = <span class="kw">await</span> client
+    .<span class="fn">select</span>()
+    .<span class="fn">from</span>(users)
+    .<span class="fn">where</span>(<span class="fn">eq</span>(users.email, email));
+
+  <span class="kw">return</span> row ?? <span class="kw">null</span>;  <span class="cm">// return entity, never DTO</span>
+}</pre>
+        </div>
+      </div>
+
+      <!-- 4: Database -->
+      <div class="detail-content" id="be-d4">
+        <div class="layer-tag" style="background:#79c0ff22;color:#79c0ff">💾 Layer 5</div>
+        <h2 style="color:#79c0ff">Database</h2>
+        <p>PostgreSQL accessed via Drizzle ORM. Drizzle provides full type-safety with zero runtime overhead — your schema is the source of truth for both DB and TypeScript types. The connection is serverless-optimized via postgres.js.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Data persistence</li>
+            <li>ACID transactions</li>
+            <li>Indexing &amp; query optimization</li>
+            <li>Schema migrations</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Business logic (none should reach here)</li>
+            <li>Application-level validation</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/lib/shared/infra/db/schema.ts</span>
+          <pre><span class="cm">// Drizzle schema = TypeScript types + DB schema</span>
+<span class="kw">export const</span> users = <span class="fn">pgTable</span>(<span class="st">"users"</span>, {
+  id:        <span class="fn">text</span>(<span class="st">"id"</span>).<span class="fn">primaryKey</span>(),
+  email:     <span class="fn">text</span>(<span class="st">"email"</span>).<span class="fn">notNull</span>().<span class="fn">unique</span>(),
+  name:      <span class="fn">text</span>(<span class="st">"name"</span>).<span class="fn">notNull</span>(),
+  createdAt: <span class="fn">timestamp</span>(<span class="st">"created_at"</span>).<span class="fn">defaultNow</span>(),
+});
+
+<span class="cm">// Type inferred from schema automatically</span>
+<span class="kw">type</span> <span class="ty">User</span> = <span class="kw">typeof</span> users.<span class="ty">$inferSelect</span>;</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FRONTEND ═══════════════ -->
+<div class="section" id="tab-frontend">
+  <h1>Frontend Layers</h1>
+  <p class="sub">Click a layer to explore its responsibilities and patterns.</p>
+
+  <div class="explorer">
+    <div class="layer-stack">
+      <div class="layer-btn active" style="color:var(--router)" onclick="selectFe(0,this)">
+        <div class="layer-bar" style="background:var(--router)"></div>
+        <div><span class="layer-name">Route / Page</span><span class="layer-short">Next.js App Router entry</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--usecase)" onclick="selectFe(1,this)">
+        <div class="layer-bar" style="background:var(--usecase)"></div>
+        <div><span class="layer-name">Feature Component</span><span class="layer-short">Orchestrates sections &amp; forms</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--service)" onclick="selectFe(2,this)">
+        <div class="layer-bar" style="background:var(--service)"></div>
+        <div><span class="layer-name">Query Adapter (Hooks)</span><span class="layer-short">TanStack Query + cache</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--repo)" onclick="selectFe(3,this)">
+        <div class="layer-bar" style="background:var(--repo)"></div>
+        <div><span class="layer-name">Feature API</span><span class="layer-short">Endpoint contract + parsing</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--db)" onclick="selectFe(4,this)">
+        <div class="layer-bar" style="background:var(--db)"></div>
+        <div><span class="layer-name">Client API</span><span class="layer-short">HTTP transport wrapper</span></div>
+      </div>
+      <div class="connector"></div>
+      <div class="layer-btn" style="color:var(--pres)" onclick="selectFe(5,this)">
+        <div class="layer-bar" style="background:var(--pres)"></div>
+        <div><span class="layer-name">Presentation Components</span><span class="layer-short">Render-only UI</span></div>
+      </div>
+    </div>
+
+    <div class="detail-panel">
+      <!-- 0: Route -->
+      <div class="detail-content active" id="fe-d0">
+        <div class="layer-tag" style="background:#58a6ff22;color:#58a6ff">📄 Layer 1</div>
+        <h2 style="color:#58a6ff">Route / Page</h2>
+        <p>Next.js App Router owns this. Pages are entry points that compose feature components. They handle route params, layout structure, SSR decisions, and auth guards. No feature business logic lives here.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Route entry point composition</li>
+            <li>Layout structure</li>
+            <li>Parsing route params / searchParams</li>
+            <li>Auth guards (redirect if not logged in)</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Feature business logic</li>
+            <li>Data fetching rules</li>
+            <li>Cache management</li>
+            <li>Form handling</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">app/(protected)/users/[id]/page.tsx</span>
+          <pre><span class="cm">// Server Component by default in App Router</span>
+<span class="kw">export default async function</span> <span class="fn">UserPage</span>({
+  params
+}: { params: { id: <span class="ty">string</span> } }) {
+  <span class="cm">// Parse route, guard auth, compose feature</span>
+  <span class="kw">return</span> &lt;<span class="ty">UserProfileFeature</span> userId={params.id} /&gt;;
+}</pre>
+        </div>
+      </div>
+
+      <!-- 1: Feature Component -->
+      <div class="detail-content" id="fe-d1">
+        <div class="layer-tag" style="background:#bc8cff22;color:#bc8cff">🧩 Layer 2</div>
+        <h2 style="color:#bc8cff">Feature Component</h2>
+        <p>The business orchestrator on the frontend. It wires together data-fetching hooks, mutation handlers, and presentation components. It manages loading states, errors, and user flows — but delegates rendering to dumb components.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Calling query adapter hooks</li>
+            <li>Wiring loading / error states</li>
+            <li>Form orchestration</li>
+            <li>User flow logic (multi-step, conditional)</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>HTTP / tRPC transport</li>
+            <li>Cache key management</li>
+            <li>Direct API calls</li>
+            <li>Pure rendering (leave to Presentation)</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/features/user/components/UserProfileFeature.tsx</span>
+          <pre><span class="kw">export function</span> <span class="fn">UserProfileFeature</span>({ userId }) {
+  <span class="kw">const</span> { data, isLoading, error } = <span class="fn">useQueryUserProfile</span>(userId);
+  <span class="kw">const</span> updateMut = <span class="fn">useMutUpdateUser</span>();
+
+  <span class="kw">if</span> (isLoading) <span class="kw">return</span> &lt;<span class="ty">Spinner</span> /&gt;;
+  <span class="kw">if</span> (error) <span class="kw">return</span> &lt;<span class="ty">ErrorAlert</span> error={error} /&gt;;
+
+  <span class="kw">return</span> (
+    &lt;<span class="ty">UserProfileCard</span>
+      user={data}
+      onUpdate={(v) => updateMut.<span class="fn">mutate</span>(v)}
+    /&gt;
+  );
+}</pre>
+        </div>
+      </div>
+
+      <!-- 2: Query Adapter -->
+      <div class="detail-content" id="fe-d2">
+        <div class="layer-tag" style="background:#3fb95022;color:#3fb950">🪝 Layer 3</div>
+        <h2 style="color:#3fb950">Query Adapter (Hooks)</h2>
+        <p>Bridges the Feature API and TanStack Query. It owns cache keys, invalidation logic, and optimistic updates. Components never call the API directly — they always go through these hooks.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Query key definitions</li>
+            <li>Cache invalidation strategy</li>
+            <li>Optimistic updates</li>
+            <li>Infinite scroll / pagination</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>HTTP transport</li>
+            <li>Error normalization</li>
+            <li>Endpoint path strings</li>
+            <li>UI state</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/features/user/hooks.ts</span>
+          <pre><span class="kw">export function</span> <span class="fn">useQueryUserProfile</span>(userId: <span class="ty">string</span>) {
+  <span class="kw">const</span> api = <span class="fn">getUserApi</span>();
+  <span class="kw">return</span> <span class="fn">useQuery</span>({
+    queryKey: [<span class="st">'user'</span>, <span class="st">'profile'</span>, userId],
+    queryFn: () => api.<span class="fn">getProfile</span>(userId),
+  });
+}
+
+<span class="kw">export function</span> <span class="fn">useMutUpdateUser</span>() {
+  <span class="kw">const</span> qc = <span class="fn">useQueryClient</span>();
+  <span class="kw">return</span> <span class="fn">useMutation</span>({
+    mutationFn: (data) => <span class="fn">getUserApi</span>().<span class="fn">update</span>(data),
+    onSuccess: () => qc.<span class="fn">invalidateQueries</span>({ queryKey: [<span class="st">'user'</span>] }),
+  });
+}</pre>
+        </div>
+      </div>
+
+      <!-- 3: Feature API -->
+      <div class="detail-content" id="fe-d3">
+        <div class="layer-tag" style="background:#e3b34122;color:#e3b341">🔌 Layer 4</div>
+        <h2 style="color:#e3b341">Feature API</h2>
+        <p>An interface + class that owns all API calls for a single feature. It normalizes errors from any transport into the AppError discriminated union. Think of it as the adapter between transport and your app.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>Endpoint paths / tRPC procedures</li>
+            <li>DTO → Feature model mapping</li>
+            <li>Error normalization (unknown → AppError)</li>
+            <li>Zod response schema validation</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Cache management</li>
+            <li>HTTP client config</li>
+            <li>React state</li>
+            <li>Business rules</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/features/user/api.ts</span>
+          <pre><span class="kw">interface</span> <span class="ty">IUserApi</span> {
+  <span class="fn">getProfile</span>(id: <span class="ty">string</span>): <span class="ty">Promise</span>&lt;<span class="ty">UserProfile</span>&gt;;
+}
+
+<span class="kw">class</span> <span class="ty">UserApi</span> <span class="kw">implements</span> <span class="ty">IUserApi</span> {
+  <span class="kw">async</span> <span class="fn">getProfile</span>(id: <span class="ty">string</span>) {
+    <span class="kw">try</span> {
+      <span class="kw">const</span> dto = <span class="kw">await</span> this.deps.clientApi.user
+        .getProfile.<span class="fn">query</span>({ id });
+      <span class="kw">return</span> <span class="fn">parseUserProfile</span>(dto); <span class="cm">// Zod parse</span>
+    } <span class="kw">catch</span> (err) {
+      <span class="kw">throw</span> this.deps.<span class="fn">toAppError</span>(err); <span class="cm">// normalize</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+
+      <!-- 4: Client API -->
+      <div class="detail-content" id="fe-d4">
+        <div class="layer-tag" style="background:#79c0ff22;color:#79c0ff">📡 Layer 5</div>
+        <h2 style="color:#79c0ff">Client API</h2>
+        <p>The lowest frontend layer — a thin wrapper around the HTTP client (tRPC, ky, axios). It handles base URL, auth headers, and the standard response envelope. Feature APIs call this; nothing else does.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>HTTP client configuration</li>
+            <li>Auth headers / session tokens</li>
+            <li>Response envelope unwrapping</li>
+            <li>Global request/response interceptors</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Endpoint paths</li>
+            <li>Domain logic</li>
+            <li>Cache management</li>
+            <li>Error normalization</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/trpc/client.ts</span>
+          <pre><span class="kw">export const</span> clientApi = <span class="fn">createTRPCClient</span>({
+  links: [
+    <span class="fn">httpBatchLink</span>({
+      url: <span class="st">'/api/trpc'</span>,
+      headers: () => ({
+        <span class="st">'x-request-id'</span>: <span class="fn">generateId</span>(),
+        <span class="st">'authorization'</span>: <span class="fn">getSessionToken</span>(),
+      }),
+    }),
+  ],
+});</pre>
+        </div>
+      </div>
+
+      <!-- 5: Presentation -->
+      <div class="detail-content" id="fe-d5">
+        <div class="layer-tag" style="background:#ec489922;color:#ec4899">🎨 Layer 6</div>
+        <h2 style="color:#ec4899">Presentation Components</h2>
+        <p>Pure render-only components. They receive all data via props and emit events via callbacks. No hooks, no fetching, no mutation calls. The easiest components to test and reuse across different contexts.</p>
+        <div class="owns-grid">
+          <div class="owns-box yes"><h4>✅ Owns</h4><ul>
+            <li>HTML structure and styling</li>
+            <li>Conditional rendering based on props</li>
+            <li>User interaction callbacks</li>
+            <li>Accessibility attributes</li>
+          </ul></div>
+          <div class="owns-box no"><h4>❌ Does NOT own</h4><ul>
+            <li>Any data fetching</li>
+            <li>Cache or mutation logic</li>
+            <li>Navigation</li>
+            <li>Business rules</li>
+          </ul></div>
+        </div>
+        <div class="code-block">
+          <span class="code-label">src/features/user/components/UserProfileCard.tsx</span>
+          <pre><span class="cm">// Props-only — completely stateless and pure</span>
+<span class="kw">interface</span> <span class="ty">Props</span> {
+  user: <span class="ty">UserProfile</span>;
+  onUpdate: (v: <span class="ty">UpdateInput</span>) => <span class="kw">void</span>;
+}
+
+<span class="kw">export function</span> <span class="fn">UserProfileCard</span>({ user, onUpdate }: <span class="ty">Props</span>) {
+  <span class="kw">return</span> (
+    &lt;<span class="ty">Card</span>&gt;
+      &lt;<span class="ty">Avatar</span> src={user.avatarUrl} /&gt;
+      &lt;<span class="ty">h2</span>&gt;{user.name}&lt;/<span class="ty">h2</span>&gt;
+      &lt;<span class="ty">Button</span> onClick={() =&gt; <span class="fn">onUpdate</span>({...})}&gt;Edit&lt;/<span class="ty">Button</span>&gt;
+    &lt;/<span class="ty">Card</span>&gt;
+  );
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DATA FLOW ═══════════════ -->
+<div class="section" id="tab-dataflow">
+  <h1>Data Flow</h1>
+  <p class="sub">Trace a user registration request from browser through the entire backend stack and back.</p>
+
+  <div class="flow-wrap">
+    <div>
+      <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">Example: User Registration</p>
+      <div class="btns">
+        <button class="btn primary" onclick="startFlow()">&#9654; Animate</button>
+        <button class="btn" onclick="resetFlow()">&#8635; Reset</button>
+      </div>
+
+      <div class="flow-node" style="color:#58a6ff;border-color:#58a6ff44" id="fn0" onclick="showStep(0)">
+        <span class="node-icon">🖥️</span>
+        <div><div class="node-name">Browser / Client</div><div class="node-desc">User submits registration form</div></div>
+      </div>
+      <div class="flow-arrow" id="fa0"><span>&#8595;</span><span class="arrow-label" id="al0"></span></div>
+      <div class="flow-node" style="color:#bc8cff;border-color:#bc8cff44" id="fn1" onclick="showStep(1)">
+        <span class="node-icon">🔌</span>
+        <div><div class="node-name">Feature API</div><div class="node-desc">Calls clientApi, normalizes errors</div></div>
+      </div>
+      <div class="flow-arrow" id="fa1"><span>&#8595;</span><span class="arrow-label" id="al1"></span></div>
+      <div class="flow-node" style="color:#e3b341;border-color:#e3b34144" id="fn2" onclick="showStep(2)">
+        <span class="node-icon">🌐</span>
+        <div><div class="node-name">Router (tRPC)</div><div class="node-desc">Validates input, calls use case</div></div>
+      </div>
+      <div class="flow-arrow" id="fa2"><span>&#8595;</span><span class="arrow-label" id="al2"></span></div>
+      <div class="flow-node" style="color:#bc8cff;border-color:#bc8cff44" id="fn3" onclick="showStep(3)">
+        <span class="node-icon">🎯</span>
+        <div><div class="node-name">Use Case</div><div class="node-desc">Opens transaction, orchestrates services</div></div>
+      </div>
+      <div class="flow-arrow" id="fa3"><span>&#8595;</span><span class="arrow-label" id="al3"></span></div>
+      <div class="flow-node" style="color:#3fb950;border-color:#3fb95044" id="fn4" onclick="showStep(4)">
+        <span class="node-icon">⚙️</span>
+        <div><div class="node-name">Service</div><div class="node-desc">Applies business rules, joins tx</div></div>
+      </div>
+      <div class="flow-arrow" id="fa4"><span>&#8595;</span><span class="arrow-label" id="al4"></span></div>
+      <div class="flow-node" style="color:#e3b341;border-color:#e3b34144" id="fn5" onclick="showStep(5)">
+        <span class="node-icon">🗄️</span>
+        <div><div class="node-name">Repository</div><div class="node-desc">Executes SQL, returns entity</div></div>
+      </div>
+      <div class="flow-arrow" id="fa5"><span>&#8595;</span><span class="arrow-label" id="al5"></span></div>
+      <div class="flow-node" style="color:#79c0ff;border-color:#79c0ff44" id="fn6" onclick="showStep(6)">
+        <span class="node-icon">💾</span>
+        <div><div class="node-name">PostgreSQL</div><div class="node-desc">Writes row, commits transaction</div></div>
+      </div>
+    </div>
+
+    <div>
+      <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">What's happening</p>
+
+      <div class="flow-tip active" id="ft-default">
+        Click <strong>Animate</strong> to trace a registration request, or click any node to learn about it.
+      </div>
+      <div class="flow-tip" id="ft0">
+        <strong>Browser</strong><br>
+        The user fills in the registration form and clicks Submit. React hook-form validates input locally via Zod, then calls the mutation hook: <code>useMutRegisterUser().mutate({email, name})</code>
+      </div>
+      <div class="flow-tip" id="ft1">
+        <strong>Feature API</strong><br>
+        The mutation hook calls <code>UserApi.register()</code>. The Feature API sends the tRPC request and wraps any error into a typed <code>AppError</code>. Transport details never escape this layer.
+      </div>
+      <div class="flow-tip" id="ft2">
+        <strong>tRPC Router</strong><br>
+        The request arrives server-side. The <code>publicProcedure</code> validates input with Zod. If valid, it calls <code>makeRegisterUserUseCase().execute(input)</code> — exactly one thing.
+      </div>
+      <div class="flow-tip" id="ft3">
+        <strong>Use Case</strong><br>
+        <code>RegisterUserUseCase</code> opens a database transaction and calls multiple services inside it atomically. If anything fails, the whole transaction rolls back cleanly.
+      </div>
+      <div class="flow-tip" id="ft4">
+        <strong>Service</strong><br>
+        <code>UserService.create()</code> checks if email is taken, generates an ID, then calls the repository. It receives the transaction context (<code>ctx.tx</code>) and participates in it automatically.
+      </div>
+      <div class="flow-tip" id="ft5">
+        <strong>Repository</strong><br>
+        The only code that speaks SQL. It uses <code>ctx?.tx ?? this.db</code> to write within the active transaction. Returns a plain entity — never a DTO.
+      </div>
+      <div class="flow-tip" id="ft6">
+        <strong>PostgreSQL</strong><br>
+        The transaction commits atomically — both the user row and workspace membership are either fully written or fully rolled back. The response flows back up the stack.
+      </div>
+
+      <div class="flow-code" id="fc0">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Mutation hook triggers the flow</span>
+          <pre><span class="kw">const</span> mut = <span class="fn">useMutRegisterUser</span>();
+mut.<span class="fn">mutate</span>({ email, name, password });</pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc1">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Feature API normalizes errors</span>
+          <pre><span class="kw">async</span> <span class="fn">register</span>(input) {
+  <span class="kw">try</span> {
+    <span class="kw">return await</span> this.clientApi.user.register.<span class="fn">mutate</span>(input);
+  } <span class="kw">catch</span> (err) {
+    <span class="kw">throw</span> this.deps.<span class="fn">toAppError</span>(err); <span class="cm">// → AppError</span>
+  }
+}</pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc2">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Router validates + delegates</span>
+          <pre>register: publicProcedure
+  .<span class="fn">input</span>(RegisterInput) <span class="cm">// Zod validates</span>
+  .<span class="fn">mutation</span>(({ input }) =>
+    <span class="fn">makeRegisterUserUseCase</span>().<span class="fn">execute</span>(input)
+  )</pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc3">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Use Case owns the transaction</span>
+          <pre><span class="kw">const</span> user = <span class="kw">await</span> this.tx.<span class="fn">run</span>(<span class="kw">async</span> (tx) => {
+  <span class="kw">const</span> u = <span class="kw">await</span> this.userSvc.<span class="fn">create</span>(data, { tx });
+  <span class="kw">await</span> this.wsSvc.<span class="fn">addMember</span>(wsId, u.id, { tx });
+  <span class="kw">return</span> u;
+});
+<span class="kw">await</span> this.email.<span class="fn">sendWelcome</span>(user.email);</pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc4">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Service applies business rules</span>
+          <pre><span class="kw">const</span> exists = <span class="kw">await</span> this.repo.<span class="fn">findByEmail</span>(email, ctx);
+<span class="kw">if</span> (exists) <span class="kw">throw new</span> <span class="ty">UserEmailConflictError</span>(email);
+<span class="kw">if</span> (ctx?.tx) <span class="kw">return</span> this.repo.<span class="fn">create</span>(data, ctx);
+<span class="kw">return</span> this.tx.<span class="fn">run</span>((tx) => this.repo.<span class="fn">create</span>(data, { tx }));</pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc5">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Repository writes within the transaction</span>
+          <pre><span class="kw">const</span> client = ctx?.tx ?? this.db;
+<span class="kw">const</span> [row] = <span class="kw">await</span> client
+  .<span class="fn">insert</span>(users)
+  .<span class="fn">values</span>(data)
+  .<span class="fn">returning</span>();
+<span class="kw">return</span> row; <span class="cm">// entity, never DTO</span></pre>
+        </div>
+      </div>
+      <div class="flow-code" id="fc6">
+        <div class="code-block" style="margin-top:14px">
+          <span class="code-label">Drizzle-generated SQL (atomic)</span>
+          <pre><span class="cm">-- Both inside same transaction</span>
+INSERT INTO users (id, email, name) VALUES ($1, $2, $3)
+  RETURNING *;
+
+INSERT INTO workspace_members (user_id, workspace_id)
+  VALUES ($1, $2);
+
+COMMIT;</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PATTERNS ═══════════════ -->
+<div class="section" id="tab-patterns">
+  <h1>Design Patterns</h1>
+  <p class="sub">Click any pattern to expand the explanation and code example.</p>
+
+  <div class="patterns-grid">
+
+    <div class="pat-card" id="pc0">
+      <div class="pat-header" onclick="togglePat(0)">
+        <div class="pat-left"><span class="pat-icon">🏗️</span><div><div class="pat-title">Layered Architecture</div><div class="pat-tag">Structural</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>The entire system is organized into layers, each with a single responsibility. Dependencies flow in one direction only: downward. A Router knows about Use Cases; a Use Case doesn't know about HTTP.</p>
+        <div class="code-block"><pre>Router   <span class="cm">→ UseCase / Service (HTTP entry point)</span>
+UseCase  <span class="cm">→ Service (orchestration)</span>
+Service  <span class="cm">→ Repository (business rules)</span>
+Repo     <span class="cm">→ Database (data access)</span>
+
+<span class="cm">// ❌ This BREAKS the pattern:</span>
+<span class="kw">class</span> <span class="ty">UserService</span> {
+  <span class="fn">doSomething</span>() {
+    this.trpcRouter.<span class="fn">callOtherRoute</span>(); <span class="cm">// ❌ NO!</span>
+  }
+}</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc1">
+      <div class="pat-header" onclick="togglePat(1)">
+        <div class="pat-left"><span class="pat-icon">💉</span><div><div class="pat-title">Manual Dependency Injection</div><div class="pat-tag">DI Pattern</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>No IoC container magic. Dependencies are created in factory functions and passed explicitly. This makes the dependency graph visible and easy to replace in tests.</p>
+        <div class="code-block"><pre><span class="cm">// ✅ Explicit wiring in factory</span>
+<span class="kw">function</span> <span class="fn">makeUserService</span>() {
+  <span class="kw">return new</span> <span class="ty">UserService</span>(
+    <span class="fn">makeUserRepository</span>(), <span class="cm">// explicit!</span>
+    <span class="fn">getContainer</span>().txManager,
+  );
+}
+
+<span class="cm">// ✅ Tests swap with a fake easily</span>
+<span class="kw">const</span> svc = <span class="kw">new</span> <span class="ty">UserService</span>(
+  <span class="kw">new</span> <span class="ty">FakeUserRepository</span>(),
+  <span class="kw">new</span> <span class="ty">FakeTxManager</span>(),
+);</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc2">
+      <div class="pat-header" onclick="togglePat(2)">
+        <div class="pat-left"><span class="pat-icon">📦</span><div><div class="pat-title">Repository Pattern</div><div class="pat-tag">Data Access</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>Repositories are the only code allowed to speak SQL or Drizzle. Business logic never knows what database engine is used — it works against an interface.</p>
+        <div class="code-block"><pre><span class="cm">// Interface — business layer sees this</span>
+<span class="kw">interface</span> <span class="ty">IUserRepository</span> {
+  <span class="fn">findById</span>(id: <span class="ty">string</span>, ctx?: <span class="ty">RequestContext</span>): <span class="ty">Promise</span>&lt;<span class="ty">User</span> | <span class="kw">null</span>&gt;;
+}
+
+<span class="cm">// Drizzle implementation — invisible to business logic</span>
+<span class="kw">class</span> <span class="ty">UserRepository</span> <span class="kw">implements</span> <span class="ty">IUserRepository</span> {
+  <span class="kw">async</span> <span class="fn">findById</span>(id, ctx?) {
+    <span class="kw">const</span> db = ctx?.tx ?? this.db;
+    <span class="kw">const</span> [r] = <span class="kw">await</span> db.<span class="fn">select</span>().<span class="fn">from</span>(users).<span class="fn">where</span>(...);
+    <span class="kw">return</span> r ?? <span class="kw">null</span>;
+  }
+}</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc3">
+      <div class="pat-header" onclick="togglePat(3)">
+        <div class="pat-left"><span class="pat-icon">🏭</span><div><div class="pat-title">Factory Pattern</div><div class="pat-tag">Creational</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>Factories own the creation of objects. Each module has a factory file that lazily creates singletons for stateless objects (services, repos) and fresh instances for stateful ones (use cases).</p>
+        <div class="code-block"><pre><span class="cm">// Lazy singleton — safe for serverless warm starts</span>
+<span class="kw">let</span> _svc: <span class="ty">UserService</span>;
+<span class="kw">export function</span> <span class="fn">makeUserService</span>() {
+  <span class="kw">return</span> (_svc ??= <span class="kw">new</span> <span class="ty">UserService</span>(...));
+}
+
+<span class="cm">// Per-invocation for stateful use cases</span>
+<span class="kw">export function</span> <span class="fn">makeRegisterUserUseCase</span>() {
+  <span class="kw">return new</span> <span class="ty">RegisterUserUseCase</span>(
+    <span class="fn">makeUserService</span>(),
+    <span class="fn">makeEmailService</span>(),
+    <span class="fn">getContainer</span>().txManager,
+  );
+}</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc4">
+      <div class="pat-header" onclick="togglePat(4)">
+        <div class="pat-left"><span class="pat-icon">🔄</span><div><div class="pat-title">Context Propagation</div><div class="pat-tag">Transaction</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>RequestContext carries the database transaction and requestId through the call stack. Services and repositories opt-in by checking ctx?.tx.</p>
+        <div class="code-block"><pre><span class="kw">type</span> <span class="ty">RequestContext</span> = {
+  tx?:       <span class="ty">Transaction</span>;  <span class="cm">// database tx (optional)</span>
+  requestId?: <span class="ty">string</span>;      <span class="cm">// for log correlation</span>
+};
+
+<span class="cm">// Pattern in every Service + Repository:</span>
+<span class="kw">async</span> <span class="fn">create</span>(data, ctx?: <span class="ty">RequestContext</span>) {
+  <span class="kw">const</span> client = ctx?.tx ?? this.db;
+  <span class="cm">// ↑ use existing tx, or fallback to direct db</span>
+}</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc5">
+      <div class="pat-header" onclick="togglePat(5)">
+        <div class="pat-left"><span class="pat-icon">🛡️</span><div><div class="pat-title">Error Hierarchy</div><div class="pat-tag">Error Handling</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>All errors extend AppError. Domain errors extend HTTP error classes. This gives type-safe catching, unique error codes, and public-safe messages without manual mapping.</p>
+        <div class="code-block"><pre><span class="cm">// Base → HTTP → Domain</span>
+<span class="kw">abstract class</span> <span class="ty">AppError</span> <span class="kw">extends</span> <span class="ty">Error</span> { ... }
+
+<span class="kw">class</span> <span class="ty">ConflictError</span> <span class="kw">extends</span> <span class="ty">AppError</span> {
+  httpStatus = <span class="nu">409</span>;
+  code = <span class="st">"CONFLICT"</span>;
+}
+
+<span class="kw">class</span> <span class="ty">UserEmailConflictError</span> <span class="kw">extends</span> <span class="ty">ConflictError</span> {
+  code = <span class="st">"USER_EMAIL_CONFLICT"</span>;
+  <span class="kw">constructor</span>(email: <span class="ty">string</span>) {
+    <span class="kw">super</span>(<span class="st">"Email already in use"</span>, { email });
+  }
+}</pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc6">
+      <div class="pat-header" onclick="togglePat(6)">
+        <div class="pat-left"><span class="pat-icon">📋</span><div><div class="pat-title">Zod-First Contracts</div><div class="pat-tag">Validation</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>Zod schemas are the single source of truth. Types are inferred from schemas — never written twice. The same schema validates at the API boundary and in the Feature API.</p>
+        <div class="code-block"><pre><span class="cm">// Schema = runtime validation + TypeScript type</span>
+<span class="kw">const</span> RegisterInput = z.<span class="fn">object</span>({
+  email: z.<span class="fn">string</span>().<span class="fn">email</span>(),
+  name:  z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="nu">2</span>),
+});
+
+<span class="cm">// Type INFERRED — never written manually</span>
+<span class="kw">type</span> <span class="ty">RegisterInput</span> = z.<span class="ty">infer</span>&lt;<span class="kw">typeof</span> RegisterInput&gt;;
+<span class="cm">// → { email: string; name: string }</span></pre></div>
+      </div></div>
+    </div>
+
+    <div class="pat-card" id="pc7">
+      <div class="pat-header" onclick="togglePat(7)">
+        <div class="pat-left"><span class="pat-icon">🔔</span><div><div class="pat-title">Envelope Pattern</div><div class="pat-tag">API Design</div></div></div>
+        <span class="pat-chev">&#9660;</span>
+      </div>
+      <div class="pat-body"><div class="pat-inner">
+        <p>Every API response follows the same shape: success returns { data: T }, errors return { code, message, requestId }. Client handling is consistent and predictable.</p>
+        <div class="code-block"><pre><span class="cm">// Success</span>
+{ data: { id: <span class="st">"usr-123"</span>, email: <span class="st">"a@b.com"</span> } }
+
+<span class="cm">// Paginated</span>
+{ data: [...], meta: { total, cursor, nextCursor } }
+
+<span class="cm">// Error (4xx or 5xx)</span>
+{
+  code: <span class="st">"USER_EMAIL_CONFLICT"</span>,
+  message: <span class="st">"Email already in use"</span>,
+  requestId: <span class="st">"req-abc-123"</span>
+}</pre></div>
+      </div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ ERRORS ═══════════════ -->
+<div class="section" id="tab-errors">
+  <h1>Error Handling</h1>
+  <p class="sub">A typed error hierarchy ensures safe, consistent responses across the entire stack.</p>
+
+  <div class="err-legend">
+    <div class="err-legend-item"><div class="ldot" style="background:#3fb950"></div>4xx — Client errors (user can correct)</div>
+    <div class="err-legend-item"><div class="ldot" style="background:#f85149"></div>5xx — Server errors (generic message only)</div>
+    <div class="err-legend-item"><div class="ldot" style="background:#58a6ff"></div>Domain — Module-specific subclasses</div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h2>Error Hierarchy</h2>
+      <div style="margin-top:14px">
+        <div class="err-row">
+          <span class="e-code" style="color:#8b949e;background:#30363d">AppError</span>
+          <span class="e-desc">Abstract base class</span>
+        </div>
+        <div class="err-indent">
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">ValidationError</span><span class="e-desc">Invalid input from client</span><span class="e-status" style="color:#3fb950">400</span></div>
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">AuthenticationError</span><span class="e-desc">Not logged in</span><span class="e-status" style="color:#3fb950">401</span></div>
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">ForbiddenError</span><span class="e-desc">Not authorized for resource</span><span class="e-status" style="color:#3fb950">403</span></div>
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">NotFoundError</span><span class="e-desc">Resource doesn't exist</span><span class="e-status" style="color:#3fb950">404</span></div>
+          <div class="err-indent">
+            <div class="err-row"><span class="e-code" style="color:#58a6ff;background:#58a6ff11">UserNotFoundError</span><span class="e-desc">Specific: user not found</span><span class="e-status" style="color:#58a6ff">404</span></div>
+          </div>
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">ConflictError</span><span class="e-desc">Resource already exists</span><span class="e-status" style="color:#3fb950">409</span></div>
+          <div class="err-indent">
+            <div class="err-row"><span class="e-code" style="color:#58a6ff;background:#58a6ff11">UserEmailConflictError</span><span class="e-desc">Email already taken</span><span class="e-status" style="color:#58a6ff">409</span></div>
+          </div>
+          <div class="err-row"><span class="e-code" style="color:#3fb950;background:#3fb95011">RateLimitError</span><span class="e-desc">Too many requests</span><span class="e-status" style="color:#3fb950">429</span></div>
+          <div class="err-row"><span class="e-code" style="color:#f85149;background:#f8514911">InternalServerError</span><span class="e-desc">Generic — message hidden from client</span><span class="e-status" style="color:#f85149">500</span></div>
+          <div class="err-row"><span class="e-code" style="color:#f85149;background:#f8514911">BadGatewayError</span><span class="e-desc">Upstream service failure</span><span class="e-status" style="color:#f85149">502</span></div>
+          <div class="err-row"><span class="e-code" style="color:#f85149;background:#f8514911">ServiceUnavailableError</span><span class="e-desc">Service temporarily down</span><span class="e-status" style="color:#f85149">503</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h2>Client Error Shape</h2>
+      <div class="code-block" style="margin-top:14px">
+        <span class="code-label">JSON Error Response</span>
+        <pre><span class="cm">// 4xx errors — safe to display to user</span>
+{
+  <span class="st">"code"</span>: <span class="st">"USER_EMAIL_CONFLICT"</span>,
+  <span class="st">"message"</span>: <span class="st">"Email already in use"</span>,
+  <span class="st">"requestId"</span>: <span class="st">"req-abc-123"</span>,
+  <span class="st">"details"</span>: { <span class="st">"email"</span>: <span class="st">"foo@bar.com"</span> }
+}
+
+<span class="cm">// 5xx errors — never reveal internals</span>
+{
+  <span class="st">"code"</span>: <span class="st">"INTERNAL_SERVER_ERROR"</span>,
+  <span class="st">"message"</span>: <span class="st">"An unexpected error occurred"</span>,
+  <span class="st">"requestId"</span>: <span class="st">"req-abc-123"</span>
+}</pre>
+      </div>
+
+      <h2 style="margin-top:24px">Frontend AppError Union</h2>
+      <div class="code-block" style="margin-top:14px">
+        <span class="code-label">src/common/errors/app-error.ts</span>
+        <pre><span class="kw">export type</span> <span class="ty">AppError</span> =
+  | { kind: <span class="st">"network"</span>;      message: <span class="ty">string</span> }
+  | { kind: <span class="st">"unauthorized"</span>; message: <span class="ty">string</span>; ... }
+  | { kind: <span class="st">"forbidden"</span>;    message: <span class="ty">string</span>; ... }
+  | { kind: <span class="st">"not_found"</span>;    message: <span class="ty">string</span>; ... }
+  | { kind: <span class="st">"validation"</span>;   fieldErrors?: ...; ... }
+  | { kind: <span class="st">"rate_limited"</span>; message: <span class="ty">string</span>; ... }
+  | { kind: <span class="st">"unknown"</span>;      message: <span class="ty">string</span> };
+
+<span class="cm">// UI branches ONLY on kind — transport never leaks</span>
+<span class="kw">if</span> (error.kind === <span class="st">"validation"</span>) {
+  <span class="cm">// show field-level errors</span>
+} <span class="kw">else if</span> (error.kind === <span class="st">"rate_limited"</span>) {
+  <span class="cm">// show retry UI</span>
+}</pre>
+      </div>
+
+      <h2 style="margin-top:24px">Layer Error Responsibility</h2>
+      <table class="tbl" style="margin-top:14px">
+        <thead><tr><th>Layer</th><th>Throws</th><th>Catches</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#58a6ff">Repository</td><td>NotFoundError, ConflictError</td><td>Nothing</td></tr>
+          <tr><td style="color:#3fb950">Service</td><td>Domain errors, BusinessRuleError</td><td>Nothing</td></tr>
+          <tr><td style="color:#bc8cff">Use Case</td><td>Domain errors</td><td>Nothing</td></tr>
+          <tr><td style="color:#58a6ff">Router</td><td>NotFoundError (null checks)</td><td>All (via formatter)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODULES ═══════════════ -->
+<div class="section" id="tab-modules">
+  <h1>Module &amp; Feature Structure</h1>
+  <p class="sub">Every domain module follows the same layout. Consistency makes navigation predictable for the whole team.</p>
+
+  <div class="grid-2" style="margin-top:28px">
+    <div>
+      <h2>Backend Module</h2>
+      <p style="margin-bottom:12px;font-size:12px">Location: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">src/lib/modules/&lt;module&gt;/</code></p>
+      <div class="file-tree">
+<span class="ft-folder">modules/user/</span>
+├── <span class="ft-folder">dtos/</span>              <span class="ft-cmt">← Zod input/output schemas</span>
+│   ├── <span class="ft-file">register-user.dto.ts</span>
+│   ├── <span class="ft-file">update-user.dto.ts</span>
+│   └── <span class="ft-file">index.ts</span>
+├── <span class="ft-folder">errors/</span>            <span class="ft-cmt">← domain error classes</span>
+│   └── <span class="ft-file">user.errors.ts</span>
+├── <span class="ft-folder">factories/</span>         <span class="ft-cmt">← dependency wiring</span>
+│   └── <span class="ft-file" style="color:#58a6ff">user.factory.ts</span>    <span class="ft-badge ft-req">required</span>
+├── <span class="ft-folder">repositories/</span>      <span class="ft-cmt">← data access</span>
+│   └── <span class="ft-file">user.repository.ts</span>
+├── <span class="ft-folder">services/</span>          <span class="ft-cmt">← business logic</span>
+│   └── <span class="ft-file">user.service.ts</span>
+├── <span class="ft-folder">use-cases/</span>         <span class="ft-cmt">← multi-service orchestration</span>
+│   └── <span class="ft-dim">register-user.use-case.ts</span>  <span class="ft-badge ft-opt">if needed</span>
+└── <span class="ft-file" style="color:#58a6ff">user.router.ts</span>     <span class="ft-cmt">← tRPC router</span>
+      </div>
+    </div>
+    <div>
+      <h2>Frontend Feature</h2>
+      <p style="margin-bottom:12px;font-size:12px">Location: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">src/features/&lt;feature&gt;/</code></p>
+      <div class="file-tree">
+<span class="ft-folder">features/user/</span>
+├── <span class="ft-file" style="color:#e3b341">api.ts</span>             <span class="ft-cmt">← IUserApi + UserApi class</span>
+├── <span class="ft-file" style="color:#3fb950">hooks.ts</span>           <span class="ft-cmt">← TanStack Query adapter</span>
+├── <span class="ft-file">schemas.ts</span>         <span class="ft-cmt">← Zod schemas + DTO mappers</span>
+├── <span class="ft-dim">domain.ts</span>          <span class="ft-cmt">← pure business rules</span>  <span class="ft-badge ft-opt">if needed</span>
+├── <span class="ft-dim">helpers.ts</span>         <span class="ft-cmt">← pure utilities</span>       <span class="ft-badge ft-opt">if needed</span>
+├── <span class="ft-dim">types.ts</span>           <span class="ft-cmt">← non-DTO types</span>        <span class="ft-badge ft-opt">if needed</span>
+└── <span class="ft-folder">components/</span>
+    ├── <span class="ft-file" style="color:#bc8cff">UserProfileFeature.tsx</span>   <span class="ft-cmt">← data + forms</span>
+    └── <span class="ft-dim">UserProfileCard.tsx</span>      <span class="ft-cmt">← render-only UI</span>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+  <h2>How Factories Wire Dependencies</h2>
+  <div class="code-block" style="margin-top:14px">
+    <span class="code-label">src/lib/modules/user/factories/user.factory.ts</span>
+    <pre><span class="kw">import</span> { <span class="ty">UserRepository</span> } <span class="kw">from</span> <span class="st">"../repositories/user.repository"</span>;
+<span class="kw">import</span> { <span class="ty">UserService</span> } <span class="kw">from</span> <span class="st">"../services/user.service"</span>;
+<span class="kw">import</span> { <span class="fn">getContainer</span> } <span class="kw">from</span> <span class="st">"../../shared/infra/container"</span>;
+
+<span class="cm">// Lazy singletons — created once, reused on warm starts (serverless-friendly)</span>
+<span class="kw">let</span> userRepo: <span class="ty">UserRepository</span>;
+<span class="kw">let</span> userService: <span class="ty">UserService</span>;
+
+<span class="kw">export function</span> <span class="fn">makeUserRepository</span>() {
+  <span class="kw">if</span> (!userRepo) userRepo = <span class="kw">new</span> <span class="ty">UserRepository</span>(<span class="fn">getContainer</span>().db);
+  <span class="kw">return</span> userRepo;
+}
+
+<span class="kw">export function</span> <span class="fn">makeUserService</span>() {
+  <span class="kw">if</span> (!userService) {
+    userService = <span class="kw">new</span> <span class="ty">UserService</span>(
+      <span class="fn">makeUserRepository</span>(),
+      <span class="fn">getContainer</span>().transactionManager,
+    );
+  }
+  <span class="kw">return</span> userService;
+}
+
+<span class="cm">// Use cases are per-invocation (they can carry per-request state)</span>
+<span class="kw">export function</span> <span class="fn">makeRegisterUserUseCase</span>() {
+  <span class="kw">return new</span> <span class="ty">RegisterUserUseCase</span>(
+    <span class="fn">makeUserService</span>(),
+    <span class="fn">makeWorkspaceService</span>(),
+    <span class="fn">makeEmailService</span>(),
+    <span class="fn">getContainer</span>().transactionManager,
+  );
+}</pre>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  else {
+    // find the right button
+    var btns = document.querySelectorAll('nav button');
+    var ids = ['overview','backend','frontend','dataflow','patterns','errors','modules'];
+    var idx = ids.indexOf(id);
+    if (idx >= 0) btns[idx].classList.add('active');
+  }
+}
+
+// Called by nav buttons which pass `this`
+document.querySelectorAll('nav button').forEach(function(btn, i) {
+  btn.addEventListener('click', function() { showTab(['overview','backend','frontend','dataflow','patterns','errors','modules'][i], btn); });
+});
+
+// ── BACKEND LAYER SELECTOR ─────────────────────────
+function selectBe(idx, btn) {
+  document.querySelectorAll('#tab-backend .layer-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('#tab-backend .detail-content').forEach(function(d) { d.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('be-d' + idx).classList.add('active');
+}
+
+// ── FRONTEND LAYER SELECTOR ────────────────────────
+function selectFe(idx, btn) {
+  document.querySelectorAll('#tab-frontend .layer-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('#tab-frontend .detail-content').forEach(function(d) { d.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('fe-d' + idx).classList.add('active');
+}
+
+// ── PATTERN CARDS ──────────────────────────────────
+function togglePat(i) {
+  document.getElementById('pc' + i).classList.toggle('open');
+}
+
+// ── DATA FLOW ──────────────────────────────────────
+var flowTimer = null;
+var flowStep = -1;
+var arrowLabels = ['tRPC mutate()', 'HTTP request', 'makeUseCase().execute()', 'tx.run() + services', 'repo.create(ctx)', 'INSERT INTO users'];
+
+function resetFlow() {
+  if (flowTimer) clearTimeout(flowTimer);
+  flowTimer = null;
+  flowStep = -1;
+
+  for (var i = 0; i <= 6; i++) {
+    var fn = document.getElementById('fn' + i);
+    if (fn) fn.classList.remove('lit');
+    var fc = document.getElementById('fc' + i);
+    if (fc) fc.classList.remove('active');
+    var ft = document.getElementById('ft' + i);
+    if (ft) ft.classList.remove('active');
+  }
+  for (var j = 0; j <= 5; j++) {
+    var fa = document.getElementById('fa' + j);
+    if (fa) fa.classList.remove('lit');
+    var al = document.getElementById('al' + j);
+    if (al) al.textContent = '';
+  }
+
+  document.getElementById('ft-default').classList.add('active');
+}
+
+function showStep(idx) {
+  // hide all tooltips and codes
+  document.getElementById('ft-default').classList.remove('active');
+  for (var i = 0; i <= 6; i++) {
+    var ft = document.getElementById('ft' + i);
+    if (ft) ft.classList.remove('active');
+    var fc = document.getElementById('fc' + i);
+    if (fc) fc.classList.remove('active');
+  }
+  var t = document.getElementById('ft' + idx);
+  if (t) t.classList.add('active');
+  var c = document.getElementById('fc' + idx);
+  if (c) c.classList.add('active');
+}
+
+function animStep() {
+  flowStep++;
+  if (flowStep > 6) return;
+
+  // light up the node
+  var fn = document.getElementById('fn' + flowStep);
+  if (fn) fn.classList.add('lit');
+
+  // light up the arrow above
+  if (flowStep > 0) {
+    var fa = document.getElementById('fa' + (flowStep - 1));
+    if (fa) fa.classList.add('lit');
+    var al = document.getElementById('al' + (flowStep - 1));
+    if (al) al.textContent = arrowLabels[flowStep - 1] || '';
+  }
+
+  // show tooltip and code
+  showStep(flowStep);
+
+  if (flowStep < 6) {
+    flowTimer = setTimeout(animStep, 1300);
+  }
+}
+
+function startFlow() {
+  resetFlow();
+  document.getElementById('ft-default').classList.remove('active');
+  flowTimer = setTimeout(animStep, 200);
+}
+</script>
+</body>
+</html>
