@@ -56,6 +56,22 @@ Rules:
 - Name tests as `"<subject> <condition> <expected outcome>"`.
 - Prefer `describe` blocks per class or module, `it` blocks per behavior.
 
+## TDD Behavioral Testing with Stubbed Boundaries
+
+Follow red-green-refactor with vertical slices:
+
+- RED: write one failing behavior test.
+- GREEN: write the minimum implementation to pass.
+- REFACTOR: improve internals only after GREEN while preserving behavior assertions.
+
+Rules:
+- Tests SHOULD describe what the system does through public interfaces and service functions, not internal implementation.
+- Tests in this phase SHOULD be deterministic and offline by stubbing external boundaries (for example Supabase) with test doubles.
+- Tests MUST NOT call live server/database infrastructure in the development loop.
+- Tests MUST NOT target private methods.
+- Avoid internal call-count/order assertions unless interaction order is itself the behavior under test.
+- Do not horizontal-slice work (all tests first, all implementation later); keep one behavior per red-green cycle.
+
 ## Pure Function Tests (domain.ts / helpers.ts)
 
 No mocks. No network. No framework runtime. Use **table-driven cases**.
@@ -206,6 +222,7 @@ describe("<ClassName or moduleName>")
 - **Mixing layer concerns**: service logic assertions inside controller/hook tests.
 - **Duplicating invariant tests**: shared domain rules tested once in `shared/`; client and server do not repeat them.
 - **Fragile snapshot tests for logic**: use explicit value assertions for behavioral tests.
+- **Horizontal slicing**: writing all tests up front and then implementing in bulk; prefer one behavior per red-green loop.
 
 ## Related Docs
 
@@ -213,3 +230,4 @@ describe("<ClassName or moduleName>")
 - `client/core/client-api-architecture.md` — testability contract per layer
 - `client/core/folder-structure.md` — `__tests__` layout
 - `server/core/testing-service-layer.md` — server-side layer testing standard
+- `https://github.com/mattpocock/skills/tree/main/tdd` — optional reference workflow for red-green-refactor execution

@@ -51,6 +51,24 @@ These are mandatory for new and modified modules.
 - Test doubles MUST be used at boundaries to keep layer tests isolated and deterministic.
 - External/provider boundaries MUST include contract/regression tests with fixtures where applicable.
 
+## TDD Behavioral Testing with Stubbed Boundaries
+
+Service-layer development MUST follow red-green-refactor with vertical slices:
+
+- RED: write one failing behavior test at the owning layer boundary.
+- GREEN: implement the minimum change needed to pass that test.
+- REFACTOR: improve structure only after GREEN while preserving existing behavior assertions.
+
+Execution rules:
+
+- New or changed behavior MUST start with a failing test in the owning layer (`controller`, `usecase`, `service`, or `repository`).
+- Tests MUST assert behavior through public layer interfaces/service functions, not private methods.
+- Tests in this phase MUST remain deterministic and offline by stubbing external boundaries (for example Supabase) via test doubles.
+- Tests MUST NOT depend on live external infrastructure (live DB/server/provider) in the development loop.
+- Internal call-count/order assertions SHOULD be avoided unless ordering is itself the behavior under test.
+- Bug fixes MUST start with a failing regression test/fixture before implementation.
+- Horizontal slicing (all tests first, all code later) MUST NOT be used.
+
 ## Required Test Matrix
 
 | Layer | Required tests | Typical doubles |
@@ -170,6 +188,7 @@ Recommended test split:
 - Skipping fixtures for unstable boundary contracts
 - Using concrete class dependencies that block isolated unit tests
 - Asserting fragile log message strings instead of structured fields
+- Horizontal slicing (bulk test writing followed by bulk implementation) instead of one behavior per red-green loop
 
 ## Related Docs
 
@@ -179,3 +198,4 @@ Recommended test split:
 - `./rate-limiting.md`
 - `./webhook/testing-overview.md` (specialized extension for webhook domain)
 - `client/core/testing.md` (shared concepts: AAA pattern, test doubles policy, anti-patterns, naming convention)
+- `https://github.com/mattpocock/skills/tree/main/tdd` (optional reference workflow for red-green-refactor execution)
