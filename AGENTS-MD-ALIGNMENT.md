@@ -140,6 +140,7 @@ guides/client/frameworks/reactjs/metaframeworks/nextjs/folder-structure.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/environment.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md
+guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md  ← only if Vitest
 guides/client/frameworks/reactjs/metaframeworks/nextjs/trpc.md         ← only if tRPC
 guides/client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md     ← only if REST/fetch
 guides/client/frameworks/reactjs/metaframeworks/nextjs/query-keys.md
@@ -212,6 +213,7 @@ unless your project explicitly uses them:
 | `guides/server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md` | No SEO metadata |
 | `guides/server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md` | No file uploads |
 | `guides/server/runtime/nodejs/libraries/openapi/parity-testing.md` | Single transport only |
+| `guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md` | Not using Vitest |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/trpc.md` | No tRPC |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md` | Using tRPC only |
 | `guides/*/drafts/` | Always — drafts are never canonical |
@@ -291,6 +293,7 @@ Read and follow all of these for any server-side work:
 - guides/client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md
 - guides/client/frameworks/reactjs/metaframeworks/nextjs/environment.md
 - guides/client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md
+- guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md
 - guides/client/frameworks/reactjs/metaframeworks/nextjs/query-keys.md
 # [ADD trpc.md if tRPC, ky-fetch.md if REST/fetch]
 

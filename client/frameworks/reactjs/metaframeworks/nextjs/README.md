@@ -17,6 +17,7 @@ Read order before using this folder:
 | [Environment Variables](./environment.md) | Type-safe env vars (`@t3-oss/env-nextjs`) |
 | [Folder Structure (Next.js)](./folder-structure.md) | App Router file layout and route groups |
 | [URL State (nuqs)](./url-state-nuqs.md) | URL query state patterns |
+| [Testing with Vitest](./testing-vitest.md) | Next.js unit-test runner wiring (`jsdom`, setup files, `server-only` shim) |
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns (hook-owned/component-coordinator/hybrid) |

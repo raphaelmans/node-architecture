@@ -53,6 +53,15 @@ When unsure which layer a rule belongs to, apply CONTRIBUTING.md's rule of thumb
 3. If the change affects the PR Review Checklist or a conventions doc, update the checklist entries to match.
 4. If non-trivial (behavioral change to a contract), add a changelog entry under `change-logs/` if that directory exists.
 
+### If the change touches client/server error handling
+
+When updating docs for API, transport, or toast/error-surface behavior, explicitly verify both sides of the contract:
+
+- Client-side guidance should preserve user-safe messages for expected client-correctable `4xx` failures (for example conflict/business-rule errors), rather than collapsing them into generic fallback toasts.
+- Server-side guidance should treat public error payloads as an explicit allowlist. Do not spread framework-provided error objects or `shape.data` into client responses.
+- Public responses may include safe metadata such as `code`, `httpStatus`, `requestId`, `path`, and validation payloads when documented, but must never expose `stack` or other raw diagnostics.
+- If the rule is transport-specific (for example tRPC formatter behavior), keep the canonical error policy in `core/*` and add the transport details in the relevant framework/runtime doc.
+
 ### Add a new client framework (example: Vue, Svelte)
 
 Create the following structure:
@@ -128,7 +137,9 @@ Before syncing, confirm the following are still consistent across all changed do
 
 - [ ] Client API chain (`components -> query adapter -> featureApi -> clientApi -> network`) unchanged in `client/core/*`
 - [ ] Error normalization boundary (`unknown -> AppError`) unchanged
+- [ ] Expected `4xx` business-rule/client-correctable failures still preserve user-safe messages end-to-end
 - [ ] Logging and correlation ownership at transport boundaries unchanged
+- [ ] Public error payloads are whitelist-based and do not leak `stack` or other raw diagnostics
 - [ ] Query key strategy (Query Key Factory vs tRPC generated keys) unchanged
 - [ ] Testing standard unchanged: `__tests__` mirror layout, AAA pattern, test doubles policy (`client/core/testing.md` + `server/core/testing-service-layer.md`)
 - [ ] No canonical rule moved out of `core/*` into a framework/runtime doc
@@ -164,6 +175,8 @@ After syncing, confirm with the user that:
 
 - Do not edit files inside a consumer repo's `guides/` directory. Those are generated.
   Always edit in the architecture repo, then re-run `copy-guides.sh`.
+- Do not document or implement public error serialization by spreading framework error payloads wholesale.
+  Explicitly whitelist safe fields instead.
 - Do not move canonical rules out of `core/*` into framework docs.
 - Do not couple `server/core/*` rules to a specific runtime or library.
 - Do not skip the consumer repo sync step — the architecture repo and consumer repos will drift.
