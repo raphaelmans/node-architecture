@@ -11,7 +11,8 @@ src/
     errors/            # AppError contract + adapters/facades
     query-keys/        # Server-state cache keys (cross-feature)
     toast/             # Toast facade + provider adapters
-    logging/           # Client logging (debug) + wrappers/adapters
+    logging/           # Client logging facade + adapters + wrappers
+    clients/           # Non-tRPC API client wrappers (HTTP + realtime)
   components/          # Shared UI components
   features/            # Feature modules (primary unit of organization)
   hooks/               # Global framework hooks (React only)
@@ -29,11 +30,11 @@ src/features/<feature>/
   components/
     <feature>-view.tsx          # business component (composition + wiring)
     <feature>-fields.tsx        # presentation components (render-only)
-  hooks.ts                      # query adapter (framework-specific)
   api.ts                        # I<Feature>Api + <Feature>Api class + factory
+  api.runtime.ts                # re-exports singleton factory (stable mock target)
+  hooks.ts                      # query adapter (framework-specific)
   schemas.ts                    # Zod schemas + derived types + mapping helpers
   types.ts                      # non-DTO types
-  domain.ts                     # pure business rules
   helpers.ts                    # small pure helpers
 ```
 
@@ -44,18 +45,28 @@ Required files for a new feature:
 - `components/<feature>-view.tsx` (business wiring/composition)
 - `components/<feature>-fields.tsx` (presentation-only UI, if form/field heavy)
 - `api.ts` (`I<Feature>Api` + `<Feature>Api` + factory)
+- `api.runtime.ts` (singleton re-export for testability)
 - `hooks.ts` (query adapter)
 - `schemas.ts` (zod schemas + derived types)
 
 Recommended files:
 
-- `domain.ts` for deterministic domain rules
 - `helpers.ts` for small pure transforms
 - `types.ts` for non-DTO feature-owned types
 
-Optional:
+Optional (add when the feature's complexity justifies them):
 
-- `stores/*` only for client coordination state (not primary server data)
+- `sync.ts` for multi-query cache invalidation orchestration
+- `realtime-api.ts` + `realtime-api.runtime.ts` for Supabase realtime subscriptions
+- `query-options.ts` for TanStack Query `queryOptions()` factories (RSC/prefetch)
+- `stores/` for client coordination state (Zustand — co-located with the feature)
+- `machines/` for XState state machines (complex UI interaction logic)
+- `hooks/` sub-folder when root `hooks.ts` becomes too large
+
+Domain transform precedence:
+
+- prefer `lib/modules/<module>/shared/domain.ts` for cross-runtime reusable logic
+- keep `src/features/<feature>/domain.ts` or `helpers.ts` for feature-local pure logic
 
 Tests for these files go in `src/__tests__/features/<feature>/` — never colocated.
 See Testing Layout below and `client/core/testing.md`.
@@ -63,12 +74,18 @@ See Testing Layout below and `client/core/testing.md`.
 ## Ownership Boundaries by Path
 
 - `src/features/<feature>/api.ts`: endpoint-scoped data access for one feature via `I<Feature>Api` + class implementation.
+- `src/features/<feature>/api.runtime.ts`: singleton re-export for test mocking.
 - `src/features/<feature>/hooks.ts`: query/mutation/cache behavior.
+- `src/features/<feature>/sync.ts`: multi-query cache invalidation orchestration.
 - `src/features/<feature>/components/*`: composition + rendering only.
-- `src/common/query-keys/*`: cross-feature cache key contracts.
-- `src/common/errors/*`: `AppError` contract + normalization adapters/facades.
-- `src/common/toast/*`: notification facade + provider adapters.
-- `src/common/logging/*`: logger contract + adapters/wrappers.
+- `src/features/<feature>/stores/*`: Zustand stores (co-located with feature).
+- `src/features/<feature>/machines/*`: XState state machines.
+- `src/common/query-keys/*`: cross-feature cache key contracts (plain keys for non-tRPC adapters; `buildTrpcQueryKey` only for tRPC-wrapper interop).
+- `src/common/errors/*`: `AppError` contract + normalization adapters/facades (including `adapters/trpc.ts`).
+- `src/common/toast/*`: toast abstraction with typed methods (`success`, `error`, `info`, `warning`), provider + adapter for sonner.
+- `src/common/logging/*`: logger interface + strategy selector + pluggable adapters (console, noop, debug) + decorator wrappers (context injection, redaction, sampling) + `feature.ts` for feature-scoped loggers.
+- `src/common/clients/*`: non-tRPC API client wrappers for external APIs and realtime channels. Each client folder has `index.ts` (client), optional `query-keys.ts` and `schemas.ts`.
+- `src/common/feature-api-hooks.ts`: `useFeatureQuery`, `useFeatureMutation`, `useFeatureQueryCache` wrappers.
 
 ## Testing Layout
 
@@ -79,7 +96,7 @@ src/
   __tests__/
     features/
       <feature>/
-        api.test.ts       # mock clientApi + toAppError, assert class behavior
+        api.test.ts       # mock callTrpcQuery/callTrpcMutation, assert class behavior
         hooks.test.ts     # mock I<Feature>Api, assert query/invalidation behavior
         domain.test.ts    # pure table-driven tests (no mocks)
         helpers.test.ts   # pure table-driven tests (no mocks)

@@ -16,6 +16,7 @@ Use this order for a new project or contributor onboarding:
 7. `client/core/error-handling.md`
 8. `client/core/logging.md`
 9. `client/core/testing.md`
+10. `client/core/testing-vitest.md`
 
 Then read framework details:
 
@@ -24,7 +25,7 @@ Then read framework details:
 
 ## Key Decisions (Defaults)
 
-- Query keys use Query Key Factory for non-tRPC adapters in `src/common/query-keys/*`; tRPC uses generated `@trpc/react-query` keys/utils.
+- Query keys follow an explicit split: direct tRPC hooks use generated `@trpc/react-query` keys/utils, `IFeatureApi` wrappers may use `buildTrpcQueryKey` for interop, and non-tRPC adapters use plain key objects in `src/common/query-keys/*`.
 - Errors normalize from `unknown` to `AppError`; UI branches on `AppError.kind`, not transport-specific shapes.
 - Toast usage is facade-first; feature code should not import toast providers directly.
 - Client logging uses `debug` through `src/common/logging/*` (dev default with break-glass override).
@@ -55,8 +56,10 @@ Rule:
 | [Zod Validation](./validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./server-state-tanstack-query.md) | TanStack Query playbook |
-| [Query Keys](./query-keys.md) | Query key conventions (Query Key Factory) |
+| [Query Keys](./query-keys.md) | Query key conventions (tRPC + non-tRPC) |
 | [State Management](./state-management.md) | Conceptual state decision guide |
 | [Error Handling](./error-handling.md) | Error taxonomy + handling rules |
 | [Logging](./logging.md) | Client logging conventions (`debug`) |
 | [Testing](./testing.md) | Unit testing standard: `__tests__` layout, AAA, test doubles |
+| [Testing — Vitest Runner](./testing-vitest.md) | Vitest runner configuration, scripts, setup file |
+| [Realtime Subscriptions](./realtime.md) | Client-side realtime event subscriptions, cache patching, reconnection |

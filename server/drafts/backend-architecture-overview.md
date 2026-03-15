@@ -233,7 +233,7 @@ src/
 | [Factory to Repository Flow](./backend-architecture-factory-flow.md) | Complete dependency flow with code examples |
 | [Error Handling](./backend-architecture-error-handling.md) | Error classes, error flow, response structure |
 | [Logging](./backend-architecture-logging.md) | Pino configuration, log levels, business events |
-| [Open Items](./backend-architecture-open-items.md) | Gaps and decisions yet to be made |
+| [Open Questions](./backend-architecture-conventions.md#9-open-questions-to-answer-in-the-future) | Gaps and decisions yet to be made |
 
 ---
 
@@ -279,18 +279,17 @@ const result = await makeRegisterUserUseCase().execute(input);
 
 These are explicitly out of scope for now:
 
-- Async outbox pattern
-- Event-driven architecture
+- Formal event bus / pub-sub system
+- Separate read models / materialized projections (full CQRS)
 - Microservices
-- Full CQRS
 - OpenTelemetry tracing (prepared for, not implemented)
 
 ---
 
 ## 11. Checklist for New Modules
 
-- [ ] Create module folder under `src/modules/<module>/`
-- [ ] Define entities in `shared/infra/db/schema.ts`
+- [ ] Create module folder under `src/lib/modules/<module>/`
+- [ ] Define entities in `src/lib/shared/infra/db/schema.ts`
 - [ ] Create repository interface and implementation
 - [ ] Create service interface and implementation
 - [ ] Create domain-specific errors in `errors/`

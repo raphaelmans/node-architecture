@@ -56,6 +56,7 @@ This documentation describes a **production-ready frontend architecture** that e
 | Client State  | Zustand              |
 | UI Components | shadcn/ui + Radix    |
 | Styling       | Tailwind CSS         |
+| Testing       | Vitest               |
 
 ## Documentation Structure
 
@@ -71,10 +72,13 @@ This documentation describes a **production-ready frontend architecture** that e
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |
-| [Query Keys](./core/query-keys.md) | Query key conventions (Query Key Factory) |
+| [Query Keys](./core/query-keys.md) | Query key conventions (tRPC + non-tRPC) |
 | [State Management](./core/state-management.md) | Conceptual state decision guide |
 | [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
 | [Logging](./core/logging.md) | Client logging conventions (`debug`) |
+| [Testing](./core/testing.md) | Unit testing standard: `__tests__` layout, AAA, test doubles |
+| [Testing — Vitest Runner](./core/testing-vitest.md) | Vitest runner configuration, scripts, setup file |
+| [Realtime Subscriptions](./core/realtime.md) | Client-side realtime event subscriptions, cache patching, reconnection |
 | [Folder Structure](./core/folder-structure.md) | Framework-agnostic directory conventions |
 
 ### Framework Documentation
@@ -163,6 +167,6 @@ For detailed frontend-specific folder conventions, see [./core/folder-structure.
 - [ ] Create business component for data/forms
 - [ ] Create presentation components for fields
 - [ ] Add URL state hooks in `hooks.ts` if needed
-- [ ] Add tests in `src/__tests__/features/<feature>/`: `api.test.ts` (mock deps), `domain.test.ts` / `helpers.test.ts` (pure, no mocks) — see `client/core/testing.md`
+- [ ] Add tests in `src/__tests__/features/<feature>/`: `api.test.ts` (mock deps), `domain.test.ts` / `helpers.test.ts` (pure, no mocks) — see `client/core/testing.md` and `client/core/testing-vitest.md`
 - [ ] Add route to `app-routes.ts`
 - [ ] Create page in the appropriate route group under `app/` (project-defined, e.g. `app/(protected)/<feature>/`)

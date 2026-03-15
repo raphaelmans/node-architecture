@@ -18,6 +18,7 @@ For contribution standards (including adding new client frameworks like Vue/Svel
 | ------- | --------------------------------------------------- |
 | Server  | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino   |
 | Client  | Next.js/React, TanStack Query, Zod, Tailwind, adapter-based API layer |
+| Testing | Vitest (unit), Playwright (E2E)                     |
 | Auth    | Supabase Auth (or custom)                           |
 | Storage | Supabase Storage (or custom)                        |
 
@@ -68,10 +69,12 @@ node-architecture/
     │   ├── validation-zod.md    # Zod boundary rules
     │   ├── server-state-tanstack-query.md # TanStack Query patterns
     │   ├── domain-logic.md      # Shared vs client-only domain transformations
-    │   ├── query-keys.md        # Query key conventions (Query Key Factory)
+    │   ├── query-keys.md        # Query key conventions (tRPC + non-tRPC)
     │   ├── logging.md           # Client logging conventions (debug)
     │   ├── state-management.md  # Conceptual state decision guide
     │   ├── error-handling.md    # Error taxonomy and rules
+    │   ├── testing.md           # Unit testing standard
+    │   ├── testing-vitest.md    # Vitest runner standard
     │   └── folder-structure.md  # Directory architecture
     ├── frameworks/              # Framework-specific docs
     │   └── reactjs/             # React-specific docs
@@ -111,7 +114,7 @@ src/
 
 1. Read [server/README.md](./server/README.md) for overview
 2. Follow [server/core/conventions.md](./server/core/conventions.md) for layer patterns
-3. Use [skills/server/](./skills/server/) for AI-assisted scaffolding
+3. Use the `backend-module` skill for AI-assisted scaffolding
 
 ### For Client Development
 

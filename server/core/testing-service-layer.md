@@ -10,23 +10,21 @@ Never colocate test files next to source files.
 ```text
 src/
   __tests__/
-    modules/
-      <module>/
-        <module>.controller.test.ts   # input validation, error mapping
-        <module>.service.test.ts      # domain rules, SRP behavior
-        <module>.repository.test.ts   # persistence contract, query semantics
-        <module>.usecase.test.ts      # orchestration (if usecase layer present)
-    common/
-      errors/
-        error-handler.test.ts
     lib/
       modules/
         <module>/
+          <module>.controller.test.ts   # input validation, error mapping
+          <module>.service.test.ts      # domain rules, SRP behavior
+          <module>.repository.test.ts   # persistence contract, query semantics
+          <module>.usecase.test.ts      # orchestration (if usecase layer present)
           shared/
-            domain.test.ts            # shared pure domain rules
+            domain.test.ts              # shared pure domain rules
+    common/
+      errors/
+        error-handler.test.ts
 ```
 
-Navigation rule: `src/modules/<module>/<module>.service.ts` → `src/__tests__/modules/<module>/<module>.service.test.ts`.
+Navigation rule: `src/lib/modules/<module>/<module>.service.ts` → `src/__tests__/lib/modules/<module>/<module>.service.test.ts`.
 
 ## Architecture Flow (Canonical)
 
@@ -163,6 +161,42 @@ Recommended test split:
 - Test known domain errors and unknown errors map to correct response contracts.
 - Do not test business rules here; stub downstream service/usecase.
 
+**Concrete Pattern: `createCaller` + Factory Mock**
+
+Router tests use `vi.mock` at the module level to replace factory functions, then invoke procedures via `createCaller`:
+
+```typescript
+vi.mock("@/lib/modules/reservation/factories/reservation.factory", () => ({
+  makeReservationService: vi.fn(),
+  makeProfileService: vi.fn(),
+}));
+
+describe("reservationRouter", () => {
+  it("returns reservation on success", async () => {
+    // Arrange
+    const fakeContext = createFakeContext({ userId: "user-1" });
+    const caller = reservationRouter.createCaller(fakeContext);
+    const reservationServiceStub = {
+      findById: vi.fn().mockResolvedValue(mockReservation),
+    } as Pick<IReservationService, "findById">;
+    vi.mocked(makeReservationService).mockReturnValue(
+      reservationServiceStub as IReservationService,
+    );
+
+    // Act
+    const result = await caller.getById({ id: "res-1" });
+
+    // Assert
+    expect(result).toEqual(expect.objectContaining({ id: "res-1" }));
+  });
+});
+```
+
+Rules:
+- Mock factory functions, not service constructors
+- Use `createCaller(fakeContext)` to invoke procedures without HTTP
+- Assert both success responses and error handler mapping
+
 ### Use Case
 
 - Verify orchestration decisions, call ordering, and side-effect timing.
@@ -174,6 +208,34 @@ Recommended test split:
 - Test pure domain rules and branching.
 - Test behavior with repository returning null/conflict/existing states.
 - Test transaction participation (`ctx.tx` path) vs self-owned transactions.
+
+**Concrete Pattern: Harness Factory**
+
+Service tests use a `createHarness()` function that wires up all dependencies as stubs:
+
+```typescript
+function createHarness(overrides?: Partial<HarnessOptions>) {
+  const reservationRepo = {
+    findById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    ...overrides?.reservationRepo,
+  };
+  const transactionManager = {
+    run: vi.fn((fn) => fn({})),
+    ...overrides?.transactionManager,
+  };
+
+  const service = new ReservationService(
+    reservationRepo as IReservationRepository,
+    transactionManager as TransactionManager,
+  );
+
+  return { service, reservationRepo, transactionManager };
+}
+```
+
+This provides typed partial stubs for all repository dependencies without touching the DB. Helper functions like `toEntityRecord(partial)` construct test entity records from partial data typed against real schema types.
 
 ### Repository
 

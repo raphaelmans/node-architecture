@@ -1,58 +1,34 @@
-# Testing with Vitest
+# Testing with Vitest — Next.js Additions
 
-> Concrete Next.js + React test-runner wiring for `Vitest` unit tests. Canonical testing behavior still lives in `client/core/testing.md` and `server/core/testing-service-layer.md`.
+> Next.js-specific runner additions layered on top of the core Vitest standard.
+> Core runner setup: `client/core/testing-vitest.md`.
+> Behavioral testing policy: `client/core/testing.md` and `server/core/testing-service-layer.md`.
 
 ## Scope
 
-Use this guide when a Next.js App Router repo wants the standard test layout and behavior from core docs, plus a concrete runner setup for:
+This guide covers **only the Next.js-specific additions** to the core Vitest runner. Read `client/core/testing-vitest.md` first for the baseline config, scripts, and setup conventions.
 
-- client component tests
-- pure domain/helper tests
-- hook/query adapter tests
-- service-layer unit tests that import Next.js-aware modules
-
-Keep these distinctions clear:
-
-- behavioral testing policy stays in core docs
-- framework runner/tooling setup belongs here
-
-This is metaframework-specific because Next.js projects commonly need:
+Next.js projects commonly need these additions:
 
 - `server-only` shims during unit tests
-- `jsdom` for client component coverage
-- setup-time env bootstrapping for import-time env validation
+- React plugin for JSX/TSX transforms
+- `jsdom` environment for client component coverage
+- setup-time env bootstrapping for import-time env validation (`@t3-oss/env-nextjs`)
 
-## Recommended Baseline
+## Additional Dev Dependencies
 
-### Scripts
+On top of the core dependencies (`vitest`, `vite-tsconfig-paths`), Next.js + React projects add:
 
-Add unit test scripts at the package root:
-
-```json
-{
-  "scripts": {
-    "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
-  }
-}
-```
-
-### Dev dependencies
-
-Typical Next.js + React + Vitest unit-test stack:
-
-- `vitest`
 - `jsdom`
 - `@vitejs/plugin-react`
-- `vite-tsconfig-paths`
 - `@testing-library/react`
 - `@testing-library/dom`
 
 Exact versions belong in the consumer repo's `package.json`, not this guide.
 
-### TypeScript
+### Additional TypeScript Types
 
-Add Vitest types so test files type-check without per-file global imports:
+Add jsdom types alongside the core `vitest/globals`:
 
 ```json
 {
@@ -62,31 +38,20 @@ Add Vitest types so test files type-check without per-file global imports:
 }
 ```
 
-## Recommended File Layout
+## Additional File Layout
+
+Next.js projects extend the core layout with a `server-only` shim:
 
 ```text
-vitest.config.mts
 src/
   test/
-    vitest.setup.ts
     shims/
-      server-only.ts
-  __tests__/
-    ...
+      server-only.ts    # Next.js-specific shim
 ```
 
-Test files still follow the core mirror rule:
+## Config Additions
 
-- `src/<path>/<file>.ts` -> `src/__tests__/<path>/<file>.test.ts`
-
-See:
-
-- `client/core/testing.md`
-- `server/core/testing-service-layer.md`
-
-## Vitest Config
-
-Recommended shape for `vitest.config.mts`:
+Extend the core config from `client/core/testing-vitest.md` with Next.js + React specifics:
 
 ```typescript
 import path from "node:path";
@@ -115,17 +80,15 @@ export default defineConfig({
 });
 ```
 
-Key points:
+Next.js-specific additions on top of the core baseline:
 
-- Use `tsconfigPaths()` so `@/*` aliases resolve in tests.
-- Use the React plugin so JSX/TSX matches app transforms.
-- Restrict `include` to `src/__tests__/` to preserve the canonical mirror layout.
-- Use `jsdom` as the default environment for mixed client + hook coverage.
-- Alias `server-only` to a local shim so Next.js server-only markers do not break unit imports.
+- `react()` plugin so JSX/TSX matches app transforms.
+- `environment: "jsdom"` for client component and hook coverage.
+- `server-only` alias so Next.js server-only markers do not break unit imports.
 
-## Shared Setup File
+## Setup File Additions
 
-Use `src/test/vitest.setup.ts` for cross-suite setup:
+Extend the core setup file (`src/test/vitest.setup.ts`) with Next.js specifics:
 
 ```typescript
 import { cleanup } from "@testing-library/react";
@@ -145,11 +108,11 @@ afterEach(() => {
 });
 ```
 
-Use this file for:
+Next.js-specific additions:
 
-- Testing Library cleanup
-- deterministic test-only env defaults
-- future shared mocks/polyfills
+- Testing Library cleanup (`@testing-library/react`) when not relying on auto-cleanup via Vitest globals
+- deterministic env defaults for import-time validation
+- `NEXT_PUBLIC_*` variable stubs
 
 ## Env Validation in Tests
 
@@ -210,13 +173,6 @@ This verifies:
 
 Do not move these rules here:
 
-- AAA pattern
-- test double definitions
-- layer ownership
-- `__tests__` mirror policy as the canonical rule
-- service-layer test matrix
-
-Those belong in:
-
-- `client/core/testing.md`
-- `server/core/testing-service-layer.md`
+- Runner baseline config, scripts, setup conventions → `client/core/testing-vitest.md`
+- AAA pattern, test doubles, mirror layout → `client/core/testing.md`
+- Layer ownership, service-layer test matrix → `server/core/testing-service-layer.md`

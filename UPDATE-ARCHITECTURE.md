@@ -140,7 +140,7 @@ Before syncing, confirm the following are still consistent across all changed do
 - [ ] Expected `4xx` business-rule/client-correctable failures still preserve user-safe messages end-to-end
 - [ ] Logging and correlation ownership at transport boundaries unchanged
 - [ ] Public error payloads are whitelist-based and do not leak `stack` or other raw diagnostics
-- [ ] Query key strategy (Query Key Factory vs tRPC generated keys) unchanged
+- [ ] Query key strategy (direct tRPC generated keys, `buildTrpcQueryKey` wrapper interop, plain keys for non-tRPC adapters) unchanged
 - [ ] Testing standard unchanged: `__tests__` mirror layout, AAA pattern, test doubles policy (`client/core/testing.md` + `server/core/testing-service-layer.md`)
 - [ ] No canonical rule moved out of `core/*` into a framework/runtime doc
 - [ ] No contradictory guidance between related docs (e.g., `conventions.md` vs a framework doc)

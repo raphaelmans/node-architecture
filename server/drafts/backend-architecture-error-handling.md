@@ -411,7 +411,7 @@ const t = initTRPC.context<Context>().create({
 | Repository | `NotFoundError`, `ConflictError` | Nothing |
 | Service | Domain-specific errors, `BusinessRuleError` | Nothing (let bubble) |
 | Use Case | Domain-specific errors | Nothing (let bubble) |
-| Router/Controller | Nothing | All (via error handler) |
+| Router/Controller | Nothing | Optional module-specific mapping; otherwise let bubble to formatter |
 
 **Example flow:**
 

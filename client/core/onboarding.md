@@ -12,6 +12,8 @@ Use this as the default startup path for new projects and new contributors.
 6. `client/core/server-state-tanstack-query.md`
 7. `client/core/error-handling.md`
 8. `client/core/logging.md`
+9. `client/core/testing.md`
+10. `client/core/testing-vitest.md`
 
 Then move to framework/metaframework docs.
 
@@ -26,6 +28,10 @@ Then move to framework/metaframework docs.
 - [ ] Adopt client API chain: `clientApi -> featureApi -> query adapter -> components`.
 - [ ] Enforce feature API contract: `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`.
 - [ ] Keep domain transform precedence: `src/lib/modules/<module>/shared/*` first, then feature-local.
+- [ ] Set up Vitest as the unit test runner per `client/core/testing-vitest.md`.
+- [ ] Add `test:unit` and `test:unit:watch` scripts to `package.json`.
+- [ ] Create `src/test/vitest.setup.ts` with framework-specific cleanup.
+- [ ] Verify runner with a smoke test before adding feature tests.
 
 ## First Feature Definition of Done
 

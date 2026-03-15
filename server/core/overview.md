@@ -55,6 +55,7 @@ Testability is a first-class quality gate: modules are expected to follow interf
 | ORM        | Drizzle                                  |
 | Validation | Zod (canonical contracts)                |
 | Logging    | Pino                                     |
+| Testing    | Vitest                                   |
 
 ## Layer Responsibilities
 
@@ -123,7 +124,7 @@ Client Request
 
 ## Folder Structure
 
-Server-side code is organized at the `src/` level, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
+Server-side code is organized under `src/lib/`, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
 
 ```
 src/
@@ -134,53 +135,58 @@ src/
 │     │     └─ route.ts         # tRPC HTTP handler
 │     └─ <resource>/route.ts    # Optional OpenAPI-style handler during migration
 │
-├─ shared/                       # Cross-cutting infrastructure
-│  ├─ kernel/
-│  │  ├─ context.ts             # RequestContext type
-│  │  ├─ transaction.ts         # TransactionManager interface
-│  │  ├─ auth.ts                # Session, UserRole, Permission types
-│  │  └─ errors.ts              # Base error classes
-│  ├─ infra/
-│  │  ├─ db/
-│  │  │  ├─ drizzle.ts          # Drizzle client (postgres.js driver)
-│  │  │  ├─ transaction.ts      # DrizzleTransactionManager
-│  │  │  ├─ types.ts            # DbClient, DrizzleTransaction types
-│  │  │  └─ schema/             # Table definitions
-│  │  │     ├─ index.ts
-│  │  │     └─ <table>.ts
-│  │  ├─ trpc/
-│  │  │  ├─ trpc.ts             # tRPC init + middleware (inline)
-│  │  │  ├─ root.ts             # Root router
-│  │  │  └─ context.ts          # Request context creation
-│  │  ├─ logger/
-│  │  │  └─ index.ts            # Pino configuration
-│  │  └─ supabase/              # Supabase client (if using)
-│  │     ├─ create-client.ts
-│  │     └─ types.ts
-│  └─ utils/                     # Optional utility functions
-│
-├─ modules/                      # Domain modules
-│  └─ <module>/
-│     ├─ <module>.router.ts     # tRPC router
-│     ├─ <module>.controller.ts # Optional OpenAPI controller/handler adapter
-│     ├─ dtos/                  # Input/output schemas
-│     │  ├─ <action>.dto.ts
-│     │  └─ index.ts
-│     ├─ errors/                # Domain-specific errors
-│     │  └─ <module>.errors.ts
-│     ├─ use-cases/             # Multi-service orchestration
-│     │  └─ <action>.use-case.ts
-│     ├─ factories/             # Dependency creation
-│     │  └─ <module>.factory.ts
-│     ├─ services/              # Business logic
-│     │  └─ <module>.service.ts
-│     └─ repositories/          # Data access
-│        └─ <module>.repository.ts
-│
-├─ trpc/
-│  └─ client.ts                 # Client-side tRPC setup
-│
 ├─ lib/
+│  ├─ shared/                    # Cross-cutting infrastructure
+│  │  ├─ kernel/
+│  │  │  ├─ context.ts          # RequestContext type
+│  │  │  ├─ transaction.ts      # TransactionManager interface
+│  │  │  ├─ auth.ts             # Session, UserRole, Permission types
+│  │  │  └─ errors.ts           # Base error classes
+│  │  ├─ infra/
+│  │  │  ├─ db/
+│  │  │  │  ├─ drizzle.ts       # Drizzle client (postgres.js driver)
+│  │  │  │  ├─ transaction.ts   # DrizzleTransactionManager
+│  │  │  │  ├─ types.ts         # DbClient, DrizzleTransaction types
+│  │  │  │  └─ schema/          # Table definitions
+│  │  │  │     ├─ index.ts
+│  │  │  │     └─ <table>.ts
+│  │  │  ├─ trpc/
+│  │  │  │  ├─ trpc.ts          # tRPC init + middleware (inline)
+│  │  │  │  ├─ root.ts          # Root router
+│  │  │  │  └─ context.ts       # Request context creation
+│  │  │  ├─ logger/
+│  │  │  │  └─ index.ts         # Pino configuration
+│  │  │  └─ supabase/           # Supabase client (if using)
+│  │  │     ├─ create-client.ts
+│  │  │     └─ types.ts
+│  │  └─ utils/                  # Optional utility functions
+│  ├─ modules/                   # Domain modules
+│  │  └─ <module>/
+│  │     ├─ <module>.router.ts  # tRPC router (may have multiple per module)
+│  │     ├─ <module>.controller.ts # Optional OpenAPI controller/handler adapter
+│  │     ├─ dtos/               # Input/output schemas
+│  │     │  ├─ <action>.dto.ts
+│  │     │  └─ index.ts
+│  │     ├─ errors/             # Domain-specific errors
+│  │     │  └─ <module>.errors.ts
+│  │     ├─ use-cases/          # Multi-service orchestration
+│  │     │  └─ <action>.use-case.ts
+│  │     ├─ factories/          # Dependency creation
+│  │     │  └─ <module>.factory.ts
+│  │     ├─ services/           # Business logic
+│  │     │  └─ <module>.service.ts
+│  │     ├─ repositories/       # Data access
+│  │     │  └─ <module>.repository.ts
+│  │     ├─ shared/             # Isomorphic domain logic (optional)
+│  │     │  └─ domain.ts
+│  │     ├─ admin/              # Admin sub-router (optional)
+│  │     ├─ lib/                # Module-internal utilities (optional)
+│  │     ├─ ops/                # Side-effect triggers (optional)
+│  │     ├─ http/               # Non-tRPC HTTP handlers (optional)
+│  │     ├─ queues/             # Queue interface + implementation (optional)
+│  │     └─ providers/          # Vendor adapter implementations (optional)
+│  ├─ trpc/
+│  │  └─ client.ts              # Client-side tRPC setup
 │  └─ env/                      # Environment validation
 │     └─ index.ts
 │
@@ -200,6 +206,8 @@ src/
 | [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
 | [Transaction](./transaction.md)             | Transaction manager, patterns, context      |
 | [Testing Service Layer](./testing-service-layer.md) | MUST-level testability standards per layer |
+| [Testing — Vitest Runner](../../client/core/testing-vitest.md) | Vitest runner configuration (shared with client) |
+| [Event Patterns](./event-patterns.md) | Domain event log, notification outbox, side-effect procedures, command/query separation |
 | [Logging](./logging.md)                     | Pino configuration, levels, business events |
 | [API Contracts (Zod-First)](./api-contracts-zod-first.md) | Canonical transport-agnostic contract source |
 | [Zod -> OpenAPI Generation](./zod-openapi-generation.md) | Standard for generated public API docs/spec artifacts |
@@ -254,24 +262,38 @@ const user = await makeUserService().create(data);
 const result = await makeRegisterUserUseCase().execute(input);
 ```
 
+## Implemented Event-Driven Patterns
+
+The following are production-complete (see `server/core/event-patterns.md`):
+
+- **Domain event log** — append-only event tables for real-time broadcasting (e.g., `availability_change_event`)
+- **Notification outbox** — transactional enqueue + async QStash dispatch with retry/backoff
+- **Side-effect procedures** — best-effort post-commit ops for external integrations (chat messages)
+- **Command/query separation** — router `.query`/`.mutation` split, role-specific service classes, `mut`/`query` naming on client API interfaces
+
 ## Non-Goals (Deferred)
 
-These are explicitly out of scope for now:
+These remain out of scope:
 
-- Event-driven architecture
+- Formal event bus / pub-sub system
+- Separate read models / materialized projections (full CQRS)
 - Microservices
-- Full CQRS
 - OpenTelemetry tracing (prepared for, not implemented)
 
 ## Checklist for New Modules
 
-- [ ] Create module folder under `src/modules/<module>/`
-- [ ] Define entities in `shared/infra/db/schema.ts`
+- [ ] Create module folder under `src/lib/modules/<module>/`
+- [ ] Define entities in `src/lib/shared/infra/db/schema.ts`
 - [ ] Create repository interface and implementation
 - [ ] Create service interface and implementation
 - [ ] Create domain-specific errors in `errors/`
 - [ ] Create DTOs with Zod schemas
 - [ ] Create factory with lazy singletons
 - [ ] Create transport adapter (`tRPC`, `OpenAPI`, or both)
+- [ ] If module-specific transport mapping is needed, add per-router error handler mapping domain errors to tRPC codes
 - [ ] Add adapter to transport root/route registration
 - [ ] If both transports exist, add parity tests
+- [ ] Add `shared/domain.ts` for isomorphic pure domain logic (if needed)
+- [ ] Add `admin/` sub-folder with `adminProcedure` if admin-facing (if needed)
+- [ ] Add `providers/` with interface + implementations for external services (if needed)
+- [ ] Add `queues/` with interface + implementation for async dispatch (if needed)

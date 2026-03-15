@@ -17,10 +17,10 @@ Read order before using this folder:
 | [Environment Variables](./environment.md) | Type-safe env vars (`@t3-oss/env-nextjs`) |
 | [Folder Structure (Next.js)](./folder-structure.md) | App Router file layout and route groups |
 | [URL State (nuqs)](./url-state-nuqs.md) | URL query state patterns |
-| [Testing with Vitest](./testing-vitest.md) | Next.js unit-test runner wiring (`jsdom`, setup files, `server-only` shim) |
+| [Testing with Vitest — Next.js Additions](./testing-vitest.md) | Next.js-specific runner additions (`jsdom`, React plugin, `server-only` shim, env bootstrapping). Core runner: `client/core/testing-vitest.md` |
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns (hook-owned/component-coordinator/hybrid) |
-| [Query Keys](../../../../core/query-keys.md) | Query key conventions (Query Key Factory) |
-| [Auth + Routing Skill](../../../../../skills/client/metaframeworks/nextjs/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
+| [Query Keys](../../../../core/query-keys.md) | Query key conventions (tRPC + non-tRPC) |
+| Auth + Routing Skill (`nextjs-auth-routing`) | Type-safe routing + proxy-based auth guarding |
 | [Form Standards (Draft)](../../../../drafts/09-standard-form-components.md) | StandardForm components reference |

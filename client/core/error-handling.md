@@ -65,9 +65,27 @@ src/common/errors/
   app-error.ts
   to-app-error.ts
   adapters/
-    trpc.ts
-    ky.ts
+    trpc.ts          # tRPC-specific error field extraction
+    ky.ts            # Ky/fetch-specific error extraction
 ```
+
+### tRPC Error Adapter
+
+The `adapters/trpc.ts` adapter extracts tRPC-specific fields from the raw error shape and maps them to a normalized `TrpcErrorMeta`:
+
+```typescript
+// src/common/errors/adapters/trpc.ts
+export interface TrpcErrorMeta {
+  code: string;
+  httpStatus: number;
+  requestId?: string;
+  zodError?: { fieldErrors: Record<string, string[]> };
+}
+
+export function toTrpcErrorMeta(err: unknown): TrpcErrorMeta | null;
+```
+
+This adapter is used by `toAppError` to extract `code`, `httpStatus`, `requestId`, and `zodError.fieldErrors` from tRPC's error shape before mapping to `AppError.kind`.
 
 ## Error Types
 

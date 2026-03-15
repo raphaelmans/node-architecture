@@ -52,6 +52,7 @@ This documentation describes a **production-ready backend architecture** that em
 | ORM        | Drizzle                                  |
 | Validation | Zod (canonical contracts)                |
 | Logging    | Pino                                     |
+| Testing    | Vitest                                   |
 
 ## Documentation Structure
 
@@ -72,6 +73,7 @@ This documentation describes a **production-ready backend architecture** that em
 | [ID Generation](./core/id-generation.md)   | Database UUID strategy                                  |
 | [Rate Limiting](./core/rate-limiting.md)   | Agnostic rate-limiting contract and boundaries          |
 | [Async Jobs + Outbox](./core/async-jobs-outbox.md) | Transactional enqueue, retries, idempotency      |
+| [Event Patterns](./core/event-patterns.md) | Domain event log, notification outbox, side-effect procedures |
 | [Webhooks](./core/webhook/architecture.md) | Inbound webhook handling, idempotency                   |
 | [Webhook Testing](./core/webhook/testing-overview.md) | Testing guide + Vendor Simulator              |
 
@@ -95,8 +97,8 @@ This documentation describes a **production-ready backend architecture** that em
 
 | Skill                                                | When to Use                                             |
 | ---------------------------------------------------- | ------------------------------------------------------- |
-| [backend-module](../skills/server/backend-module/SKILL.md)   | Creating new domain modules (entities, resources)       |
-| [backend-feature](../skills/server/backend-feature/SKILL.md) | Adding features to existing modules (endpoints, fields) |
+| `backend-module`                                     | Creating new domain modules (entities, resources)       |
+| `backend-feature`                                    | Adding features to existing modules (endpoints, fields) |
 
 ## Quick Start
 
@@ -260,7 +262,7 @@ Non-tRPC HTTP endpoints use the standard envelope defined in `core/api-response.
 
 ## Creating New Modules
 
-See the [backend-module skill](../skills/server/backend-module/SKILL.md) for step-by-step instructions or use the scaffolding script:
+Use the `backend-module` skill for step-by-step module scaffolding guidance, or use the scaffolding script:
 
 ```bash
 python scripts/scaffold-module.py <module-name> <Entity>
@@ -270,9 +272,9 @@ python scripts/scaffold-module.py <module-name> <Entity>
 
 These are explicitly out of scope for now:
 
-- Event-driven architecture
+- Formal event bus / pub-sub system
+- Separate read models / materialized projections (full CQRS)
 - Microservices
-- Full CQRS
 - OpenTelemetry tracing (prepared for, not implemented)
 
 ## Drafts

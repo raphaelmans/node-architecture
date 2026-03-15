@@ -372,7 +372,7 @@ For tRPC integration, see [tRPC Integration](../runtime/nodejs/libraries/trpc/in
 ```typescript
 // shared/infra/trpc/trpc.ts
 
-import { initTRPC, TRPCError } from "@trpc/server";
+import { initTRPC } from "@trpc/server";
 import { AppError } from "@/shared/kernel/errors";
 import { logger } from "@/shared/infra/logger";
 import type { Context } from "./context";
@@ -398,7 +398,7 @@ const t = initTRPC.context<Context>().create({
         ...shape,
         data: {
           ...shape.data,
-          code: cause.code,
+          appCode: cause.code,
           requestId,
           details: cause.details,
         },
@@ -418,13 +418,15 @@ const t = initTRPC.context<Context>().create({
       ...shape,
       data: {
         ...shape.data,
-        code: "INTERNAL_ERROR",
+        appCode: "INTERNAL_ERROR",
         requestId,
       },
     };
   },
 });
 ```
+
+Keep `shape.data.code` as the tRPC code (`BAD_REQUEST`, `NOT_FOUND`, etc.). Put application-specific error codes in a separate field such as `appCode`.
 
 ## Error Flow by Layer
 
@@ -433,7 +435,7 @@ const t = initTRPC.context<Context>().create({
 | Repository        | `NotFoundError`, `ConflictError` (from DB constraints) | Nothing                 |
 | Service           | Domain-specific errors, `BusinessRuleError`            | Nothing (let bubble)    |
 | Use Case          | Domain-specific errors                                 | Nothing (let bubble)    |
-| Router/Controller | `NotFoundError` for null results                       | All (via error handler) |
+| Router/Controller | `NotFoundError` for null results                       | Optional module-specific mapping; otherwise let bubble |
 
 **Example flow:**
 
@@ -495,17 +497,29 @@ delete: protectedProcedure
 
 | Status | Class                     | When to Use                                     |
 | ------ | ------------------------- | ----------------------------------------------- |
-| 400    | `ValidationError`         | Malformed request, invalid input                |
+| 400    | `ValidationError`         | Malformed request, invalid input, or operation-specific precondition failures |
 | 401    | `AuthenticationError`     | Missing or invalid credentials                  |
 | 403    | `AuthorizationError`      | Valid credentials, insufficient permissions     |
 | 404    | `NotFoundError`           | Resource does not exist                         |
 | 409    | `ConflictError`           | Resource conflict (duplicate, version mismatch) |
-| 422    | `BusinessRuleError`       | Valid request, but violates business rules      |
+| 422    | `BusinessRuleError`       | Valid request, but violates a structural business invariant |
 | 429    | `RateLimitError`          | Too many requests                               |
 | 500    | `InternalError`           | Unexpected server error                         |
 | 502    | `BadGatewayError`         | Upstream service error                          |
 | 503    | `ServiceUnavailableError` | Service temporarily unavailable                 |
 | 504    | `GatewayTimeoutError`     | Upstream service timeout                        |
+
+### ValidationError (400) vs BusinessRuleError (422) — Disambiguation
+
+Both represent "the request cannot be fulfilled," but they convey different semantics to the client:
+
+| Use `ValidationError` (400) when | Use `BusinessRuleError` (422) when |
+| --- | --- |
+| The operation's **specific preconditions** are not met | A **structural business invariant** is violated |
+| The client could fix the issue by changing the request timing or input | The client understands the rule but the system state prevents it |
+| Examples: slot not available, reservation expired, booking window exceeded, terms not accepted, ping limit exceeded | Examples: cannot delete own account, workspace has active projects, cannot downgrade plan with active features |
+
+Rule of thumb: if the error describes a **transient or operation-specific** condition the user can act on, use `ValidationError`. If it describes a **permanent structural rule** of the domain, use `BusinessRuleError`.
 
 ### Retryable Status Codes
 
@@ -601,4 +615,5 @@ if (!result.user) {
 ### Router Layer
 - [ ] Router handles null returns from service
 - [ ] Router throws appropriate domain error for null
-- [ ] No catching and re-throwing (let errors bubble to formatter)
+- [ ] Add per-router error handler only when module-specific tRPC code mapping is needed (see `server/core/conventions.md`)
+- [ ] Unknown errors re-thrown to the global formatter

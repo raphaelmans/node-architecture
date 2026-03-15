@@ -5,7 +5,7 @@
 Aligned `server/` documentation structure with the same approach used for `client/`:
 
 - legacy references are now treated as drafts (non-canonical)
-- server skills are centralized under top-level `skills/server/`
+- server skill references are centralized under top-level skill names
 
 ## Changes
 
@@ -17,12 +17,11 @@ Aligned `server/` documentation structure with the same approach used for `clien
 - Added a draft warning banner to `server/drafts/backend-architecture-overview.md`.
 - Moved server skills:
   - from `server/skills/*`
-  - to `skills/server/*`
+  - to top-level server skill names (`backend-module`, `backend-feature`)
 - Updated `server/README.md`:
-  - skills links now point to `../skills/server/*`
+  - skill references now use top-level skill names instead of path links
   - final section changed from `References` to `Drafts` with non-canonical warning + link to `./drafts/overview.md`
 - Updated root `README.md`:
-  - documentation tree now shows `server/drafts/` and top-level `skills/server/`
-  - server quick-start skills link now points to `./skills/server/`
+  - documentation tree now shows `server/drafts/`
+  - server quick-start now references top-level skill names
   - “For Humans” now points to `drafts/` as legacy/non-canonical detail docs
-

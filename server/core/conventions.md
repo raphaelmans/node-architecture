@@ -37,9 +37,25 @@ Canonical testing rules are defined in:
 
 - No business logic
 - No repository access
-- No service-to-service orchestration
+- No service-to-service orchestration (exception: pre-fetch guards — see below)
 - Router handles null check for `findById` (throws `NotFoundError` if null)
 - Cross-cutting controls (auth, rate limiting) belong in transport middleware/procedures
+
+**Pre-Fetch Guard Exception:**
+
+Routers may call a second service for pre-fetch guards that are cross-cutting (e.g., resolving a user profile before delegating to the feature service). This is allowed when:
+
+- The pre-fetch is stateless and read-only
+- It serves as a guard or context enrichment, not orchestration
+- It is systematic across all procedures in the router (not ad-hoc)
+
+```typescript
+// Allowed: systematic pre-fetch guard
+const profile = await makeProfileService().getOrCreateProfile(ctx.userId);
+const result = await makeReservationService().create(input, profile);
+```
+
+If the pre-fetch involves writes or side effects, use a use case instead.
 
 ```typescript
 // modules/user/user.router.ts
@@ -59,6 +75,65 @@ export const userRouter = router({
     }),
 });
 ```
+
+**Per-Router Error Handler Pattern:**
+
+When a module has many domain-specific errors that must map to distinct tRPC error codes (e.g., `NOT_FOUND`, `FORBIDDEN`, `BAD_REQUEST`), routers use a per-module error handler:
+
+```typescript
+function handleReservationError(error: unknown): never {
+  if (error instanceof SlotNotAvailableError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
+  }
+  if (error instanceof ReservationNotFoundError) {
+    throw new TRPCError({ code: "NOT_FOUND", message: error.message, cause: error });
+  }
+  if (error instanceof ReservationAccessDeniedError) {
+    throw new TRPCError({ code: "FORBIDDEN", message: error.message, cause: error });
+  }
+  // Unknown errors re-throw to the global formatter
+  throw error;
+}
+```
+
+Use this pattern when module-level domain errors need explicit tRPC code mapping (`NOT_FOUND`, `FORBIDDEN`, `BAD_REQUEST`) at the router boundary. For cross-module mapping rules, prefer a shared transport middleware/helper instead of repeating router-level `try/catch` in every procedure.
+
+Rules for per-router error handlers:
+
+- One `handle<Module>Error` function per router file
+- Map only domain errors from that module's `errors/` folder
+- Re-throw unknown errors (let the global formatter handle them)
+- Apply `try/catch` only to procedures that need module-specific transport mapping
+
+### Multiple Routers Per Module
+
+Modules with distinct user roles or complex domains may expose multiple routers:
+
+```
+modules/reservation/
+  reservation.router.ts          # Guest/player procedures
+  reservation-coach.router.ts    # Coach-specific procedures
+  reservation-owner.router.ts    # Owner-specific procedures
+```
+
+Each router is registered separately in `root.ts`. This pattern is allowed when:
+
+- Procedures serve distinct user roles with different auth requirements
+- The module is large enough that a single router becomes unwieldy
+- Each router uses role-appropriate procedure bases (e.g., `protectedProcedure` vs `adminProcedure`)
+
+### Admin Sub-Router Pattern
+
+Modules with admin-facing procedures use an `admin/` sub-folder:
+
+```
+modules/court/
+  court.router.ts
+  admin/
+    admin-court.router.ts       # Uses adminProcedure
+```
+
+Admin routers are composed under `appRouter.admin.*` in root.ts and use `adminProcedure` (which enforces `session.role === "admin"`).
 
 ### Use Cases (Application Layer)
 
@@ -135,11 +210,22 @@ export class RegisterUserUseCase {
 
 **Rules:**
 
-- A service must not call another service
+- A service should not call another service (see exception below)
 - No orchestration logic
 - No infrastructure knowledge
 - Accept optional `RequestContext` for external transaction participation
 - Constructor dependencies MUST be interface types (not concrete classes)
+
+**Service-to-Service Dependency Exception:**
+
+In practice, some services accept other services as injected dependencies for **fire-and-forget side effects** that are tightly coupled to the domain operation (e.g., a notification delivery service, an audit/event service). This is allowed when:
+
+- The dependency is injected via the constructor (not imported directly)
+- The dependency is interface-typed
+- The side effect does not affect the return value of the calling method
+- The side effect is idempotent or eventually consistent
+
+For multi-service orchestration that affects the primary return value, use a use case instead.
 
 **Method patterns:**
 
@@ -228,6 +314,46 @@ export class UserRepository implements IUserRepository {
   }
 }
 ```
+
+**Pessimistic Locking (`FOR UPDATE`) Pattern:**
+
+For contended-state entities (reservations, availability slots), repositories expose `findByIdForUpdate` variants:
+
+```typescript
+async findByIdForUpdate(id: string, ctx: RequestContext): Promise<Entity | null> {
+  const tx = ctx.tx as DrizzleTransaction;
+  const result = await tx
+    .select()
+    .from(entities)
+    .where(eq(entities.id, id))
+    .for("update")
+    .limit(1);
+
+  return result[0] ?? null;
+}
+```
+
+Rules for `FOR UPDATE`:
+
+- Only used within an active transaction (`ctx.tx` is required, not optional)
+- Execute on the transaction client (`ctx.tx`) so row locks are held until transaction end
+- Name methods `findByIdForUpdate`, `findByIdsForUpdate` to make locking intent explicit
+- Use only for entities where concurrent writes could cause data corruption
+
+**Repository Importing from `shared/domain.ts`:**
+
+Repositories may import pure functions from `modules/<module>/shared/domain.ts` for in-memory post-query filtering when the filtering logic is domain-specific and cannot be expressed in SQL:
+
+```typescript
+import { filterBlockingOverlaps } from "../shared/domain";
+
+async findConflicting(slotId: string, ctx?: RequestContext) {
+  const rows = await this.getClient(ctx).select().from(slots).where(...);
+  return filterBlockingOverlaps(rows); // pure domain filter
+}
+```
+
+This is allowed because `shared/domain.ts` is pure and infrastructure-free.
 
 ## Dependency Injection & Factories
 
@@ -335,7 +461,7 @@ export function makeRegisterUserUseCase() {
 - Container owns shared infrastructure (database, transaction manager, logger)
 - Module factories own module-specific wiring
 - Repositories and services are lazy singletons (stateless)
-- Use cases are new instances per operation
+- Use cases are new instances per invocation by default. When a use case is injected as a dependency of a service (rather than called directly from a router), it may be cached as a lazy singleton alongside the service.
 - Factories are the _only_ place dependencies are instantiated
 
 ## Kernel (Shared Core)
@@ -385,6 +511,7 @@ shared/kernel/
 ├─ transaction.ts     # TransactionManager + TransactionContext
 ├─ context.ts         # RequestContext
 ├─ errors.ts          # Base AppError definitions
+├─ public-error.ts    # Public message policy helpers (getPublicErrorMessage, isInternalAppError)
 ├─ pagination.ts      # Pagination types and schemas
 ├─ response.ts        # API response types
 └─ auth.ts            # Session, UserRole, Permission types
@@ -500,6 +627,27 @@ export const UpdateUserSchema = z.object({
 export type UpdateUserDTO = z.infer<typeof UpdateUserSchema>;
 ```
 
+## Extended Module Sub-Folders
+
+Beyond the canonical structure (`dtos/`, `errors/`, `factories/`, `repositories/`, `services/`, `use-cases/`, `shared/`), modules may contain these additional sub-folders when the domain requires them:
+
+| Sub-Folder | Purpose | When to Use |
+| --- | --- | --- |
+| `lib/` | Stateless utility/parsing functions internal to the module | Module needs non-domain parsers, formatters, or adapters (e.g., CSV/XLSX/ICS parsing, AI mapping) |
+| `ops/` | One-off operational side-effect triggers | Module has domain-aware side effects triggered by other modules (e.g., posting a chat message when a reservation status changes) |
+| `http/` | Non-tRPC inbound HTTP handlers | Module receives HTTP requests outside tRPC (e.g., queue-triggered dispatch endpoints, webhook handlers) |
+| `queues/` | Queue interface + provider implementation | Module uses async job dispatch with an interface boundary (e.g., `INotificationDispatchQueue` + `QStashNotificationDispatchQueue`) |
+| `providers/` | Vendor-specific adapter implementations | Module abstracts an external service with a swappable provider interface (e.g., `IChatProvider` with Stream Chat and Supabase backends) |
+| `admin/` | Admin-gated router and related procedures | Module exposes admin-specific procedures using `adminProcedure` |
+| `schemas/` | Validation schemas separate from DTOs | Module has many schemas that serve multiple layers |
+
+Rules:
+
+- These sub-folders are opt-in. Only create them when the module's complexity justifies them.
+- `providers/` co-locate the interface and implementations together inside the module, not in `shared/infra/`. This keeps vendor-specific code contained.
+- `queues/` follow the same interface + implementation pattern as `providers/`.
+- `ops/` functions are typically called from services or use cases in other modules, not from routers directly.
+
 ## Module Shared Code (`lib/modules/<module>/shared/`)
 
 Some modules need **shared, reusable code** that is still domain-specific (not kernel).
@@ -593,16 +741,24 @@ Example (pattern reference):
 
 **Rule:** Return entities by default. Introduce DTOs when you need to transform, omit sensitive fields, or combine data.
 
+## Implemented Event-Driven Patterns
+
+See [Event Patterns](./event-patterns.md) for production-complete patterns:
+
+- Domain event log (append-only event tables for real-time broadcasting)
+- Notification outbox (transactional enqueue + async dispatch)
+- Side-effect procedures (`ops/` for best-effort post-commit work)
+- Command/query separation (router-level, service-level, client API-level)
+
+See [Async Jobs + Outbox](./async-jobs-outbox.md) for the conceptual outbox pattern.
+
 ## Non-Goals (Deferred)
 
-These are **explicitly deferred**:
+These remain **explicitly deferred**:
 
-- Event-driven architecture
+- Formal event bus / pub-sub system
+- Separate read models / materialized projections (full CQRS)
 - Microservices
-- Full CQRS
-
-See [Async Jobs + Outbox](./async-jobs-outbox.md) for the recommended pattern when background delivery is required.
-Event-driven architecture and full CQRS are still deferred.
 
 ---
 
@@ -650,7 +806,7 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Business events logged: `logger.info({ event: '<entity>.<action>', ... }, 'Message')`
 - [ ] Event names: `<entity>.<past_tense_action>` format
 - [ ] Returns `null` for not found (router handles throwing)
-- [ ] No service-to-service calls
+- [ ] No service-to-service calls (exception: injected fire-and-forget side-effect services)
 
 ### Use Case Layer (`use-cases/<name>.use-case.ts`)
 
@@ -688,14 +844,16 @@ if (!result) throw new Error('Entity not found');
 
 ### Router Layer (`<module>.router.ts`)
 
-- [ ] Uses `publicProcedure` or `protectedProcedure` (includes logging middleware)
+- [ ] Uses appropriate procedure base (`publicProcedure`, `protectedProcedure`, `adminProcedure`, or rate-limited variant)
 - [ ] Input validated with `.input(ZodSchema)`
 - [ ] Calls factory: `make<Entity>Service()` or `make<UseCase>()`
 - [ ] Handles null: `if (!entity) throw new EntityNotFoundError(id)`
-- [ ] One service OR one use case per endpoint (not both)
+- [ ] One service OR one use case per endpoint (pre-fetch guard exception allowed)
 - [ ] No business logic
 - [ ] No direct logging (handled by middleware)
 - [ ] Sensitive fields omitted before returning
+- [ ] If module-specific transport mapping is needed, add a per-router error handler (`handle<Module>Error`)
+- [ ] Apply `try/catch` only to procedures that need that custom mapping; let other errors bubble to formatter
 
 ### Transport Infrastructure (`shared/infra/trpc/`, OpenAPI handlers/controllers)
 
@@ -711,10 +869,15 @@ tRPC-specific:
 - [ ] Logger middleware applied to ALL procedures
 - [ ] `publicProcedure = loggedProcedure`
 - [ ] `protectedProcedure = loggedProcedure.use(authMiddleware)`
+- [ ] `adminProcedure = protectedProcedure.use(adminMiddleware)` (requires `session.role === "admin"`)
+- [ ] `rateLimitedProcedure(tier)` — factory returning rate-limited public procedure
+- [ ] `protectedRateLimitedProcedure(tier)` — factory returning rate-limited protected procedure
+- [ ] `adminRateLimitedProcedure(tier)` — factory returning rate-limited admin procedure
 - [ ] Error formatter logs include `requestId`
 - [ ] Known errors (`AppError`) logged at `warn` level
 - [ ] Unknown errors logged at `error` level
-- [ ] Context includes `log` (child logger with requestId)
+- [ ] Context includes `log` (child logger with requestId), `clientIdentifier`, `clientIdentifierSource`, `cookies`, `origin`
+- [ ] Context creation enriches session with role from `user_roles` table when authenticated
 
 OpenAPI-specific:
 

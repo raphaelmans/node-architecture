@@ -79,7 +79,7 @@ Do not:
 When adding any new stack/framework/runtime, validate these contracts remain consistent:
 
 - Client API chain and layer ownership
-- Query key strategy (tRPC generated keys vs Query Key Factory for non-tRPC adapters)
+- Query key strategy (direct tRPC generated keys, `buildTrpcQueryKey` for wrapper interop, plain keys for non-tRPC adapters)
 - Error normalization boundary (`unknown -> AppError`)
 - Logging/correlation boundary ownership (`requestId` and related metadata at transport boundaries)
 

@@ -27,7 +27,7 @@ There are two valid cache-key patterns depending on adapter choice.
 
 ### tRPC procedures (`@trpc/react-query`)
 
-- Do not define Query Key Factory keys for tRPC procedures.
+- Do not define custom key objects for direct tRPC procedures.
 - Use tRPC-generated keys and utilities.
 - Prefer invalidation via `trpc.useUtils()` in mutation hooks.
 - Component-coordinator invalidation is also allowed for route-local orchestration.
@@ -86,8 +86,8 @@ Detailed scenario matrix:
 
 ### Non-tRPC HTTP adapters (`ky`, `fetch`, etc.)
 
-- Use Query Key Factory (`@lukemorales/query-key-factory`).
-- Store keys in `src/common/query-keys/<feature>.ts`.
+- Use plain key objects in `src/common/query-keys/<feature>.ts`.
+- Reserve `buildTrpcQueryKey` for wrappers that need tRPC interop.
 
 See:
 

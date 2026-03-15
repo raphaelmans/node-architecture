@@ -7,7 +7,7 @@ Applied a focused consistency sweep across canonical client docs after the featu
 ## Updated
 
 - `client/core/query-keys.md`
-  - Reworded Query Key Factory guidance to be explicit that it is canonical for non-tRPC adapters.
+  - Reworded query-key guidance to separate direct tRPC keys, wrapper interop keys, and non-tRPC plain keys.
 - `client/frameworks/reactjs/forms-react-hook-form.md`
   - Clarified `!isDirty` as an optional edit/update-only no-op prevention exception.
 - `client/frameworks/reactjs/server-state-patterns-react.md`

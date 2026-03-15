@@ -81,3 +81,30 @@ export const appQueryParams = {
 } as const;
 ```
 
+## Filters + Search + Pagination Pattern
+
+nuqs is the canonical mechanism for all user-facing filter, search, and pagination state. This keeps URLs shareable and supports browser back/forward navigation.
+
+```typescript
+// Feature filter hook
+export function useItemFilters() {
+  const [status, setStatus] = useQueryState("status", parseAsStringLiteral(STATUSES));
+  const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(SORT_OPTIONS).withDefault("newest"));
+  const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
+  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
+
+  const debouncedSearch = useDebounce(search, 300);
+
+  return { status, setStatus, sort, setSort, search, setSearch, debouncedSearch, page, setPage };
+}
+```
+
+Rules:
+
+- All filter/search/pagination state in URL — never in React state or Zustand for filterable lists
+- Use `replace` history mode for filters (don't pollute browser history)
+- Debounce text search at 300ms before passing to TanStack Query
+- Reset page to 1 when filters change
+
+See `client/core/server-state-tanstack-query.md` for the TanStack Query integration pattern.
+

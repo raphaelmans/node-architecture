@@ -482,10 +482,9 @@ src/
 
 These are **explicitly deferred**:
 
-* Async outbox pattern
-* Event-driven architecture
+* Formal event bus / pub-sub system
+* Separate read models / materialized projections (full CQRS)
 * Microservices
-* Full CQRS
 
 They will be revisited when the system demands them.
 

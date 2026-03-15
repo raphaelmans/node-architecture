@@ -96,6 +96,164 @@ Exception:
 - A “god hook” that fetches unrelated concerns and mutates multiple domains.
 - Inline DTO parsing in render paths.
 
+## Immer for Cache Patching
+
+Use Immer's `produce` for all TanStack Query cache updates to preserve immutability guarantees:
+
+```typescript
+import { produce } from "immer";
+
+queryClient.setQueryData(queryKey, (old) =>
+  old
+    ? produce(old, (draft) => {
+        const item = draft.items.find((i) => i.id === updatedId);
+        if (item) {
+          item.status = newStatus;
+          item.updatedAt = now;
+        }
+      })
+    : old,
+);
+```
+
+Rules:
+
+- Always use `produce` — never spread/clone manually for nested updates
+- Immer patches are used in both optimistic updates and realtime event-carried state transfer
+- Keep patch functions small and focused on one concern
+
+## Optimistic Updates
+
+For mutations where immediate UI feedback matters:
+
+```typescript
+const mutation = useFeatureMutation(api.mutUpdateItem, {
+  onMutate: async (input) => {
+    // 1. Cancel in-flight refetches
+    await queryClient.cancelQueries({ queryKey });
+
+    // 2. Snapshot previous value
+    const previous = queryClient.getQueryData(queryKey);
+
+    // 3. Apply optimistic patch (Immer)
+    queryClient.setQueryData(queryKey, (old) =>
+      old
+        ? produce(old, (draft) => {
+            draft.name = input.name;
+          })
+        : old,
+    );
+
+    return { previous };
+  },
+  onError: (_err, _input, context) => {
+    // 4. Rollback on failure
+    if (context?.previous) {
+      queryClient.setQueryData(queryKey, context.previous);
+    }
+  },
+  onSettled: () => {
+    // 5. Always revalidate after settle
+    queryClient.invalidateQueries({ queryKey });
+  },
+});
+```
+
+Rules:
+
+- Snapshot before patching — rollback must restore exact previous state
+- Always invalidate after settle (success or failure) for truth reconciliation
+- Skip optimistic updates when rollback semantics are unclear
+
+## Pagination
+
+### Offset-Based Pagination
+
+For paginated lists, use `keepPreviousData` to prevent layout shift:
+
+```typescript
+const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
+
+const query = useFeatureQuery(
+  ["items", "list"],
+  () => api.queryItemsList({ page, limit: 25 }),
+  { page, limit: 25 },
+  { placeholderData: keepPreviousData },
+);
+```
+
+### Infinite Scroll
+
+For infinite lists, use `useInfiniteQuery`:
+
+```typescript
+const query = useInfiniteQuery({
+  queryKey: buildTrpcQueryKey(["items", "listInfinite"], filters),
+  queryFn: ({ pageParam }) => api.queryItemsList({ cursor: pageParam, limit: 25 }),
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
+  initialPageParam: undefined,
+});
+```
+
+Rules:
+
+- Pagination state lives in URL params (nuqs) for offset-based, in query state for cursor-based
+- Use `keepPreviousData` / `placeholderData` to avoid flash-of-empty on page transitions
+- Invalidation invalidates the entire list scope, not individual pages
+
+## Search Debounce
+
+Debounce search input before feeding it to queries:
+
+```typescript
+const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
+const debouncedSearch = useDebounce(search, 300);
+
+const query = useFeatureQuery(
+  ["items", "search"],
+  () => api.queryItemsSearch({ q: debouncedSearch }),
+  { q: debouncedSearch },
+  { enabled: debouncedSearch.length >= 2 },
+);
+```
+
+Rules:
+
+- Debounce at 300ms (default) — adjust based on API latency
+- Use the raw (non-debounced) value for the input field, debounced value for the query
+- Gate queries with `enabled` to avoid empty/short-string searches
+- Search state lives in URL via nuqs (`parseAsString`) for shareability
+
+## Filters with URL State
+
+Combine nuqs URL state with query keys for filterable lists:
+
+```typescript
+const [status, setStatus] = useQueryState("status", parseAsStringLiteral(STATUSES));
+const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(SORT_OPTIONS).withDefault("newest"));
+const [search] = useQueryState("q", parseAsString.withDefault(""));
+const debouncedSearch = useDebounce(search, 300);
+
+const filters = useMemo(
+  () => ({ status, sort, q: debouncedSearch }),
+  [status, sort, debouncedSearch],
+);
+
+const query = useFeatureQuery(
+  ["items", "list"],
+  () => api.queryItemsList(filters),
+  filters,
+);
+```
+
+Rules:
+
+- All filter state lives in URL params via nuqs (shareable, bookmarkable, back-button friendly)
+- Use `history: "replace"` for filters (don't pollute browser history)
+- Use `history: "push"` for tabs and modals (back button should work)
+- Memoize the filter object to prevent unnecessary re-renders and refetches
+- Debounce text inputs, not select/toggle filters
+
 ## Implementation Notes
 
 Framework-specific examples and API signatures live in:
@@ -105,5 +263,10 @@ Framework-specific examples and API signatures live in:
 
 Testing split:
 
-- `api.ts` class tests mock `clientApi` + `toAppError`
+- `api.ts` class tests mock `callTrpcQuery` / `callTrpcMutation`
 - `hooks.ts` tests mock `I<Feature>Api`
+
+Related docs:
+
+- `client/core/realtime.md` — realtime event-carried state transfer pattern
+- `client/core/query-keys.md` — key construction and invalidation patterns

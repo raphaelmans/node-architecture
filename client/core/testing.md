@@ -13,10 +13,13 @@ src/
   __tests__/
     features/
       <feature>/
-        api.test.ts          # <Feature>Api class, mocks clientApi + toAppError
+        api.test.ts          # <Feature>Api class, mocks callTrpcQuery/callTrpcMutation
         hooks.test.ts        # query adapter, mocks I<Feature>Api
-        domain.test.ts       # pure function tests (no mocks)
         helpers.test.ts      # pure function tests (no mocks)
+        sync.test.ts         # cache sync composition (if sync.ts exists)
+        machines/            # XState guard/action tests (if machines/ exists)
+          <machine>.guards.test.ts
+          <machine>.actions.test.ts
     common/
       errors/
         error-adapter.test.ts
@@ -226,6 +229,7 @@ describe("<ClassName or moduleName>")
 
 ## Related Docs
 
+- `client/core/testing-vitest.md` — Vitest runner configuration, scripts, setup file
 - `client/core/domain-logic.md` — pure function placement and testing strategy
 - `client/core/client-api-architecture.md` — testability contract per layer
 - `client/core/folder-structure.md` — `__tests__` layout

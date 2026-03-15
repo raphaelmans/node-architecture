@@ -99,6 +99,8 @@ guides/client/core/query-keys.md
 guides/client/core/state-management.md
 guides/client/core/logging.md
 guides/client/core/testing.md
+guides/client/core/testing-vitest.md
+guides/client/core/realtime.md
 ```
 
 ### Always Include: Server Core (MANDATORY)
@@ -115,6 +117,7 @@ guides/server/core/transaction.md
 guides/server/core/logging.md
 guides/server/core/rate-limiting.md
 guides/server/core/testing-service-layer.md
+guides/server/core/event-patterns.md
 ```
 
 ---
@@ -140,7 +143,7 @@ guides/client/frameworks/reactjs/metaframeworks/nextjs/folder-structure.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/environment.md
 guides/client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md
-guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md  ← only if Vitest
+guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md  ← Next.js-specific additions
 guides/client/frameworks/reactjs/metaframeworks/nextjs/trpc.md         ← only if tRPC
 guides/client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md     ← only if REST/fetch
 guides/client/frameworks/reactjs/metaframeworks/nextjs/query-keys.md
@@ -213,7 +216,7 @@ unless your project explicitly uses them:
 | `guides/server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md` | No SEO metadata |
 | `guides/server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md` | No file uploads |
 | `guides/server/runtime/nodejs/libraries/openapi/parity-testing.md` | Single transport only |
-| `guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md` | Not using Vitest |
+| `guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md` | Not using Next.js |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/trpc.md` | No tRPC |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md` | Using tRPC only |
 | `guides/*/drafts/` | Always — drafts are never canonical |
@@ -258,6 +261,8 @@ Read and follow all of these for any client-side work:
 - guides/client/core/state-management.md
 - guides/client/core/logging.md
 - guides/client/core/testing.md
+- guides/client/core/testing-vitest.md
+- guides/client/core/realtime.md
 
 ## Mandatory — Server Core
 
@@ -274,6 +279,7 @@ Read and follow all of these for any server-side work:
 - guides/server/core/logging.md
 - guides/server/core/rate-limiting.md
 - guides/server/core/testing-service-layer.md
+- guides/server/core/event-patterns.md
 
 ## Framework Guides — [INCLUDE IF REACT]
 
