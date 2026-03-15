@@ -1,4 +1,4 @@
-# Backend Architecture Overview
+# Backend Core README
 
 > High-level overview of the backend architecture, linking to detailed documentation for each concern.
 
@@ -125,6 +125,7 @@ Client Request
 ## Folder Structure
 
 Server-side code is organized under `src/lib/`, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
+Examples may use alias shortcuts such as `@/shared/*` and `@/modules/*`; those refer to `src/lib/shared/*` and `src/lib/modules/*`.
 
 ```
 src/
@@ -141,7 +142,8 @@ src/
 │  │  │  ├─ context.ts          # RequestContext type
 │  │  │  ├─ transaction.ts      # TransactionManager interface
 │  │  │  ├─ auth.ts             # Session, UserRole, Permission types
-│  │  │  └─ errors.ts           # Base error classes
+│  │  │  ├─ errors.ts           # Base error classes
+│  │  │  └─ public-error.ts     # Shared public message policy
 │  │  ├─ infra/
 │  │  │  ├─ db/
 │  │  │  │  ├─ drizzle.ts       # Drizzle client (postgres.js driver)
@@ -216,8 +218,8 @@ src/
 | [ID Generation](./id-generation.md)         | Database UUID strategy                      |
 | [Rate Limiting](./rate-limiting.md)         | Agnostic limits, identifiers, error contract |
 | [Async Jobs + Outbox](./async-jobs-outbox.md) | Transactional enqueue + retry model       |
-| [Webhooks](./webhook/architecture.md)       | Inbound webhook handling                    |
-| [Webhook Testing](./webhook/testing-overview.md) | Testing strategy + Vendor Simulator    |
+| [Webhooks](./webhook/README.md)             | Inbound webhook handling                    |
+| [Webhook Testing](./webhook/testing/README.md) | Testing strategy + Vendor Simulator     |
 | [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md)  | Serverless, routers, procedures   |
 | [OpenAPI Integration](../runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter over shared domain layers |
 | [OpenAPI Parity Testing](../runtime/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |

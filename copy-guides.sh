@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Copy architecture guides to a target repository
-# Usage: ./copy-guides.sh /path/to/target/repo
+# Copy the consumer guide bundle to a target repository.
+# Usage: ./copy-guides.sh /absolute/path/to/target/repo
 
 set -e
 
@@ -44,47 +44,33 @@ mkdir -p "$GUIDES_DIR"
 echo -e "${GREEN}Copying guides to:${NC} $GUIDES_DIR"
 echo ""
 
-# Copy client/ folder
-if [ -d "$SCRIPT_DIR/client" ]; then
-    echo "  Copying client/..."
-    rm -rf "$GUIDES_DIR/client"
-    cp -r "$SCRIPT_DIR/client" "$GUIDES_DIR/client"
+for DIR in client server legacy; do
+    if [ -d "$SCRIPT_DIR/$DIR" ]; then
+        echo "  Copying $DIR/..."
+        rm -rf "$GUIDES_DIR/$DIR"
+        cp -r "$SCRIPT_DIR/$DIR" "$GUIDES_DIR/$DIR"
+    else
+        echo -e "${YELLOW}  Warning: $DIR/ not found${NC}"
+    fi
+done
+
+if [ -f "$SCRIPT_DIR/consumer/README.md" ]; then
+    echo "  Copying consumer/README.md -> guides/README.md..."
+    cp "$SCRIPT_DIR/consumer/README.md" "$GUIDES_DIR/README.md"
 else
-    echo -e "${YELLOW}  Warning: client/ not found${NC}"
+    echo -e "${YELLOW}  Warning: consumer/README.md not found${NC}"
 fi
 
-# Copy server/ folder
-if [ -d "$SCRIPT_DIR/server" ]; then
-    echo "  Copying server/..."
-    rm -rf "$GUIDES_DIR/server"
-    cp -r "$SCRIPT_DIR/server" "$GUIDES_DIR/server"
-else
-    echo -e "${YELLOW}  Warning: server/ not found${NC}"
-fi
+for FILE in AGENTS-MD-ALIGNMENT.md UPDATE-ARCHITECTURE.md OPENCODE-INTEGRATION.md; do
+    if [ -f "$SCRIPT_DIR/consumer/$FILE" ]; then
+        echo "  Copying consumer/$FILE..."
+        cp "$SCRIPT_DIR/consumer/$FILE" "$GUIDES_DIR/$FILE"
+    else
+        echo -e "${YELLOW}  Warning: consumer/$FILE not found${NC}"
+    fi
+done
 
-# Copy GUIDES-README.md as guides/README.md (DO NOT EDIT warning for consumer repos)
-if [ -f "$SCRIPT_DIR/GUIDES-README.md" ]; then
-    echo "  Copying GUIDES-README.md -> README.md..."
-    cp "$SCRIPT_DIR/GUIDES-README.md" "$GUIDES_DIR/README.md"
-else
-    echo -e "${YELLOW}  Warning: GUIDES-README.md not found${NC}"
-fi
-
-# Copy AGENTS-MD-ALIGNMENT.md
-if [ -f "$SCRIPT_DIR/AGENTS-MD-ALIGNMENT.md" ]; then
-    echo "  Copying AGENTS-MD-ALIGNMENT.md..."
-    cp "$SCRIPT_DIR/AGENTS-MD-ALIGNMENT.md" "$GUIDES_DIR/AGENTS-MD-ALIGNMENT.md"
-else
-    echo -e "${YELLOW}  Warning: AGENTS-MD-ALIGNMENT.md not found${NC}"
-fi
-
-# Copy UPDATE-ARCHITECTURE.md
-if [ -f "$SCRIPT_DIR/UPDATE-ARCHITECTURE.md" ]; then
-    echo "  Copying UPDATE-ARCHITECTURE.md..."
-    cp "$SCRIPT_DIR/UPDATE-ARCHITECTURE.md" "$GUIDES_DIR/UPDATE-ARCHITECTURE.md"
-else
-    echo -e "${YELLOW}  Warning: UPDATE-ARCHITECTURE.md not found${NC}"
-fi
+find "$GUIDES_DIR" -name '.DS_Store' -delete
 
 echo ""
 echo -e "${GREEN}Done!${NC} Guides copied to $GUIDES_DIR"
@@ -93,9 +79,11 @@ echo "Structure:"
 echo "  $GUIDES_DIR/"
 echo "  ├── client/"
 echo "  ├── server/"
+echo "  ├── legacy/"
 echo "  ├── README.md                  (DO NOT EDIT — generated)"
 echo "  ├── AGENTS-MD-ALIGNMENT.md     (configure AGENTS.md / CLAUDE.md)"
-echo "  └── UPDATE-ARCHITECTURE.md     (how to update these guides)"
+echo "  ├── UPDATE-ARCHITECTURE.md     (how to update these guides)"
+echo "  └── OPENCODE-INTEGRATION.md    (OpenCode integration guidance)"
 echo ""
 echo -e "${YELLOW}Next step:${NC} Open guides/AGENTS-MD-ALIGNMENT.md and follow"
 echo "           the steps to update your AGENTS.md or CLAUDE.md."

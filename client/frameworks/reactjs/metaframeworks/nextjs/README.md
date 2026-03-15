@@ -21,6 +21,5 @@ Read order before using this folder:
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns (hook-owned/component-coordinator/hybrid) |
-| [Query Keys](../../../../core/query-keys.md) | Query key conventions (tRPC + non-tRPC) |
-| Auth + Routing Skill (`nextjs-auth-routing`) | Type-safe routing + proxy-based auth guarding |
-| [Form Standards (Draft)](../../../../drafts/09-standard-form-components.md) | StandardForm components reference |
+| [Query Keys](./query-keys.md) | Query key conventions (tRPC + non-tRPC) |
+| [Form Standards (Legacy)](../../../../../legacy/client/09-standard-form-components.md) | Historical StandardForm reference |

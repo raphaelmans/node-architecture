@@ -83,13 +83,13 @@ When a module has many domain-specific errors that must map to distinct tRPC err
 ```typescript
 function handleReservationError(error: unknown): never {
   if (error instanceof SlotNotAvailableError) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
+    throw new TRPCError({ code: "BAD_REQUEST", cause: error });
   }
   if (error instanceof ReservationNotFoundError) {
-    throw new TRPCError({ code: "NOT_FOUND", message: error.message, cause: error });
+    throw new TRPCError({ code: "NOT_FOUND", cause: error });
   }
   if (error instanceof ReservationAccessDeniedError) {
-    throw new TRPCError({ code: "FORBIDDEN", message: error.message, cause: error });
+    throw new TRPCError({ code: "FORBIDDEN", cause: error });
   }
   // Unknown errors re-throw to the global formatter
   throw error;
@@ -102,6 +102,7 @@ Rules for per-router error handlers:
 
 - One `handle<Module>Error` function per router file
 - Map only domain errors from that module's `errors/` folder
+- Let the global formatter control the public message by passing `cause`
 - Re-throw unknown errors (let the global formatter handle them)
 - Apply `try/catch` only to procedures that need module-specific transport mapping
 
@@ -792,6 +793,8 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] `getClient(ctx)` helper: `return (ctx?.tx as DrizzleTransaction) ?? this.db`
 - [ ] All methods accept `ctx?: RequestContext`
 - [ ] Returns `null` for not found (never throws)
+- [ ] Known database constraint violations caught and translated to domain errors
+- [ ] Raw database error messages never propagated as-is
 - [ ] No business logic
 - [ ] No logging
 
@@ -854,6 +857,8 @@ if (!result) throw new Error('Entity not found');
 - [ ] Sensitive fields omitted before returning
 - [ ] If module-specific transport mapping is needed, add a per-router error handler (`handle<Module>Error`)
 - [ ] Apply `try/catch` only to procedures that need that custom mapping; let other errors bubble to formatter
+- [ ] Per-router error handler passes `cause` field so global formatter controls exposure
+- [ ] No raw error messages from libraries/DB in `TRPCError` message field
 
 ### Transport Infrastructure (`shared/infra/trpc/`, OpenAPI handlers/controllers)
 

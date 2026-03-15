@@ -129,7 +129,7 @@ Treat header names and exact mechanics as implementation details; the architectu
 | Document | Description |
 | --- | --- |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns and scenario matrix |
-| [Auth + Routing Skill](../../../../../skills/client/metaframeworks/nextjs/nextjs-auth-routing/SKILL.md) | Type-safe routing + proxy-based auth guarding |
+| [Routing + SSR + Params](./routing-ssr-params.md) | Route parsing, access control boundaries, and layout guard ownership |
 
 ## Checklist for New Routes
 

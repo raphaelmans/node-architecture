@@ -16,5 +16,3 @@ Node.js runtime-specific documentation layered on top of `server/core/`.
 
 - [Metaframeworks Index](./metaframeworks/README.md)
 - [Next.js](./metaframeworks/nextjs/README.md)
-- [Express (placeholder)](./metaframeworks/express/README.md)
-- [NestJS (placeholder)](./metaframeworks/nestjs/README.md)

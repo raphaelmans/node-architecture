@@ -159,7 +159,7 @@ After changes are verified, run `copy-guides.sh` once for each consumer repo pat
 ./copy-guides.sh /absolute/path/to/consumer-repo-2
 ```
 
-The script replaces `guides/client/` and `guides/server/` wholesale in each consumer repo.
+The script replaces `guides/client/`, `guides/server/`, `guides/legacy/`, and the root guide docs wholesale in each consumer repo.
 No manual merging is needed.
 
 After syncing, confirm with the user that:

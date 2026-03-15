@@ -4,7 +4,7 @@
 
 Global doubles policy lives in:
 
-- [Testing Service Layer](../testing-service-layer.md)
+- [Testing Service Layer](../../testing-service-layer.md)
 
 This document applies that policy to webhook-specific boundaries.
 

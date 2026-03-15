@@ -14,10 +14,45 @@
 
 Use a hybrid policy so clients get actionable messages for expected failures, while internal details stay private:
 
-- Expected client-correctable errors (typically `4xx`): return a user-safe message.
-- Internal or infrastructure failures (`5xx`, unexpected exceptions): return a generic message.
-- Never serialize raw SQL/provider/stack messages in response bodies.
-- Always log full error context server-side with `requestId`.
+- 5xx errors **MUST** return `GENERIC_PUBLIC_ERROR_MESSAGE` — never the original message
+- 4xx errors **MAY** return the domain error message (e.g., "User not found")
+- `details` **MUST** be stripped from 5xx responses (no stack traces, SQL, constraint names)
+- Never serialize raw SQL/provider/stack messages in response bodies
+- Always log full error context server-side with `requestId`
+
+### `public-error.ts` — Kernel Utility
+
+Both the HTTP error handler and the tRPC error formatter share the same public-message policy via `shared/kernel/public-error.ts`. This file is a **required** kernel utility — do not inline the logic in individual handlers.
+
+```typescript
+// shared/kernel/public-error.ts
+
+import { AppError } from "./errors";
+
+export const GENERIC_PUBLIC_ERROR_MESSAGE = "An unexpected error occurred";
+
+const INTERNAL_CODES = new Set([
+  "INTERNAL_ERROR",
+  "BAD_GATEWAY",
+  "SERVICE_UNAVAILABLE",
+  "GATEWAY_TIMEOUT",
+]);
+
+export function isInternalAppError(error: AppError): boolean {
+  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
+}
+
+export function getPublicErrorMessage(error: AppError): string {
+  if (isInternalAppError(error)) {
+    return GENERIC_PUBLIC_ERROR_MESSAGE;
+  }
+  return error.message;
+}
+
+export function canExposeErrorDetails(error: AppError): boolean {
+  return !isInternalAppError(error);
+}
+```
 
 ## Base Error Class
 
@@ -292,30 +327,13 @@ For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ st
 // shared/infra/http/error-handler.ts
 
 import { AppError } from "@/shared/kernel/errors";
+import {
+  getPublicErrorMessage,
+  canExposeErrorDetails,
+  GENERIC_PUBLIC_ERROR_MESSAGE,
+} from "@/shared/kernel/public-error";
 import { logger } from "@/shared/infra/logger";
 import type { ApiErrorResponse } from "@/shared/kernel/response";
-
-const INTERNAL_CODES = new Set([
-  "INTERNAL_ERROR",
-  "BAD_GATEWAY",
-  "SERVICE_UNAVAILABLE",
-  "GATEWAY_TIMEOUT",
-]);
-
-function isInternalError(error: AppError): boolean {
-  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
-}
-
-function toPublicMessage(error: AppError): string {
-  if (isInternalError(error)) {
-    return "An unexpected error occurred";
-  }
-  return error.message;
-}
-
-function shouldExposeDetails(error: AppError): boolean {
-  return !isInternalError(error);
-}
 
 export function handleError(
   error: unknown,
@@ -337,9 +355,9 @@ export function handleError(
       status: error.httpStatus,
       body: {
         code: error.code,
-        message: toPublicMessage(error),
+        message: getPublicErrorMessage(error),
         requestId,
-        ...(shouldExposeDetails(error) &&
+        ...(canExposeErrorDetails(error) &&
           error.details && { details: error.details }),
       },
     };
@@ -358,7 +376,7 @@ export function handleError(
     status: 500,
     body: {
       code: "INTERNAL_ERROR",
-      message: "An unexpected error occurred",
+      message: GENERIC_PUBLIC_ERROR_MESSAGE,
       requestId,
     },
   };
@@ -369,13 +387,36 @@ export function handleError(
 
 For tRPC integration, see [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md).
 
+The formatter has two critical security responsibilities:
+
+1. **Override `shape.message`** with `getPublicErrorMessage()` — the raw message may contain SQL, stack traces, or constraint names
+2. **Strip `shape.data`** with `pickPublicTrpcShapeData()` — tRPC's default shape data includes `stack` in development and other internal fields
+
 ```typescript
 // shared/infra/trpc/trpc.ts
 
 import { initTRPC } from "@trpc/server";
 import { AppError } from "@/shared/kernel/errors";
+import {
+  getPublicErrorMessage,
+  canExposeErrorDetails,
+  GENERIC_PUBLIC_ERROR_MESSAGE,
+} from "@/shared/kernel/public-error";
 import { logger } from "@/shared/infra/logger";
 import type { Context } from "./context";
+
+/**
+ * Keep only `path` and `zodError` from tRPC shape data.
+ * Strips `stack`, `code`, `httpStatus`, and any other internal fields.
+ */
+function pickPublicTrpcShapeData(
+  shapeData: Record<string, unknown>,
+): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  if ("path" in shapeData) picked.path = shapeData.path;
+  if ("zodError" in shapeData) picked.zodError = shapeData.zodError;
+  return picked;
+}
 
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
@@ -396,28 +437,25 @@ const t = initTRPC.context<Context>().create({
 
       return {
         ...shape,
+        message: getPublicErrorMessage(cause),
         data: {
-          ...shape.data,
+          ...pickPublicTrpcShapeData(shape.data),
           appCode: cause.code,
           requestId,
-          details: cause.details,
+          ...(canExposeErrorDetails(cause) &&
+            cause.details && { details: cause.details }),
         },
       };
     }
 
-    // Unknown error
-    logger.error(
-      {
-        err: error,
-        requestId,
-      },
-      "Unexpected error",
-    );
+    // Unknown error — never expose internals
+    logger.error({ err: error, requestId }, "Unexpected error");
 
     return {
       ...shape,
+      message: GENERIC_PUBLIC_ERROR_MESSAGE,
       data: {
-        ...shape.data,
+        ...pickPublicTrpcShapeData(shape.data),
         appCode: "INTERNAL_ERROR",
         requestId,
       },
@@ -426,16 +464,16 @@ const t = initTRPC.context<Context>().create({
 });
 ```
 
-Keep `shape.data.code` as the tRPC code (`BAD_REQUEST`, `NOT_FOUND`, etc.). Put application-specific error codes in a separate field such as `appCode`.
+The transport-level tRPC code remains on the error envelope itself (`error.code`). Do not mirror transport `code` or `httpStatus` into `shape.data`. Put application-specific error codes in `shape.data.appCode`.
 
 ## Error Flow by Layer
 
-| Layer             | Throws                                                 | Catches                 |
-| ----------------- | ------------------------------------------------------ | ----------------------- |
-| Repository        | `NotFoundError`, `ConflictError` (from DB constraints) | Nothing                 |
-| Service           | Domain-specific errors, `BusinessRuleError`            | Nothing (let bubble)    |
-| Use Case          | Domain-specific errors                                 | Nothing (let bubble)    |
-| Router/Controller | `NotFoundError` for null results                       | Optional module-specific mapping; otherwise let bubble |
+| Layer             | Throws                                                   | Catches                                                |
+| ----------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| Repository        | Domain errors (from caught DB constraints)               | Known Postgres constraint violations (e.g., `23505`)   |
+| Service           | Domain-specific errors, `BusinessRuleError`              | Nothing (let bubble)                                   |
+| Use Case          | Domain-specific errors                                   | Nothing (let bubble)                                   |
+| Router/Controller | `NotFoundError` for null results                         | Optional module-specific mapping; otherwise let bubble |
 
 **Example flow:**
 
@@ -493,6 +531,102 @@ delete: protectedProcedure
   }),
 ```
 
+## Database Error Translation
+
+Repositories **MUST** catch known database constraint violations and translate them to domain errors. Raw database error messages (SQL queries, parameter values, constraint names) **MUST NEVER** propagate to the error formatter.
+
+### Postgres Error Type Guard
+
+```typescript
+// shared/infra/db/errors.ts
+
+interface PostgresError {
+  code: string;
+  detail?: string;
+  constraint?: string;
+}
+
+export function isPostgresError(error: unknown): error is PostgresError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof (error as any).code === "string" &&
+    /^\d{5}$/.test((error as any).code)
+  );
+}
+```
+
+### Common Postgres Error Codes
+
+| Code    | Name                       | Domain Translation                                       |
+| ------- | -------------------------- | -------------------------------------------------------- |
+| `23505` | Unique violation           | `ConflictError` — resource already exists                |
+| `23503` | Foreign key violation      | `ValidationError` — referenced resource not found        |
+| `23502` | Not null violation         | `ValidationError` — required field missing               |
+| `23514` | Check constraint violation | `ValidationError` — value out of range                   |
+
+### Repository Pattern
+
+```typescript
+// modules/organization/repositories/organization.repository.ts
+
+import { isPostgresError } from "@/shared/infra/db/errors";
+import { OrganizationSlugConflictError } from "../errors/organization.errors";
+
+export class OrganizationRepository implements IOrganizationRepository {
+  async create(
+    data: OrganizationInsert,
+    ctx?: RequestContext,
+  ): Promise<Organization> {
+    const client = this.getClient(ctx);
+
+    try {
+      const result = await client
+        .insert(organizations)
+        .values(data)
+        .returning();
+
+      return result[0];
+    } catch (error) {
+      if (isPostgresError(error) && error.code === "23505") {
+        throw new OrganizationSlugConflictError(data.slug);
+      }
+      throw error; // Unknown DB error — let it bubble
+    }
+  }
+}
+```
+
+**Rules:**
+
+- Only catch constraint codes you can translate to a meaningful domain error
+- Always re-throw unknown database errors — the formatter will sanitize them
+- Prefer application-level checks (query-then-insert) for common cases; use database-level catches as a safety net for race conditions
+- Domain error messages MUST be user-safe: `"Organization slug already exists"`, NOT `"duplicate key value violates unique constraint \"organizations_slug_key\""`
+
+## Error Propagation Safety Rules
+
+Every error passes through a chain of layers before reaching the client. Each layer has specific responsibilities:
+
+| Layer | Responsibility | Example |
+|-------|---------------|---------|
+| **Repository** | Catch known DB constraints → throw domain error; re-throw unknown | `23505` → `OrganizationSlugConflictError` |
+| **Service** | Throw domain errors only; never catch-and-wrap unknown errors | `throw new UserNotFoundError(id)` |
+| **Router error handler** | Re-throw as `TRPCError({ cause: appError })` so formatter controls exposure | `throw new TRPCError({ code: "NOT_FOUND", cause: error })` |
+| **Formatter** | Always call `getPublicErrorMessage()` and `canExposeErrorDetails()` | 5xx → generic message; 4xx → domain message |
+
+**Safety invariant:** At no point in this chain should a raw library or database error message appear in a client response.
+
+### What happens to unknown errors
+
+If an error is NOT an `AppError` (e.g., a raw Postgres error that wasn't caught in the repository), the formatter treats it as an unknown error:
+
+- Logs the full error at `error` level (including SQL, params, stack trace)
+- Returns `GENERIC_PUBLIC_ERROR_MESSAGE` to the client
+- Returns `appCode: "INTERNAL_ERROR"` with no details
+
+This is the **last line of defense**. Catching DB errors in the repository is the first.
+
 ## HTTP Status Code Reference
 
 | Status | Class                     | When to Use                                     |
@@ -539,6 +673,8 @@ Clients can determine retry behavior from status code:
 ### Base Infrastructure
 - [ ] Base `AppError` class in `shared/kernel/errors.ts`
 - [ ] Core error classes for common HTTP statuses (400, 401, 403, 404, 409, 422, 429, 500, 502, 503, 504)
+- [ ] `public-error.ts` in kernel with `getPublicErrorMessage`, `canExposeErrorDetails`, `isInternalAppError`
+- [ ] `GENERIC_PUBLIC_ERROR_MESSAGE` constant used (never hardcoded strings)
 - [ ] Validation helper wraps Zod errors into `ValidationError`
 
 ### Domain Error Classes (CRITICAL)
@@ -581,6 +717,10 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Unknown errors logged at `error` level with full stack and `requestId`
 - [ ] Client response includes `code`, `message`, `requestId`, optional `details`
 - [ ] Client never receives stack traces or internal details
+- [ ] Formatter calls `getPublicErrorMessage()` — never passes raw `shape.message` through
+- [ ] Formatter uses `pickPublicTrpcShapeData()` — never spreads raw `shape.data`
+- [ ] 5xx responses have no `details` field (only `appCode` and `requestId`)
+- [ ] Application error codes use `appCode` field (not `code`, which is tRPC's)
 
 ```typescript
 // CORRECT - requestId included in logs

@@ -4,7 +4,7 @@ Use this as the default startup path for new projects and new contributors.
 
 ## Read Order
 
-1. `client/core/overview.md`
+1. `client/core/README.md`
 2. `client/core/architecture.md`
 3. `client/core/conventions.md`
 4. `client/core/folder-structure.md`
@@ -56,5 +56,5 @@ Then move to framework/metaframework docs.
 ## Canonical vs Drafts
 
 - `client/core/*` and `client/frameworks/*` are canonical.
-- `client/drafts/*` is reference-only and may be outdated.
-- Never copy draft patterns into canonical docs without re-validating ownership/boundaries.
+- `legacy/client/*` is reference-only and may be outdated.
+- Never copy legacy patterns into canonical docs without re-validating ownership/boundaries.

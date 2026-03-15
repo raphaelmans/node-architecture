@@ -1,4 +1,4 @@
-# Client Core Overview (Agnostic)
+# Client Core README (Agnostic)
 
 This folder is the canonical client base.
 Framework docs must implement these contracts, not replace them.
@@ -37,7 +37,7 @@ Then read framework details:
 - Putting HTTP or tRPC calls directly in presentation components.
 - Mixing cache invalidation logic into route/presentation layers.
 - Creating feature state stores for server data that should stay in query cache.
-- Copying patterns from `client/drafts/*` as if canonical.
+- Copying patterns from `legacy/client/*` as if canonical.
 
 Rule:
 

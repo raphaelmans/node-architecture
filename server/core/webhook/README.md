@@ -16,13 +16,13 @@
 
 | Document | Description |
 | --- | --- |
-| [Testing Overview](./testing-overview.md) | Testing strategy + index |
-| [Test Doubles](./testing-test-doubles.md) | Stub/mock/spy/fake/simulator definitions |
-| [Vendor Simulator](./testing-vendor-simulator.md) | Emulator patterns and scenarios |
-| [Schema Validation](./testing-schema-validation.md) | Zod + fixtures + payload drift |
-| [Routing + Business Logic](./testing-routing-and-business-logic.md) | Handler registry, mapping, idempotency |
-| [Contract + Regression](./testing-contract-and-regression.md) | Fixture suite + versioning vendor changes |
-| [Testing Checklist](./testing-checklist.md) | CTO/product-ready checklist |
+| [Testing Index](./testing/README.md) | Testing strategy + index |
+| [Test Doubles](./testing/testing-test-doubles.md) | Stub/mock/spy/fake/simulator definitions |
+| [Vendor Simulator](./testing/testing-vendor-simulator.md) | Emulator patterns and scenarios |
+| [Schema Validation](./testing/testing-schema-validation.md) | Zod + fixtures + payload drift |
+| [Routing + Business Logic](./testing/testing-routing-and-business-logic.md) | Handler registry, mapping, idempotency |
+| [Contract + Regression](./testing/testing-contract-and-regression.md) | Fixture suite + versioning vendor changes |
+| [Testing Checklist](./testing/testing-checklist.md) | CTO/product-ready checklist |
 
 ## Folder Structure
 
@@ -397,6 +397,7 @@ export function isHandledEventType(eventType: string): boolean {
 // app/api/webhooks/stripe/route.ts
 
 import { NextResponse } from 'next/server';
+import { GENERIC_PUBLIC_ERROR_MESSAGE } from '@/shared/kernel/public-error';
 import { logger } from '@/shared/infra/logger';
 import { wrapResponse } from '@/shared/utils/response';
 import { verifyStripeSignature } from '@/modules/webhooks/stripe/stripe.validator';
@@ -494,12 +495,14 @@ export async function POST(req: Request) {
 
     log.error({ event: 'webhook.failed', err: error }, 'Webhook processing failed');
     return NextResponse.json(
-      { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', requestId },
+      { code: 'INTERNAL_ERROR', message: GENERIC_PUBLIC_ERROR_MESSAGE, requestId },
       { status: 500 },
     );
   }
 }
 ```
+
+Prefer the shared helpers from `server/core/error-handling.md` for public message policy. Webhook handlers follow the same rule: 5xx responses are generic and never include raw provider or infrastructure details.
 
 ## Idempotency
 

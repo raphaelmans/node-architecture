@@ -7,7 +7,7 @@ nuqs provides type-safe URL query parameter state that:
 - provides type-safe parsers
 - works with Next.js App Router
 
-For deeper examples, see `client/drafts/06-nuqs-url-state.md`.
+For deeper historical examples, see `legacy/client/06-nuqs-url-state.md`.
 
 ## Setup
 
@@ -107,4 +107,3 @@ Rules:
 - Reset page to 1 when filters change
 
 See `client/core/server-state-tanstack-query.md` for the TanStack Query integration pattern.
-

@@ -4,7 +4,7 @@
 
 This guide is a specialized extension of the global server testing standard:
 
-- [Testing Service Layer](../testing-service-layer.md)
+- [Testing Service Layer](../../testing-service-layer.md)
 
 ---
 

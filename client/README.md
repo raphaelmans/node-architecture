@@ -1,172 +1,92 @@
 # Frontend Architecture Documentation
 
-> Feature-based client architecture with a framework-agnostic core and framework/metaframework-specific layers.
+> Canonical frontend architecture for feature-based React/Next.js applications with a framework-agnostic core and framework-specific layers.
 
-See [../README.md](../README.md) for the unified project folder structure and full documentation index.
+See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
 
-## Overview
+## Focus
 
-This documentation describes a **production-ready frontend architecture** that emphasizes:
+This documentation emphasizes:
 
 - Feature-based organization
-- A strict client API chain (`clientApi -> featureApi -> query adapter -> components`)
-- Standardized form patterns
+- A strict client API chain: `clientApi -> featureApi -> query adapter -> components`
 - Clear separation of business and presentation logic
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Page (Route)                         │
-│                    (Next.js App Router)                      │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-┌─────────────────────────┐     ┌─────────────────────────────┐
-│   Feature Component     │     │  Query Adapter Hook         │
-│  (Business orchestration│     │  (useQuery/useMut/useMod,   │
-│   + form wiring)        │     │   cache/invalidation)       │
-└───────────┬─────────────┘     └─────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│ Presentation Component  │
-│  (Form fields, cards)   │
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│     UI Primitives       │
-│  (shadcn/ui, Radix)     │
-└─────────────────────────┘
-```
+- Typed validation and normalized error handling
 
 ## Technology Stack
 
-> **Note:** This documentation serves as an architectural reference. Always check `package.json` for actual package versions in your project.
+| Concern | Technology |
+| ------- | ---------- |
+| Framework | Next.js (App Router) |
+| React | React |
+| API Layer | tRPC or route-handler HTTP adapters |
+| Server State | TanStack Query |
+| Validation | Zod |
+| Forms | react-hook-form |
+| URL State | nuqs |
+| Client State | Zustand |
+| UI | shadcn/ui + Radix |
+| Styling | Tailwind CSS |
+| Testing | Vitest |
 
-| Concern       | Technology           |
-| ------------- | -------------------- |
-| Framework     | Next.js (App Router) |
-| React         | React                |
-| API Layer     | Adapter choice (tRPC / route handlers) |
-| Server State  | TanStack Query       |
-| Validation    | Zod                  |
-| Forms         | react-hook-form      |
-| URL State     | nuqs                 |
-| Client State  | Zustand              |
-| UI Components | shadcn/ui + Radix    |
-| Styling       | Tailwind CSS         |
-| Testing       | Vitest               |
+## Canonical Navigation
 
-## Documentation Structure
-
-### Core Documentation (Agnostic)
+### Core
 
 | Document | Description |
-| --- | --- |
+| -------- | ----------- |
+| [Core Index](./core/README.md) | Core contracts and reading order |
 | [Onboarding](./core/onboarding.md) | New project + contributor startup checklist |
-| [Core Index](./core/overview.md) | Core index + links |
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
 | [Client API Architecture](./core/client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |
-| [Query Keys](./core/query-keys.md) | Query key conventions (tRPC + non-tRPC) |
-| [State Management](./core/state-management.md) | Conceptual state decision guide |
+| [Query Keys](./core/query-keys.md) | Query key conventions |
+| [State Management](./core/state-management.md) | State decision guide |
 | [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
-| [Logging](./core/logging.md) | Client logging conventions (`debug`) |
-| [Testing](./core/testing.md) | Unit testing standard: `__tests__` layout, AAA, test doubles |
-| [Testing — Vitest Runner](./core/testing-vitest.md) | Vitest runner configuration, scripts, setup file |
-| [Realtime Subscriptions](./core/realtime.md) | Client-side realtime event subscriptions, cache patching, reconnection |
+| [Logging](./core/logging.md) | Client logging conventions |
+| [Testing](./core/testing.md) | Unit testing standard |
+| [Testing — Vitest Runner](./core/testing-vitest.md) | Runner configuration and setup |
+| [Realtime Subscriptions](./core/realtime.md) | Realtime cache patching and reconnection |
 | [Folder Structure](./core/folder-structure.md) | Framework-agnostic directory conventions |
 
-### Framework Documentation
+### Frameworks
 
 | Document | Description |
-| --- | --- |
+| -------- | ----------- |
 | [Frameworks Index](./frameworks/README.md) | Framework-specific docs |
 | [ReactJS Index](./frameworks/reactjs/README.md) | React-specific implementation |
 | [Next.js Index](./frameworks/reactjs/metaframeworks/nextjs/README.md) | Next.js App Router + SSR/params + adapters |
 
-### Drafts
+### Supplemental
 
-The `drafts/` folder contains detailed implementation guides from an existing codebase.
-These documents are **non-canonical** and may be outdated.
-
-Start here: [Drafts Overview](./drafts/overview.md)
-
-### Diagrams
-
-ASCII diagrams for structure, data flow, and state management live in:
-
-- [client/diagrams.md](./diagrams.md)
+- [client/diagrams.md](./diagrams.md) for ASCII diagrams
+- [Legacy Client Overview](../legacy/client/overview.md) for non-canonical historical references
 
 ## Quick Start
 
-Start with: [client/core/onboarding.md](./core/onboarding.md)
-
-### Component Decision Flow
-
-```
-Does it fetch data or own form state?
-├── Yes → Feature Component (business)
-└── No → Presentation Component
-    └── Does it consume form context?
-        ├── Yes → useFormContext + StandardForm fields
-        └── No → Props-based component
-```
-
-### Data Fetching
-
-```typescript
-// Preferred: follow the client API chain.
-// components -> query adapter -> featureApi -> clientApi -> network
-```
-
-### Forms
-
-```typescript
-<StandardFormProvider form={form} onSubmit={onSubmit}>
-  <StandardFormError />
-  <StandardFormInput<FormType> name='email' label='Email' required />
-  <Button type='submit'>Save</Button>
-</StandardFormProvider>
-```
-
-### URL State
-
-```typescript
-const [tab, setTab] = useQueryState(
-  "tab",
-  parseAsStringLiteral(["overview", "settings"]).withDefault("overview"),
-);
-```
-
-## Folder Structure
-
-See [../README.md](../README.md) for the unified project folder structure that aligns client and server code.
-
-For detailed frontend-specific folder conventions, see [./core/folder-structure.md](./core/folder-structure.md).
+1. Start with [./core/onboarding.md](./core/onboarding.md).
+2. Read [./core/README.md](./core/README.md) and [./core/conventions.md](./core/conventions.md).
+3. Add framework details from [./frameworks/reactjs/README.md](./frameworks/reactjs/README.md) and [./frameworks/reactjs/metaframeworks/nextjs/README.md](./frameworks/reactjs/metaframeworks/nextjs/README.md) only when they apply.
+4. Use [../legacy/client/overview.md](../legacy/client/overview.md) only for historical examples.
 
 ## Core Principles
 
-| Principle                       | Description                                            |
-| ------------------------------- | ------------------------------------------------------ |
-| **Feature-based**               | Co-locate components, hooks, schemas by feature        |
-| **Business/Presentation split** | Data in business components, rendering in presentation |
-| **Type-safe data flow**         | Zod + typed APIs + TanStack Query → Components         |
-| **URL as state**                | Use a metaframework URL-state adapter (Next.js: nuqs)  |
-| **Standardized forms**          | StandardForm components for consistency                |
+| Principle | Description |
+| --------- | ----------- |
+| Feature-based | Co-locate components, hooks, schemas by feature |
+| Business/presentation split | Business components own data/forms; presentation components render |
+| Type-safe data flow | Zod + typed APIs + TanStack Query to components |
+| URL as state | Prefer URL-state adapters where route state matters |
+| Standardized forms | Shared form primitives for consistency |
 
-## Checklist for New Features
+## Feature Checklist
 
-- [ ] Create `src/features/<feature>/` folder
-- [ ] Define `api.ts` with `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`
+- [ ] Create `src/features/<feature>/`
+- [ ] Define `api.ts` with `I<Feature>Api`, `<Feature>Api`, and `create<Feature>Api`
 - [ ] Define schemas in `schemas.ts`
-- [ ] Create business component for data/forms
-- [ ] Create presentation components for fields
-- [ ] Add URL state hooks in `hooks.ts` if needed
-- [ ] Add tests in `src/__tests__/features/<feature>/`: `api.test.ts` (mock deps), `domain.test.ts` / `helpers.test.ts` (pure, no mocks) — see `client/core/testing.md` and `client/core/testing-vitest.md`
-- [ ] Add route to `app-routes.ts`
-- [ ] Create page in the appropriate route group under `app/` (project-defined, e.g. `app/(protected)/<feature>/`)
+- [ ] Keep transport and cache ownership out of presentation components
+- [ ] Add tests in `src/__tests__/features/<feature>/`
+- [ ] Add route registration in the project-defined route registry

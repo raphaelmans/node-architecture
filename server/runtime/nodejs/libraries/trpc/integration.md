@@ -81,25 +81,25 @@ export function makeRegisterUserUseCase() {
 
 import { initTRPC, TRPCError } from '@trpc/server';
 import { AppError } from '@/shared/kernel/errors';
+import {
+  getPublicErrorMessage,
+  canExposeErrorDetails,
+  GENERIC_PUBLIC_ERROR_MESSAGE,
+} from '@/shared/kernel/public-error';
 import { logger } from '@/shared/infra/logger';
 import type { Context } from './context';
 
-const INTERNAL_CODES = new Set([
-  'INTERNAL_ERROR',
-  'BAD_GATEWAY',
-  'SERVICE_UNAVAILABLE',
-  'GATEWAY_TIMEOUT',
-]);
-
-function isInternalError(error: AppError): boolean {
-  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
-}
-
-function toPublicMessage(error: AppError): string {
-  if (isInternalError(error)) {
-    return 'An unexpected error occurred';
-  }
-  return error.message;
+/**
+ * Keep only `path` and `zodError` from tRPC shape data.
+ * Strips `stack`, `code`, `httpStatus`, and any other internal fields.
+ */
+function pickPublicTrpcShapeData(
+  shapeData: Record<string, unknown>,
+): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  if ('path' in shapeData) picked.path = shapeData.path;
+  if ('zodError' in shapeData) picked.zodError = shapeData.zodError;
+  return picked;
 }
 
 const t = initTRPC.context<Context>().create({
@@ -120,26 +120,26 @@ const t = initTRPC.context<Context>().create({
 
       return {
         ...shape,
-        message: toPublicMessage(cause),
+        message: getPublicErrorMessage(cause),
         data: {
-          ...shape.data,
-          code: cause.code,
-          httpStatus: cause.httpStatus,
+          ...pickPublicTrpcShapeData(shape.data),
+          appCode: cause.code,
           requestId,
-          ...(cause.details && !isInternalError(cause) && { details: cause.details }),
+          ...(canExposeErrorDetails(cause) &&
+            cause.details && { details: cause.details }),
         },
       };
     }
 
+    // Unknown error — never expose internals
     logger.error({ err: error, requestId }, 'Unexpected error');
 
     return {
       ...shape,
-      message: 'An unexpected error occurred',
+      message: GENERIC_PUBLIC_ERROR_MESSAGE,
       data: {
-        ...shape.data,
-        httpStatus: 500,
-        code: 'INTERNAL_ERROR',
+        ...pickPublicTrpcShapeData(shape.data),
+        appCode: 'INTERNAL_ERROR',
         requestId,
       },
     };
@@ -149,6 +149,12 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const middleware = t.middleware;
 ```
+
+Transport note:
+
+- Keep the tRPC transport code on the error envelope itself.
+- Do not expose `httpStatus` or duplicate transport `code` inside `shape.data`.
+- Use `shape.data.appCode` for application-specific error codes.
 
 ### Context Creation
 

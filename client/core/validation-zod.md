@@ -14,5 +14,4 @@ Use Zod at **boundaries** to validate and normalize data.
 - Feature/UI schema (composed from DTO schema + UI-only fields)
 - Inferred TypeScript types from schemas
 
-For detailed reference examples, see `client/drafts/01-zod-schema-architecture.md`.
-
+For detailed historical examples, see `legacy/client/01-zod-schema-architecture.md`.

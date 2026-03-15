@@ -19,9 +19,10 @@ src/
           <module>.usecase.test.ts      # orchestration (if usecase layer present)
           shared/
             domain.test.ts              # shared pure domain rules
-    common/
-      errors/
-        error-handler.test.ts
+      shared/
+        infra/
+          http/
+            error-handler.test.ts
 ```
 
 Navigation rule: `src/lib/modules/<module>/<module>.service.ts` → `src/__tests__/lib/modules/<module>/<module>.service.test.ts`.
@@ -166,7 +167,7 @@ Recommended test split:
 Router tests use `vi.mock` at the module level to replace factory functions, then invoke procedures via `createCaller`:
 
 ```typescript
-vi.mock("@/lib/modules/reservation/factories/reservation.factory", () => ({
+vi.mock("@/modules/reservation/factories/reservation.factory", () => ({
   makeReservationService: vi.fn(),
   makeProfileService: vi.fn(),
 }));
@@ -258,6 +259,6 @@ This provides typed partial stubs for all repository dependencies without touchi
 - `./transaction.md`
 - `./error-handling.md`
 - `./rate-limiting.md`
-- `./webhook/testing-overview.md` (specialized extension for webhook domain)
+- `./webhook/testing/README.md` (specialized extension for webhook domain)
 - `client/core/testing.md` (shared concepts: AAA pattern, test doubles policy, anti-patterns, naming convention)
 - `https://github.com/mattpocock/skills/tree/main/tdd` (optional reference workflow for red-green-refactor execution)

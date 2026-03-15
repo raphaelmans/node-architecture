@@ -1,151 +1,77 @@
 # Node.js Architecture Documentation
 
-> Reference architecture for full-stack applications with a core-first client/server documentation model.
+> Source repository for the client/server architecture guides and the downstream `guides/` bundle.
 
-## Purpose
+This repo documents patterns and conventions, not package versions. Check the target project's `package.json` for actual versions.
 
-This repository contains **architectural patterns and conventions** for building production-ready applications. It serves as a reference for both human developers and LLMs.
+## Repo Surfaces
 
-> **Important:** This documentation describes patterns and conventions, not specific package versions. Always check `package.json` in your project for actual versions.
-
-## Contributing
-
-For contribution standards (including adding new client frameworks like Vue/Svelte or new server runtimes/languages like Go), see [CONTRIBUTING.md](./CONTRIBUTING.md).
+| Surface | Purpose |
+| ------- | ------- |
+| [server/README.md](./server/README.md) | Canonical backend architecture docs |
+| [client/README.md](./client/README.md) | Canonical frontend architecture docs |
+| [legacy/README.md](./legacy/README.md) | Historical, non-canonical reference material |
+| [consumer/README.md](./consumer/README.md) | Downstream `guides/` bundle docs and agent-integration templates |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Source-repo maintenance rules |
+| [copy-guides.sh](./copy-guides.sh) | Copies the consumer bundle into another repo's `guides/` directory |
 
 ## Technology Stack
 
-| Layer   | Technologies                                        |
-| ------- | --------------------------------------------------- |
-| Server  | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino   |
-| Client  | Next.js/React, TanStack Query, Zod, Tailwind, adapter-based API layer |
-| Testing | Vitest (unit), Playwright (E2E)                     |
-| Auth    | Supabase Auth (or custom)                           |
-| Storage | Supabase Storage (or custom)                        |
+| Layer | Technologies |
+| ----- | ------------ |
+| Server | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino |
+| Client | Next.js/React, TanStack Query, Zod, Tailwind, adapter-based API layer |
+| Testing | Vitest (unit), Playwright (E2E) |
+| Auth | Supabase Auth or custom auth |
+| Storage | Supabase Storage or custom storage |
 
-## Documentation Structure
+## Source Tree
 
-```
+```text
 node-architecture/
-├── README.md                    # This file - entry point
-│
-├── server/                      # Backend architecture
-│   ├── README.md                # Server overview + quick start
-│   ├── core/                    # Core patterns
-│   │   ├── overview.md          # Architecture summary
-│   │   ├── conventions.md       # Layer responsibilities, DI
-│   │   ├── error-handling.md    # Error classes, validation
-│   │   ├── transaction.md       # Transaction patterns
-│   │   ├── logging.md           # Pino configuration
-│   │   ├── api-response.md      # Response envelope
-│   │   ├── id-generation.md     # UUID strategy
-│   │   └── webhook/             # Agnostic webhook architecture + testing
-│   ├── runtime/                 # Runtime-specific docs
-│   │   └── nodejs/
-│   │       ├── libraries/
-│   │       │   ├── trpc/        # tRPC integration + auth
-│   │       │   └── supabase/    # Supabase integration docs
-│   │       └── metaframeworks/
-│   │           ├── nextjs/      # Next.js route handlers
-│   │           ├── express/     # Placeholder
-│   │           └── nestjs/      # Placeholder
-│   └── drafts/                  # Original detailed docs (legacy, non-canonical)
-│
-├── skills/                      # Shared AI-assisted development skills
-│   ├── server/
-│   │   ├── backend-module/
-│   │   ├── backend-feature/
-│   │   ├── backend-auth/
-│   │   └── backend-webhook/
-│   └── client/
-│
-└── client/                      # Frontend architecture
-    ├── README.md                # Client overview + quick start
-    ├── core/                    # Core patterns
-    │   ├── onboarding.md        # New project + contributor startup checklist
-    │   ├── overview.md          # Core index
-    │   ├── architecture.md      # Agnostic principles
-    │   ├── conventions.md       # Layer responsibilities
-    │   ├── client-api-architecture.md # clientApi -> featureApi -> query adapter
-    │   ├── validation-zod.md    # Zod boundary rules
-    │   ├── server-state-tanstack-query.md # TanStack Query patterns
-    │   ├── domain-logic.md      # Shared vs client-only domain transformations
-    │   ├── query-keys.md        # Query key conventions (tRPC + non-tRPC)
-    │   ├── logging.md           # Client logging conventions (debug)
-    │   ├── state-management.md  # Conceptual state decision guide
-    │   ├── error-handling.md    # Error taxonomy and rules
-    │   ├── testing.md           # Unit testing standard
-    │   ├── testing-vitest.md    # Vitest runner standard
-    │   └── folder-structure.md  # Directory architecture
-    ├── frameworks/              # Framework-specific docs
-    │   └── reactjs/             # React-specific docs
-    │       └── metaframeworks/nextjs/ # Next.js-specific docs
-    └── drafts/                  # Original detailed docs (drafts)
-```
-
-## Project Folder Structure
-
-This architecture expects a core-aligned project structure.
-Treat this as a contract-oriented reference, not an exact required tree.
-
-```
-src/
-├── <routes>/                    # Metaframework-owned routes (Next.js: app/)
-├── features/                    # Client feature modules (business unit)
-│   └── <feature>/
-│       ├── components/          # view + fields (business/presentation split)
-│       ├── api.ts               # featureApi
-│       ├── hooks.ts             # query adapter
-│       ├── schemas.ts           # zod schemas + derived types
-│       ├── domain.ts            # deterministic domain rules (optional)
-│       └── helpers.ts           # pure transforms (optional)
-├── components/                  # Shared UI components
-├── common/                      # Cross-feature contracts/utilities
-│   ├── query-keys/              # Query key contracts
-│   ├── errors/                  # AppError contract + adapters
-│   ├── toast/                   # Toast facade + adapters
-│   └── logging/                 # Logger facade + adapters
-└── lib/                         # Server code and server/client shared module logic
-    └── modules/<module>/shared/ # Shared domain transforms and contracts
+  client/       canonical frontend docs
+  server/       canonical backend docs
+  legacy/       historical references, not source of truth
+  consumer/     files copied into downstream guides/
+  assets/       supplemental artifacts
+  change-logs/  documentation change history
 ```
 
 ## Quick Start
 
-### For Server Development
+### Editing Architecture Docs
 
-1. Read [server/README.md](./server/README.md) for overview
-2. Follow [server/core/conventions.md](./server/core/conventions.md) for layer patterns
-3. Use the `backend-module` skill for AI-assisted scaffolding
+1. Read [CONTRIBUTING.md](./CONTRIBUTING.md).
+2. Start with the relevant canonical index:
+   [client/core/README.md](./client/core/README.md) or [server/core/README.md](./server/core/README.md).
+3. Keep framework/runtime details inside framework/runtime folders; keep core docs agnostic.
+4. Treat [legacy/](./legacy/README.md) as reference-only material.
 
-### For Client Development
+### Publishing to a Consumer Repo
 
-1. Read [client/README.md](./client/README.md) for overview
-2. Start with [client/core/onboarding.md](./client/core/onboarding.md)
-3. Follow [client/core/conventions.md](./client/core/conventions.md) and [client/core/client-api-architecture.md](./client/core/client-api-architecture.md)
-4. Apply framework details from [client/frameworks/reactjs/README.md](./client/frameworks/reactjs/README.md) and [client/frameworks/reactjs/metaframeworks/nextjs/README.md](./client/frameworks/reactjs/metaframeworks/nextjs/README.md)
+1. Read [consumer/UPDATE-ARCHITECTURE.md](./consumer/UPDATE-ARCHITECTURE.md).
+2. Run `./copy-guides.sh /absolute/path/to/target-repo`.
+3. In the consumer repo, follow `guides/AGENTS-MD-ALIGNMENT.md`.
 
-## Core Principles
+## Project Folder Contract
 
-| Principle                        | Description                                  |
-| -------------------------------- | -------------------------------------------- |
-| **Explicit over implicit**       | No magic, clear dependency flow              |
-| **Feature-based organization**   | Co-locate related code by domain             |
-| **Type-safe end-to-end**         | Zod schemas shared between client and server |
-| **Layered architecture**         | Clear boundaries between layers              |
-| **Composition over inheritance** | Small, focused units composed together       |
+This documentation assumes a core-aligned application structure. It is a reference contract, not a literal required tree.
 
-## Using This Documentation
+```text
+src/
+  <routes>/                    metaframework-owned routes (Next.js: app/)
+  features/<feature>/          client feature modules
+  components/                  shared UI components
+  common/                      cross-feature client contracts/utilities
+  lib/modules/<module>/shared/ shared domain transforms/contracts
+```
 
-### For LLMs
+## Principles
 
-When implementing features:
-
-1. Check `package.json` for actual package versions
-2. Use this documentation for patterns and conventions
-3. Follow the folder structure defined above
-4. Reference `skills/` for step-by-step implementation guides
-
-### For Humans
-
-1. Start with the relevant README (server or client)
-2. Deep-dive into `core/` docs for specific patterns
-3. Check `drafts/` for detailed legacy examples (non-canonical)
+| Principle | Description |
+| --------- | ----------- |
+| Explicit over implicit | No magic, clear dependency flow |
+| Feature-based organization | Co-locate code by domain |
+| Type-safe end-to-end | Zod-backed contracts across boundaries |
+| Layered architecture | Clear client/server/runtime responsibilities |
+| Composition over inheritance | Small focused units composed together |

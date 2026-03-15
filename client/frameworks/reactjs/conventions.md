@@ -97,4 +97,4 @@ Existing codebases may still contain legacy names or mixed-responsibility hooks.
 
 - New hooks and modified hooks should follow `useQuery*` / `useMut*` / `useMod*`.
 - Legacy hooks migrate incrementally as files are touched.
-- See `client/core/overview.md` for the current drift summary.
+- See `client/core/README.md` for the current drift summary.

@@ -25,5 +25,5 @@ Conventions:
 
 Implementation guide:
 
-- `skills/client/metaframeworks/nextjs/nextjs-auth-routing/SKILL.md`
-
+- Keep route access rules in your route registry and `proxy.ts`.
+- Keep layout/route-group guards server-side.

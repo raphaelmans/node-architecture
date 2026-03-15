@@ -12,7 +12,7 @@ client/
   diagrams.md
 
   core/                           # framework-agnostic
-    overview.md
+    README.md
     architecture.md
     conventions.md
     client-api-architecture.md
@@ -48,7 +48,8 @@ client/
           ky-fetch.md
           query-keys.md            # moved to client/core/query-keys.md (keep as redirect)
 
-  drafts/                          # detailed legacy references (non-canonical)
+legacy/
+  client/                         # detailed historical references (non-canonical)
     01-zod-schema-architecture.md
     ...
 ```

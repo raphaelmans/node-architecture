@@ -17,8 +17,10 @@ guides/
   server/
     core/          ← MANDATORY for all server work
     runtime/       ← Opt-in per tech stack
+  legacy/          ← Historical reference only
   README.md
   AGENTS-MD-ALIGNMENT.md   ← this file
+  OPENCODE-INTEGRATION.md  ← OpenCode integration guidance
 ```
 
 This file tells you how to reference these guides in `AGENTS.md` (for Codex / OpenAI agents)
@@ -86,7 +88,7 @@ Mark which technologies are in use. This determines which guides to include.
 ### Always Include: Client Core (MANDATORY)
 
 ```
-guides/client/core/overview.md
+guides/client/core/README.md
 guides/client/core/architecture.md
 guides/client/core/conventions.md
 guides/client/core/folder-structure.md
@@ -106,7 +108,7 @@ guides/client/core/realtime.md
 ### Always Include: Server Core (MANDATORY)
 
 ```
-guides/server/core/overview.md
+guides/server/core/README.md
 guides/server/core/conventions.md
 guides/server/core/api-contracts-zod-first.md
 guides/server/core/api-response.md
@@ -191,14 +193,14 @@ guides/server/core/async-jobs-outbox.md
 ### If Webhooks → add
 
 ```
-guides/server/core/webhook/architecture.md
-guides/server/core/webhook/testing-overview.md
-guides/server/core/webhook/testing-checklist.md
-guides/server/core/webhook/testing-schema-validation.md
-guides/server/core/webhook/testing-routing-and-business-logic.md
-guides/server/core/webhook/testing-contract-and-regression.md
-guides/server/core/webhook/testing-test-doubles.md
-guides/server/core/webhook/testing-vendor-simulator.md
+guides/server/core/webhook/README.md
+guides/server/core/webhook/testing/README.md
+guides/server/core/webhook/testing/testing-checklist.md
+guides/server/core/webhook/testing/testing-schema-validation.md
+guides/server/core/webhook/testing/testing-routing-and-business-logic.md
+guides/server/core/webhook/testing/testing-contract-and-regression.md
+guides/server/core/webhook/testing/testing-test-doubles.md
+guides/server/core/webhook/testing/testing-vendor-simulator.md
 ```
 
 ### Discard — Do Not Reference
@@ -219,7 +221,7 @@ unless your project explicitly uses them:
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md` | Not using Next.js |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/trpc.md` | No tRPC |
 | `guides/client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md` | Using tRPC only |
-| `guides/*/drafts/` | Always — drafts are never canonical |
+| `guides/legacy/` | Always — legacy docs are never canonical |
 
 ---
 
@@ -248,7 +250,7 @@ copied via `copy-guides.sh`. Do not edit files inside `guides/` directly.
 
 Read and follow all of these for any client-side work:
 
-- guides/client/core/overview.md
+- guides/client/core/README.md
 - guides/client/core/architecture.md
 - guides/client/core/conventions.md
 - guides/client/core/folder-structure.md
@@ -268,7 +270,7 @@ Read and follow all of these for any client-side work:
 
 Read and follow all of these for any server-side work:
 
-- guides/server/core/overview.md
+- guides/server/core/README.md
 - guides/server/core/conventions.md
 - guides/server/core/api-contracts-zod-first.md
 - guides/server/core/api-response.md
@@ -332,14 +334,14 @@ Read and follow all of these for any server-side work:
 
 ## Feature Guides — [INCLUDE IF WEBHOOKS]
 
-- guides/server/core/webhook/architecture.md
-- guides/server/core/webhook/testing-overview.md
-- guides/server/core/webhook/testing-checklist.md
-- guides/server/core/webhook/testing-schema-validation.md
-- guides/server/core/webhook/testing-routing-and-business-logic.md
-- guides/server/core/webhook/testing-contract-and-regression.md
-- guides/server/core/webhook/testing-test-doubles.md
-- guides/server/core/webhook/testing-vendor-simulator.md
+- guides/server/core/webhook/README.md
+- guides/server/core/webhook/testing/README.md
+- guides/server/core/webhook/testing/testing-checklist.md
+- guides/server/core/webhook/testing/testing-schema-validation.md
+- guides/server/core/webhook/testing/testing-routing-and-business-logic.md
+- guides/server/core/webhook/testing/testing-contract-and-regression.md
+- guides/server/core/webhook/testing/testing-test-doubles.md
+- guides/server/core/webhook/testing/testing-vendor-simulator.md
 ```
 
 ---

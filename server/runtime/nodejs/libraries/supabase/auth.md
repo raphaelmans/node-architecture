@@ -883,7 +883,21 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
 
 import { initTRPC, TRPCError } from "@trpc/server";
 import { AppError, AuthenticationError } from "@/shared/kernel/errors";
+import {
+  getPublicErrorMessage,
+  canExposeErrorDetails,
+  GENERIC_PUBLIC_ERROR_MESSAGE,
+} from "@/shared/kernel/public-error";
 import type { Context, AuthenticatedContext } from "./context";
+
+function pickPublicTrpcShapeData(
+  shapeData: Record<string, unknown>,
+): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  if ("path" in shapeData) picked.path = shapeData.path;
+  if ("zodError" in shapeData) picked.zodError = shapeData.zodError;
+  return picked;
+}
 
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
@@ -894,12 +908,13 @@ const t = initTRPC.context<Context>().create({
       ctx?.log.warn({ err: cause, code: cause.code, details: cause.details, requestId }, cause.message);
       return {
         ...shape,
+        message: getPublicErrorMessage(cause),
         data: {
-          ...shape.data,
-          code: cause.code,
-          httpStatus: cause.httpStatus,
+          ...pickPublicTrpcShapeData(shape.data),
+          appCode: cause.code,
           requestId,
-          details: cause.details,
+          ...(canExposeErrorDetails(cause) &&
+            cause.details && { details: cause.details }),
         },
       };
     }
@@ -907,7 +922,12 @@ const t = initTRPC.context<Context>().create({
     ctx?.log.error({ err: error, requestId }, "Unexpected error");
     return {
       ...shape,
-      data: { ...shape.data, code: "INTERNAL_ERROR", requestId },
+      message: GENERIC_PUBLIC_ERROR_MESSAGE,
+      data: {
+        ...pickPublicTrpcShapeData(shape.data),
+        appCode: "INTERNAL_ERROR",
+        requestId,
+      },
     };
   },
 });
