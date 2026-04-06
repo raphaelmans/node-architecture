@@ -256,6 +256,12 @@ export class AuthRepository implements IAuthRepository {
       throw error;
     }
 
+    // With the anon key, Supabase returns a fake success for duplicate emails
+    // (to prevent email enumeration). Detect via empty identities array.
+    if (data.user && data.user.identities?.length === 0) {
+      throw new UserAlreadyExistsError(email);
+    }
+
     return data;
   }
 

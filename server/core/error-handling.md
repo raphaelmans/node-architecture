@@ -448,6 +448,19 @@ const t = initTRPC.context<Context>().create({
       };
     }
 
+    // Input validation error — preserve tRPC's BAD_REQUEST shape (Zod messages)
+    if (error.code === "BAD_REQUEST") {
+      ctx?.log.warn({ err: error, requestId }, "Input validation failed");
+
+      return {
+        ...shape,
+        data: {
+          ...pickPublicTrpcShapeData(shape.data),
+          requestId,
+        },
+      };
+    }
+
     // Unknown error — never expose internals
     logger.error({ err: error, requestId }, "Unexpected error");
 
