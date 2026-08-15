@@ -1,6 +1,6 @@
 # Supabase Authentication
 
-> Complete authentication implementation using Supabase Auth with tRPC, Next.js middleware, and user roles. Uses **PKCE flow** for magic links and email verification.
+> Complete authentication implementation using Supabase Auth with tRPC, Next.js Proxy, and user roles. Uses **PKCE flow** for magic links and email verification.
 
 ## Overview
 
@@ -178,91 +178,116 @@ export type SupabaseClient = BaseSupabaseClient;
 
 ## Auth Repository
 
-The repository wraps Supabase Auth and maps errors to domain errors:
+The repository is an anti-corruption adapter: it wraps Supabase Auth, maps provider errors to domain errors, and maps provider `User`/`Session` objects to provider-neutral module models before returning them.
+
+Branch on Supabase Auth `error.code`, never localized/message text. See the official [Supabase Auth error codes](https://supabase.com/docs/guides/auth/debugging/error-codes).
+
+```typescript
+// modules/auth/models/auth.models.ts
+
+export interface AuthUser {
+  id: string;
+  email: string | null;
+}
+
+export interface AuthSessionState {
+  userId: string;
+  expiresAt: number | null;
+}
+
+export interface AuthResult {
+  user: AuthUser | null;
+  session: AuthSessionState | null;
+}
+
+export interface AuthenticatedAuthResult {
+  user: AuthUser;
+  session: AuthSessionState;
+}
+```
 
 ```typescript
 // modules/auth/repositories/auth.repository.ts
 
 import type { SupabaseClient } from "@/shared/infra/supabase/types";
 import type { User, Session } from "@supabase/supabase-js";
+import type {
+  AuthUser,
+  AuthResult,
+  AuthenticatedAuthResult,
+} from "../models/auth.models";
 import {
   InvalidCredentialsError,
   EmailNotVerifiedError,
-  UserAlreadyExistsError,
 } from "../errors/auth.errors";
 
 export interface IAuthRepository {
-  getCurrentUser(): Promise<User | null>;
-  signInWithPassword(email: string, password: string): Promise<{ user: User; session: Session }>;
-  signInWithOtp(email: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }>;
-  signUp(email: string, password: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }>;
+  getCurrentUser(): Promise<AuthUser | null>;
+  signInWithPassword(email: string, password: string): Promise<AuthenticatedAuthResult>;
+  signInWithOtp(email: string, redirectTo: string): Promise<AuthResult>;
+  signUp(email: string, password: string, redirectTo: string): Promise<AuthResult>;
   signOut(): Promise<void>;
-  exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }>;
+  exchangeCodeForSession(code: string): Promise<AuthenticatedAuthResult>;
   // PKCE flow methods
-  verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
-  verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifyMagicLink(tokenHash: string): Promise<AuthResult>;
+  verifySignUp(tokenHash: string): Promise<AuthResult>;
   verifyRecovery(tokenHash: string): Promise<void>;
 }
+
+// These helpers are private to the Supabase adapter. They select only the
+// provider-neutral fields the application needs.
+function toAuthUser(user: User | null): AuthUser | null { /* ... */ }
+function toAuthResult(data: { user: User | null; session: Session | null }): AuthResult { /* ... */ }
+function toAuthenticatedAuthResult(data: { user: User; session: Session }): AuthenticatedAuthResult { /* ... */ }
 
 export class AuthRepository implements IAuthRepository {
   constructor(private client: SupabaseClient) {}
 
-  async getCurrentUser(): Promise<User | null> {
+  async getCurrentUser(): Promise<AuthUser | null> {
     const { data: { user }, error } = await this.client.auth.getUser();
     if (error) throw error;
-    return user;
+    return toAuthUser(user);
   }
 
-  async signInWithPassword(email: string, password: string): Promise<{ user: User; session: Session }> {
+  async signInWithPassword(email: string, password: string): Promise<AuthenticatedAuthResult> {
     const { data, error } = await this.client.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      if (error.message.includes("Invalid login credentials")) {
+      if (error.code === "invalid_credentials") {
         throw new InvalidCredentialsError();
       }
-      if (error.message.includes("Email not confirmed")) {
-        throw new EmailNotVerifiedError(email);
+      if (error.code === "email_not_confirmed") {
+        throw new EmailNotVerifiedError();
       }
       throw error;
     }
 
-    return data;
+    return toAuthenticatedAuthResult(data);
   }
 
-  async signInWithOtp(email: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }> {
+  async signInWithOtp(email: string, redirectTo: string): Promise<AuthResult> {
     const { data, error } = await this.client.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
     });
 
     if (error) throw error;
-    return data;
+    return toAuthResult(data);
   }
 
-  async signUp(email: string, password: string, redirectTo: string): Promise<{ user: User | null; session: Session | null }> {
+  async signUp(email: string, password: string, redirectTo: string): Promise<AuthResult> {
     const { data, error } = await this.client.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: redirectTo },
     });
 
-    if (error) {
-      if (error.message.includes("already registered")) {
-        throw new UserAlreadyExistsError(email);
-      }
-      throw error;
-    }
+    if (error) throw error;
 
-    // With the anon key, Supabase returns a fake success for duplicate emails
-    // (to prevent email enumeration). Detect via empty identities array.
-    if (data.user && data.user.identities?.length === 0) {
-      throw new UserAlreadyExistsError(email);
-    }
-
-    return data;
+    return toAuthResult(data);
   }
 
   async signOut(): Promise<void> {
@@ -271,29 +296,29 @@ export class AuthRepository implements IAuthRepository {
   }
 
   // OAuth flow (kept for OAuth providers)
-  async exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }> {
+  async exchangeCodeForSession(code: string): Promise<AuthenticatedAuthResult> {
     const { data, error } = await this.client.auth.exchangeCodeForSession(code);
     if (error) throw error;
-    return data;
+    return toAuthenticatedAuthResult(data);
   }
 
   // PKCE flow methods
-  async verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+  async verifyMagicLink(tokenHash: string): Promise<AuthResult> {
     const { data, error } = await this.client.auth.verifyOtp({
       token_hash: tokenHash,
       type: "magiclink",
     });
     if (error) throw error;
-    return data;
+    return toAuthResult(data);
   }
 
-  async verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+  async verifySignUp(tokenHash: string): Promise<AuthResult> {
     const { data, error } = await this.client.auth.verifyOtp({
       token_hash: tokenHash,
       type: "signup",
     });
     if (error) throw error;
-    return data;
+    return toAuthResult(data);
   }
 
   async verifyRecovery(tokenHash: string): Promise<void> {
@@ -315,7 +340,11 @@ Domain-specific errors with unique codes:
 ```typescript
 // modules/auth/errors/auth.errors.ts
 
-import { AuthenticationError, ConflictError } from "@/shared/kernel/errors";
+import {
+  AuthenticationError,
+  BadGatewayError,
+  InternalError,
+} from "@/shared/kernel/errors";
 
 export class InvalidCredentialsError extends AuthenticationError {
   readonly code = "INVALID_CREDENTIALS";
@@ -328,16 +357,8 @@ export class InvalidCredentialsError extends AuthenticationError {
 export class EmailNotVerifiedError extends AuthenticationError {
   readonly code = "EMAIL_NOT_VERIFIED";
 
-  constructor(email: string) {
-    super("Email not verified", { email });
-  }
-}
-
-export class UserAlreadyExistsError extends ConflictError {
-  readonly code = "USER_ALREADY_EXISTS";
-
-  constructor(email: string) {
-    super("User already exists", { email });
+  constructor() {
+    super("Email not verified");
   }
 }
 
@@ -348,52 +369,93 @@ export class SessionExpiredError extends AuthenticationError {
     super("Session expired, please login again");
   }
 }
+
+export class AuthRegistrationFailedError extends BadGatewayError {
+  readonly code = "AUTH_REGISTRATION_FAILED";
+
+  constructor() {
+    super("Authentication provider did not create a user");
+  }
+}
+
+export class UserProvisioningFailedError extends InternalError {
+  readonly code = "USER_PROVISIONING_FAILED";
+
+  constructor(userId: string) {
+    super("User provisioning failed", { userId });
+  }
+}
 ```
 
 ---
 
-## Auth DTOs
+## Shared Auth Contracts
 
 ```typescript
-// modules/auth/dtos/login.dto.ts
+// modules/auth/shared/contracts/auth.contract.ts
 
 import { z } from "zod";
 import { S } from "@/shared/kernel/schemas";
 
-export const LoginSchema = z.object({
+export const LoginInputSchema = z.object({
   email: S.auth.email,
   password: S.auth.loginPassword,
 });
 
-export type LoginDTO = z.infer<typeof LoginSchema>;
+export type LoginInput = z.infer<typeof LoginInputSchema>;
 
-export const MagicLinkSchema = z.object({
+export const MagicLinkInputSchema = z.object({
   email: S.auth.email,
   redirect: S.common.optionalText,
 });
 
-export type MagicLinkDTO = z.infer<typeof MagicLinkSchema>;
+export type MagicLinkInput = z.infer<typeof MagicLinkInputSchema>;
+
+const AuthUserResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email().nullable(),
+});
+
+export const LoginResponseSchema = z.object({ user: AuthUserResponseSchema });
+export const MagicLinkResponseSchema = z.object({ success: z.literal(true) });
+export const RegisterUserResponseSchema = z.object({ accepted: z.literal(true) });
+export const LogoutResponseSchema = z.object({ success: z.literal(true) });
+export const CurrentSessionResponseSchema = AuthUserResponseSchema.extend({
+  role: z.enum(["admin", "member", "viewer"]),
+});
+export const VerifyAuthResponseSchema = z.object({
+  user: AuthUserResponseSchema.nullable(),
+});
+export const RecoveryResponseSchema = z.object({ success: z.literal(true) });
+
+export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+export type MagicLinkResponse = z.infer<typeof MagicLinkResponseSchema>;
+export type RegisterUserResponse = z.infer<typeof RegisterUserResponseSchema>;
+export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
+export type CurrentSessionResponse = z.infer<typeof CurrentSessionResponseSchema>;
+export type VerifyAuthResponse = z.infer<typeof VerifyAuthResponseSchema>;
+export type RecoveryResponse = z.infer<typeof RecoveryResponseSchema>;
 ```
 
 ```typescript
-// modules/auth/dtos/verify.dto.ts
+// modules/auth/shared/contracts/verify-auth.contract.ts
 
 import { z } from "zod";
 import { S } from "@/shared/kernel/schemas";
 
-export const VerifyTokenHashSchema = z.object({
+export const VerifyTokenHashInputSchema = z.object({
   token_hash: S.common.requiredText,
 });
 
-export type VerifyTokenHashDTO = z.infer<typeof VerifyTokenHashSchema>;
+export type VerifyTokenHashInput = z.infer<typeof VerifyTokenHashInputSchema>;
 ```
 
 ```typescript
-// modules/auth/dtos/index.ts
+// modules/auth/shared/contracts/index.ts
 
-export * from "./login.dto";
-export * from "./register.dto";
-export * from "./verify.dto";
+export * from "./auth.contract";
+export * from "./register-user.contract";
+export * from "./verify-auth.contract";
 ```
 
 ---
@@ -406,64 +468,71 @@ Service layer with redirect URL construction and **business event logging**:
 // modules/auth/services/auth.service.ts
 
 import type { IAuthRepository } from "../repositories/auth.repository";
-import type { User, Session } from "@supabase/supabase-js";
-import { logger } from "@/shared/infra/logger";
+import type {
+  AuthUser,
+  AuthResult,
+  AuthenticatedAuthResult,
+} from "../models/auth.models";
+import type { AppLogger } from "@/shared/kernel/logger";
 import { getSafeRedirectPath } from "@/shared/lib/redirects";
 
 export interface IAuthService {
-  getCurrentUser(): Promise<User | null>;
-  signIn(email: string, password: string): Promise<{ user: User; session: Session }>;
-  signInWithMagicLink(email: string, baseUrl: string, redirect?: string): Promise<{ user: User | null; session: Session | null }>;
-  signUp(email: string, password: string, baseUrl: string, redirect?: string): Promise<{ user: User | null; session: Session | null }>;
+  getCurrentUser(): Promise<AuthUser | null>;
+  signIn(email: string, password: string): Promise<AuthenticatedAuthResult>;
+  signInWithMagicLink(email: string, baseUrl: string, redirect?: string): Promise<AuthResult>;
+  signUp(email: string, password: string, baseUrl: string, redirect?: string): Promise<AuthResult>;
   signOut(): Promise<void>;
-  exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }>;
+  exchangeCodeForSession(code: string): Promise<AuthenticatedAuthResult>;
   // PKCE flow methods
-  verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
-  verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }>;
+  verifyMagicLink(tokenHash: string): Promise<AuthResult>;
+  verifySignUp(tokenHash: string): Promise<AuthResult>;
   verifyRecovery(tokenHash: string): Promise<void>;
 }
 
 export class AuthService implements IAuthService {
-  constructor(private authRepository: IAuthRepository) {}
+  constructor(
+    private readonly authRepository: IAuthRepository,
+    private readonly logger: AppLogger,
+  ) {}
 
-  async getCurrentUser(): Promise<User | null> {
+  async getCurrentUser(): Promise<AuthUser | null> {
     return this.authRepository.getCurrentUser();
   }
 
-  async signIn(email: string, password: string): Promise<{ user: User; session: Session }> {
+  async signIn(email: string, password: string): Promise<AuthenticatedAuthResult> {
     const result = await this.authRepository.signInWithPassword(email, password);
 
-    logger.info(
-      { event: "user.logged_in", userId: result.user.id, email },
+    this.logger.info(
+      { "otel.event.name": "user.logged_in", "user.id": result.user.id },
       "User logged in",
     );
 
     return result;
   }
 
-  async signInWithMagicLink(email: string, baseUrl: string, redirect?: string): Promise<{ user: User | null; session: Session | null }> {
+  async signInWithMagicLink(email: string, baseUrl: string, redirect?: string): Promise<AuthResult> {
     // PKCE flow: redirect to /auth/confirm with an explicit, safe in-app redirect
     const safeRedirect = getSafeRedirectPath(redirect, { fallback: "/" });
     const redirectTo = `${baseUrl}/auth/confirm?redirect=${encodeURIComponent(safeRedirect)}`;
     const result = await this.authRepository.signInWithOtp(email, redirectTo);
 
-    logger.info(
-      { event: "user.magic_link_requested", email },
+    this.logger.info(
+      { "otel.event.name": "user.magic_link_requested" },
       "Magic link requested",
     );
 
     return result;
   }
 
-  async signUp(email: string, password: string, baseUrl: string, redirect?: string): Promise<{ user: User | null; session: Session | null }> {
+  async signUp(email: string, password: string, baseUrl: string, redirect?: string): Promise<AuthResult> {
     // PKCE flow: redirect to /auth/confirm with an explicit, safe in-app redirect
     const safeRedirect = getSafeRedirectPath(redirect, { fallback: "/" });
     const redirectTo = `${baseUrl}/auth/confirm?redirect=${encodeURIComponent(safeRedirect)}`;
     const result = await this.authRepository.signUp(email, password, redirectTo);
 
     if (result.user) {
-      logger.info(
-        { event: "user.registered", userId: result.user.id, email },
+      this.logger.info(
+        { "otel.event.name": "user.registered", "user.id": result.user.id },
         "User registered",
       );
     }
@@ -474,15 +543,18 @@ export class AuthService implements IAuthService {
   async signOut(): Promise<void> {
     await this.authRepository.signOut();
 
-    logger.info({ event: "user.logged_out" }, "User logged out");
+    this.logger.info(
+      { "otel.event.name": "user.logged_out" },
+      "User logged out",
+    );
   }
 
-  async exchangeCodeForSession(code: string): Promise<{ user: User; session: Session }> {
+  async exchangeCodeForSession(code: string): Promise<AuthenticatedAuthResult> {
     const result = await this.authRepository.exchangeCodeForSession(code);
 
     if (result.user) {
-      logger.info(
-        { event: "user.session_exchanged", userId: result.user.id },
+      this.logger.info(
+        { "otel.event.name": "user.session_exchanged", "user.id": result.user.id },
         "Session exchanged from code",
       );
     }
@@ -491,12 +563,12 @@ export class AuthService implements IAuthService {
   }
 
   // PKCE flow methods
-  async verifyMagicLink(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+  async verifyMagicLink(tokenHash: string): Promise<AuthResult> {
     const result = await this.authRepository.verifyMagicLink(tokenHash);
 
     if (result.user) {
-      logger.info(
-        { event: "user.magic_link_verified", userId: result.user.id },
+      this.logger.info(
+        { "otel.event.name": "user.magic_link_verified", "user.id": result.user.id },
         "Magic link verified",
       );
     }
@@ -504,12 +576,12 @@ export class AuthService implements IAuthService {
     return result;
   }
 
-  async verifySignUp(tokenHash: string): Promise<{ user: User | null; session: Session | null }> {
+  async verifySignUp(tokenHash: string): Promise<AuthResult> {
     const result = await this.authRepository.verifySignUp(tokenHash);
 
     if (result.user) {
-      logger.info(
-        { event: "user.signup_verified", userId: result.user.id },
+      this.logger.info(
+        { "otel.event.name": "user.signup_verified", "user.id": result.user.id },
         "Signup verified",
       );
     }
@@ -520,7 +592,10 @@ export class AuthService implements IAuthService {
   async verifyRecovery(tokenHash: string): Promise<void> {
     await this.authRepository.verifyRecovery(tokenHash);
 
-    logger.info({ event: "user.recovery_verified" }, "Password recovery verified");
+    this.logger.info(
+      { "otel.event.name": "user.recovery_verified" },
+      "Password recovery verified",
+    );
   }
 }
 ```
@@ -570,23 +645,24 @@ export type InsertUserRole = typeof userRoles.$inferInsert;
 
 import { eq } from "drizzle-orm";
 import { userRoles, type UserRoleRecord, type InsertUserRole } from "@/shared/infra/db/schema";
-import type { RequestContext } from "@/shared/kernel/context";
+import type { TransactionOptions } from "@/shared/kernel/transaction";
 import type { DbClient, DrizzleTransaction } from "@/shared/infra/db/types";
 
 export interface IUserRoleRepository {
-  findByUserId(userId: string, ctx?: RequestContext): Promise<UserRoleRecord | null>;
-  create(data: InsertUserRole, ctx?: RequestContext): Promise<UserRoleRecord>;
+  findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null>;
+  create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord>;
+  ensureExists(data: InsertUserRole, options: TransactionOptions): Promise<UserRoleRecord>;
 }
 
 export class UserRoleRepository implements IUserRoleRepository {
   constructor(private db: DbClient) {}
 
-  private getClient(ctx?: RequestContext): DbClient | DrizzleTransaction {
-    return (ctx?.tx as DrizzleTransaction) ?? this.db;
+  private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
+    return (options?.tx as DrizzleTransaction) ?? this.db;
   }
 
-  async findByUserId(userId: string, ctx?: RequestContext): Promise<UserRoleRecord | null> {
-    const client = this.getClient(ctx);
+  async findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null> {
+    const client = this.getClient(options);
     const result = await client
       .select()
       .from(userRoles)
@@ -596,10 +672,24 @@ export class UserRoleRepository implements IUserRoleRepository {
     return result[0] ?? null;
   }
 
-  async create(data: InsertUserRole, ctx?: RequestContext): Promise<UserRoleRecord> {
-    const client = this.getClient(ctx);
+  async create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord> {
+    const client = this.getClient(options);
     const result = await client.insert(userRoles).values(data).returning();
     return result[0];
+  }
+
+  async ensureExists(
+    data: InsertUserRole,
+    options: TransactionOptions,
+  ): Promise<UserRoleRecord> {
+    const client = this.getClient(options);
+    const inserted = await client
+      .insert(userRoles)
+      .values(data)
+      .onConflictDoNothing({ target: userRoles.userId })
+      .returning();
+
+    return inserted[0] ?? (await this.findByUserId(data.userId, options))!;
   }
 }
 ```
@@ -610,14 +700,15 @@ export class UserRoleRepository implements IUserRoleRepository {
 // modules/user-role/services/user-role.service.ts
 
 import type { TransactionManager } from "@/shared/kernel/transaction";
-import type { RequestContext } from "@/shared/kernel/context";
+import type { TransactionOptions } from "@/shared/kernel/transaction";
 import type { IUserRoleRepository } from "../repositories/user-role.repository";
 import type { UserRoleRecord, InsertUserRole } from "@/shared/infra/db/schema";
 import { UserRoleAlreadyExistsError } from "../errors/user-role.errors";
 
 export interface IUserRoleService {
-  findByUserId(userId: string, ctx?: RequestContext): Promise<UserRoleRecord | null>;
-  create(data: InsertUserRole, ctx?: RequestContext): Promise<UserRoleRecord>;
+  findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null>;
+  create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord>;
+  ensureExists(data: InsertUserRole, options: TransactionOptions): Promise<UserRoleRecord>;
 }
 
 export class UserRoleService implements IUserRoleService {
@@ -626,49 +717,67 @@ export class UserRoleService implements IUserRoleService {
     private transactionManager: TransactionManager,
   ) {}
 
-  async findByUserId(userId: string, ctx?: RequestContext): Promise<UserRoleRecord | null> {
-    return this.userRoleRepository.findByUserId(userId, ctx);
+  async findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null> {
+    return this.userRoleRepository.findByUserId(userId, options);
   }
 
-  async create(data: InsertUserRole, ctx?: RequestContext): Promise<UserRoleRecord> {
-    if (ctx?.tx) {
-      return this.createInternal(data, ctx);
+  async create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord> {
+    if (options?.tx) {
+      return this.createInternal(data, options);
     }
     return this.transactionManager.run((tx) => this.createInternal(data, { tx }));
   }
 
-  private async createInternal(data: InsertUserRole, ctx: RequestContext): Promise<UserRoleRecord> {
-    const existing = await this.userRoleRepository.findByUserId(data.userId, ctx);
+  async ensureExists(
+    data: InsertUserRole,
+    options: TransactionOptions,
+  ): Promise<UserRoleRecord> {
+    return this.userRoleRepository.ensureExists(data, options);
+  }
+
+  private async createInternal(data: InsertUserRole, options: TransactionOptions): Promise<UserRoleRecord> {
+    const existing = await this.userRoleRepository.findByUserId(data.userId, options);
     if (existing) {
       throw new UserRoleAlreadyExistsError(data.userId);
     }
-    return this.userRoleRepository.create(data, ctx);
+    return this.userRoleRepository.create(data, options);
   }
 }
 ```
 
 ---
 
-## Register User Use Case
+## Managed User Provisioning Use Case
 
-Multi-service orchestration for user registration:
+The compensating workflow below is for a trusted/admin flow that must create provider and local state immediately. Do not use it for public self-signup because doing so can defeat Supabase's email-enumeration protections.
 
 ```typescript
-// modules/auth/use-cases/register-user.use-case.ts
+// modules/auth/use-cases/provision-managed-user.use-case.ts
 
-import type { AuthService } from "../services/auth.service";
+import type { IAuthService } from "../services/auth.service";
 import type { IUserRoleService } from "@/modules/user-role/services/user-role.service";
 import type { TransactionManager } from "@/shared/kernel/transaction";
-import type { RegisterDTO } from "../dtos/register.dto";
+import type { AppLogger } from "@/shared/kernel/logger";
+import type { RegisterUserInput } from "../shared/contracts";
+import {
+  AuthRegistrationFailedError,
+  UserProvisioningFailedError,
+} from "../errors/auth.errors";
 
-export class RegisterUserUseCase {
+export interface IAuthProvisioningCompensator {
+  deleteUser(userId: string): Promise<void>;
+}
+
+export class ProvisionManagedUserUseCase {
   constructor(
-    private authService: AuthService,
-    private userRoleService: IUserRoleService,
-    private transactionManager: TransactionManager,
+    private readonly authService: IAuthService,
+    private readonly userRoleService: IUserRoleService,
+    private readonly authCompensator: IAuthProvisioningCompensator,
+    private readonly transactionManager: TransactionManager,
+    private readonly logger: AppLogger,
   ) {}
 
-  async execute(input: RegisterDTO, baseUrl: string) {
+  async execute(input: RegisterUserInput, baseUrl: string) {
     // 1. Create user in Supabase (outside transaction - external service)
     const result = await this.authService.signUp(
       input.email,
@@ -677,16 +786,32 @@ export class RegisterUserUseCase {
     );
 
     if (!result.user) {
-      throw new Error("Failed to create user");
+      throw new AuthRegistrationFailedError();
     }
 
-    // 2. Create user role in database (within transaction)
-    await this.transactionManager.run(async (tx) => {
-      await this.userRoleService.create(
-        { userId: result.user!.id, role: "member" },
-        { tx },
-      );
-    });
+    // 2. Provision local state. This cannot share a transaction with Supabase Auth.
+    try {
+      await this.transactionManager.run(async (tx) => {
+        await this.userRoleService.create(
+          { userId: result.user!.id, role: "member" },
+          { tx },
+        );
+      });
+    } catch (error) {
+      try {
+        await this.authCompensator.deleteUser(result.user.id);
+      } catch (compensationError) {
+        this.logger.error(
+          {
+            err: compensationError,
+            "otel.event.name": "auth.user_provisioning.compensation_failed",
+            "user.id": result.user.id,
+          },
+          "User provisioning compensation failed",
+        );
+      }
+      throw new UserProvisioningFailedError(result.user.id);
+    }
 
     return {
       user: { id: result.user.id, email: result.user.email },
@@ -699,7 +824,46 @@ export class RegisterUserUseCase {
 **Key Points:**
 - Supabase signup is outside transaction (external service)
 - Database record creation is within transaction
-- If DB insert fails, Supabase user exists but has no role (handle in context creation)
+- The flow is a saga, not one atomic transaction: local provisioning failure triggers best-effort provider compensation
+- Authorization fails closed when no local role exists, and a reconciliation job must repair any failed compensation
+- The compensator is an infrastructure adapter using privileged credentials; it is injected only into the use case
+
+For public self-signup, return the same `{ accepted: true }` response whether the address is new or already registered. Complete local role/profile provisioning only after verified signup, using an idempotent `CompleteSignupUseCase`. If local provisioning temporarily fails, protected authorization remains fail-closed and reconciliation retries it.
+
+```typescript
+export class CompleteSignupUseCase {
+  constructor(
+    private readonly authService: IAuthService,
+    private readonly userRoleService: IUserRoleService,
+    private readonly transactionManager: TransactionManager,
+    private readonly logger: AppLogger,
+  ) {}
+
+  async execute(tokenHash: string): Promise<AuthResult> {
+    const result = await this.authService.verifySignUp(tokenHash);
+    if (!result.user) throw new AuthRegistrationFailedError();
+
+    await this.transactionManager.run(async (tx) => {
+      await this.userRoleService.ensureExists(
+        { userId: result.user!.id, role: "member" },
+        { tx },
+      );
+    });
+
+    this.logger.info(
+      {
+        "otel.event.name": "auth.signup_provisioned",
+        "user.id": result.user.id,
+      },
+      "Verified signup provisioned",
+    );
+
+    return result;
+  }
+}
+```
+
+`ensureExists` is idempotent under a unique `userId` constraint. Repeated verification/callback delivery must not create duplicate roles.
 
 ---
 
@@ -716,7 +880,19 @@ import { env } from "@/lib/env";
 import { getContainer } from "@/shared/infra/container";
 import { AuthRepository } from "../repositories/auth.repository";
 import { AuthService } from "../services/auth.service";
-import { RegisterUserUseCase } from "../use-cases/register-user.use-case";
+import { ProvisionManagedUserUseCase } from "../use-cases/provision-managed-user.use-case";
+import { CompleteSignupUseCase } from "../use-cases/complete-signup.use-case";
+import {
+  CurrentSessionController,
+  LoginController,
+  LoginWithMagicLinkController,
+  LogoutController,
+  RegisterController,
+  VerifyMagicLinkController,
+  VerifyRecoveryController,
+  VerifySignupController,
+} from "../controllers";
+import { SupabaseAuthProvisioningCompensator } from "../providers/supabase-auth-provisioning-compensator";
 import { makeUserRoleService } from "@/modules/user-role/factories/user-role.factory";
 
 /**
@@ -732,17 +908,55 @@ export function makeAuthRepository(cookies: CookieMethodsServer) {
   return new AuthRepository(client);
 }
 
-export function makeAuthService(cookies: CookieMethodsServer) {
-  return new AuthService(makeAuthRepository(cookies));
+function makeAuthService(cookies: CookieMethodsServer) {
+  return new AuthService(
+    makeAuthRepository(cookies),
+    getContainer().appLogger,
+  );
 }
 
-export function makeRegisterUserUseCase(cookies: CookieMethodsServer) {
-  return new RegisterUserUseCase(
+function makeAuthProvisioningCompensator() {
+  return new SupabaseAuthProvisioningCompensator(
+    createPrivilegedAuthClient(),
+  );
+}
+
+export function makeProvisionManagedUserUseCase(cookies: CookieMethodsServer) {
+  return new ProvisionManagedUserUseCase(
+    makeAuthService(cookies),
+    makeUserRoleService(),
+    makeAuthProvisioningCompensator(),
+    getContainer().transactionManager,
+    getContainer().appLogger,
+  );
+}
+
+export function makeCompleteSignupUseCase(cookies: CookieMethodsServer) {
+  return new CompleteSignupUseCase(
     makeAuthService(cookies),
     makeUserRoleService(),
     getContainer().transactionManager,
+    getContainer().appLogger,
   );
 }
+
+// Framework adapters resolve only these outer, request-scoped factories.
+export const makeLoginController = (cookies: CookieMethodsServer) =>
+  new LoginController(makeAuthService(cookies));
+export const makeLoginWithMagicLinkController = (cookies: CookieMethodsServer) =>
+  new LoginWithMagicLinkController(makeAuthService(cookies));
+export const makeRegisterController = (cookies: CookieMethodsServer) =>
+  new RegisterController(makeAuthService(cookies));
+export const makeLogoutController = (cookies: CookieMethodsServer) =>
+  new LogoutController(makeAuthService(cookies));
+export const makeCurrentSessionController = (cookies: CookieMethodsServer) =>
+  new CurrentSessionController(makeAuthService(cookies));
+export const makeVerifyMagicLinkController = (cookies: CookieMethodsServer) =>
+  new VerifyMagicLinkController(makeAuthService(cookies));
+export const makeVerifySignupController = (cookies: CookieMethodsServer) =>
+  new VerifySignupController(makeCompleteSignupUseCase(cookies));
+export const makeVerifyRecoveryController = (cookies: CookieMethodsServer) =>
+  new VerifyRecoveryController(makeAuthService(cookies));
 ```
 
 ---
@@ -755,11 +969,17 @@ The context extracts session from Supabase and enriches with role from database:
 // shared/infra/trpc/context.ts
 
 import { randomUUID } from "crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { CookieMethodsServer } from "@supabase/ssr";
 import { createClient } from "@/shared/infra/supabase/create-client";
-import { createRequestLogger } from "@/shared/infra/logger";
+import type { AppLogger } from "@/shared/kernel/logger";
+import { appLogger } from "@/shared/infra/logger";
+import {
+  getObservabilityContext,
+  getTrustedClientIdentifier,
+  getTrustedRequestId,
+} from "@/shared/infra/observability";
 import { env } from "@/lib/env";
 import type { Session } from "@/shared/kernel/auth";
 import { makeUserRoleRepository } from "@/modules/user-role/factories/user-role.factory";
@@ -768,9 +988,11 @@ export interface Context {
   requestId: string;
   session: Session | null;
   userId: string | null;
+  clientIdentifier: string | null;
+  clientIdentifierSource: "authenticated_user" | "trusted_network" | null;
   cookies: CookieMethodsServer;
   origin: string;
-  log: ReturnType<typeof createRequestLogger>;
+  log: AppLogger;
 }
 
 export interface AuthenticatedContext extends Context {
@@ -786,15 +1008,17 @@ function isUserRole(role: unknown): role is Session["role"] {
 
 function normalizeUserRole(
   role: unknown,
-  fallback: Session["role"] = "member",
-): Session["role"] {
-  return isUserRole(role) ? role : fallback;
+): Session["role"] | null {
+  return isUserRole(role) ? role : null;
 }
 
 export async function createContext({ req }: FetchCreateContextFnOptions): Promise<Context> {
-  const requestId = req.headers.get("x-request-id") ?? randomUUID();
+  const requestId =
+    getObservabilityContext()?.requestId ??
+    getTrustedRequestId(req.headers) ??
+    randomUUID();
   const cookieStore = await cookies();
-  const headerStore = await headers();
+  const client = getTrustedClientIdentifier(req.headers);
 
   const cookieMethods: CookieMethodsServer = {
     getAll() {
@@ -824,56 +1048,47 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
     if (user) {
       // Fetch role from user_roles table
       const userRole = await makeUserRoleRepository().findByUserId(user.id);
-      session = {
-        userId: user.id,
-        email: user.email!,
-        role: normalizeUserRole(userRole?.role),
-      };
+      const role = normalizeUserRole(userRole?.role);
+      if (role && user.email) {
+        session = { userId: user.id, email: user.email, role };
+      } else {
+        appLogger.warn(
+          {
+            "otel.event.name": "auth.user_role_missing",
+            "user.id": user.id,
+          },
+          "Authenticated user has no valid application role",
+        );
+      }
     }
   } catch {
     // No session
   }
 
-  const log = createRequestLogger({
-    requestId,
-    userId: session?.userId,
-    method: req.method,
-    path: new URL(req.url).pathname,
-  });
-
-  // Determine the origin URL for redirects
+  // Redirect origins come from trusted configuration, never arbitrary Host headers.
   const getOriginUrl = (): string => {
-    // 1. Use explicit APP_URL from env if set (production)
     if (env.NEXT_PUBLIC_APP_URL) {
-      return env.NEXT_PUBLIC_APP_URL;
+      return new URL(env.NEXT_PUBLIC_APP_URL).origin;
     }
 
-    // 2. Build from x-forwarded-host (Vercel, proxies)
-    const forwardedHost = headerStore.get("x-forwarded-host");
-    const forwardedProto = headerStore.get("x-forwarded-proto");
-    if (forwardedHost) {
-      const protocol = forwardedProto || "https";
-      return `${protocol}://${forwardedHost}`;
+    if (process.env.NODE_ENV !== "production") {
+      return new URL(req.url).origin;
     }
 
-    // 3. Build from host header
-    const host = headerStore.get("host");
-    if (host) {
-      const protocol = host.includes("localhost") ? "http" : "https";
-      return `${protocol}://${host}`;
-    }
-
-    // 4. Fallback to localhost for development
-    return "http://localhost:3000";
+    throw new Error("NEXT_PUBLIC_APP_URL is required in production");
   };
 
   return {
     requestId,
     session,
     userId: session?.userId ?? null,
+    clientIdentifier: session?.userId ?? client?.value ?? null,
+    clientIdentifierSource: session
+      ? "authenticated_user"
+      : client?.source ?? null,
     cookies: cookieMethods,
     origin: getOriginUrl(),
-    log,
+    log: appLogger,
   };
 }
 ```
@@ -888,12 +1103,18 @@ export async function createContext({ req }: FetchCreateContextFnOptions): Promi
 // shared/infra/trpc/trpc.ts
 
 import { initTRPC, TRPCError } from "@trpc/server";
-import { AppError, AuthenticationError } from "@/shared/kernel/errors";
+import {
+  AppError,
+  AuthenticationError,
+  type AppErrorKind,
+} from "@/shared/kernel/errors";
 import {
   getPublicErrorMessage,
   canExposeErrorDetails,
   GENERIC_PUBLIC_ERROR_MESSAGE,
 } from "@/shared/kernel/public-error";
+import { appLogger } from "@/shared/infra/logger";
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
 import type { Context, AuthenticatedContext } from "./context";
 
 function pickPublicTrpcShapeData(
@@ -911,7 +1132,14 @@ const t = initTRPC.context<Context>().create({
     const requestId = ctx?.requestId ?? "unknown";
 
     if (cause instanceof AppError) {
-      ctx?.log.warn({ err: cause, code: cause.code, details: cause.details, requestId }, cause.message);
+      appLogger.warn(
+        {
+          err: cause,
+          "error.type": cause.code,
+          [APP_ATTRIBUTES.errorDetails]: cause.details,
+        },
+        cause.message,
+      );
       return {
         ...shape,
         message: getPublicErrorMessage(cause),
@@ -920,12 +1148,15 @@ const t = initTRPC.context<Context>().create({
           appCode: cause.code,
           requestId,
           ...(canExposeErrorDetails(cause) &&
-            cause.details && { details: cause.details }),
+            cause.publicDetails && { details: cause.publicDetails }),
         },
       };
     }
 
-    ctx?.log.error({ err: error, requestId }, "Unexpected error");
+    appLogger.error(
+      { err: error, "error.type": error.constructor.name },
+      "Unexpected error",
+    );
     return {
       ...shape,
       message: GENERIC_PUBLIC_ERROR_MESSAGE,
@@ -941,30 +1172,87 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const middleware = t.middleware;
 
+const TRPC_CODE_BY_KIND = {
+  validation: "BAD_REQUEST",
+  authentication: "UNAUTHORIZED",
+  authorization: "FORBIDDEN",
+  not_found: "NOT_FOUND",
+  conflict: "CONFLICT",
+  business_rule: "UNPROCESSABLE_CONTENT",
+  rate_limit: "TOO_MANY_REQUESTS",
+  internal: "INTERNAL_SERVER_ERROR",
+  bad_gateway: "BAD_GATEWAY",
+  unavailable: "SERVICE_UNAVAILABLE",
+  timeout: "GATEWAY_TIMEOUT",
+} as const satisfies Record<AppErrorKind, string>;
+
+const appErrorMiddleware = t.middleware(async ({ ctx, next }) => {
+  try {
+    return await next({ ctx });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new TRPCError({
+        code: TRPC_CODE_BY_KIND[error.kind],
+        message: error.message,
+        cause: error,
+      });
+    }
+    throw error;
+  }
+});
+
 /**
  * Logger middleware - request lifecycle tracing.
  * Defined inline to avoid circular dependency with middleware exports.
  */
-const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+const loggerMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
   const start = Date.now();
 
-  ctx.log.info({ type }, "Request started");
+  ctx.log.info(
+    {
+      "otel.event.name": "rpc.request.started",
+      "rpc.system": "trpc",
+      "rpc.method": path,
+      [APP_ATTRIBUTES.operationType]: type,
+    },
+    "Request started",
+  );
 
   if (process.env.NODE_ENV !== "production") {
-    ctx.log.debug("Request processing");
+    ctx.log.debug({}, "Request processing");
   }
 
   try {
     const result = await next({ ctx });
     const duration = Date.now() - start;
 
-    ctx.log.info({ duration, status: "success", type }, "Request completed");
+    ctx.log.info(
+      {
+        "otel.event.name": "rpc.request.completed",
+        "rpc.system": "trpc",
+        "rpc.method": path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: "success",
+      },
+      "Request completed",
+    );
 
     return result;
   } catch (error) {
     const duration = Date.now() - start;
 
-    ctx.log.info({ duration, status: "error", type }, "Request failed");
+    ctx.log.info(
+      {
+        "otel.event.name": "rpc.request.failed",
+        "rpc.system": "trpc",
+        "rpc.method": path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: "error",
+      },
+      "Request failed",
+    );
 
     throw error;
   }
@@ -987,12 +1275,14 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
 });
 
 /**
- * Base procedure with logging - all procedures use this
+ * Base procedure with central error mapping and logging.
  */
-const loggedProcedure = t.procedure.use(loggerMiddleware);
+const baseProcedure = t.procedure
+  .use(appErrorMiddleware)
+  .use(loggerMiddleware);
 
-export const publicProcedure = loggedProcedure;
-export const protectedProcedure = loggedProcedure.use(authMiddleware);
+export const publicProcedure = baseProcedure;
+export const protectedProcedure = baseProcedure.use(authMiddleware);
 ```
 
 ---
@@ -1003,81 +1293,96 @@ export const protectedProcedure = loggedProcedure.use(authMiddleware);
 // modules/auth/auth.router.ts
 
 import { router, publicProcedure, protectedProcedure } from "@/shared/infra/trpc/trpc";
-import { makeAuthService, makeRegisterUserUseCase } from "./factories/auth.factory";
-import { LoginSchema, RegisterSchema, MagicLinkSchema, VerifyTokenHashSchema } from "./dtos";
+import { wrapResponse } from "@/shared/utils/response";
+import {
+  makeCurrentSessionController,
+  makeLoginController,
+  makeLoginWithMagicLinkController,
+  makeLogoutController,
+  makeRegisterController,
+  makeVerifyMagicLinkController,
+  makeVerifyRecoveryController,
+  makeVerifySignupController,
+} from "./factories/auth.factory";
+import {
+  CurrentSessionResponseSchema,
+  LoginInputSchema,
+  LoginResponseSchema,
+  LogoutResponseSchema,
+  MagicLinkInputSchema,
+  MagicLinkResponseSchema,
+  RecoveryResponseSchema,
+  RegisterUserInputSchema,
+  RegisterUserResponseSchema,
+  VerifyAuthResponseSchema,
+  VerifyTokenHashInputSchema,
+} from "./shared/contracts";
 
 export const authRouter = router({
   login: publicProcedure
-    .input(LoginSchema)
+    .input(LoginInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      const result = await authService.signIn(input.email, input.password);
-      return { user: { id: result.user.id, email: result.user.email } };
+      const result = await makeLoginController(ctx.cookies).execute(input);
+      const response = LoginResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
   loginWithMagicLink: publicProcedure
-    .input(MagicLinkSchema)
+    .input(MagicLinkInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      await authService.signInWithMagicLink(input.email, ctx.origin);
-      return { success: true, message: "Magic link sent to email" };
+      const result = await makeLoginWithMagicLinkController(ctx.cookies)
+        .execute(input, { origin: ctx.origin });
+      return wrapResponse(MagicLinkResponseSchema.parse(result));
     }),
 
   register: publicProcedure
-    .input(RegisterSchema)
+    .input(RegisterUserInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const useCase = makeRegisterUserUseCase(ctx.cookies);
-      const result = await useCase.execute(input, ctx.origin);
-      return result;
+      const result = await makeRegisterController(ctx.cookies)
+        .execute(input, { origin: ctx.origin });
+      return wrapResponse(RegisterUserResponseSchema.parse(result));
     }),
 
   logout: protectedProcedure
     .mutation(async ({ ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      await authService.signOut();
-      return { success: true };
+      const result = await makeLogoutController(ctx.cookies).execute();
+      return wrapResponse(LogoutResponseSchema.parse(result));
     }),
 
   me: protectedProcedure
     .query(async ({ ctx }) => {
-      return {
-        id: ctx.session.userId,
-        email: ctx.session.email,
-        role: ctx.session.role,
-      };
+      const result = await makeCurrentSessionController(ctx.cookies).execute(
+        toActor(ctx.session),
+      );
+      const response = CurrentSessionResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
   // PKCE flow verification endpoints
   verifyMagicLink: publicProcedure
-    .input(VerifyTokenHashSchema)
-    .query(async ({ input, ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      const result = await authService.verifyMagicLink(input.token_hash);
-      return {
-        user: result.user
-          ? { id: result.user.id, email: result.user.email }
-          : null,
-      };
+    .input(VerifyTokenHashInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeVerifyMagicLinkController(ctx.cookies)
+        .execute(input);
+      const response = VerifyAuthResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
   verifySignUp: publicProcedure
-    .input(VerifyTokenHashSchema)
-    .query(async ({ input, ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      const result = await authService.verifySignUp(input.token_hash);
-      return {
-        user: result.user
-          ? { id: result.user.id, email: result.user.email }
-          : null,
-      };
+    .input(VerifyTokenHashInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeVerifySignupController(ctx.cookies)
+        .execute(input);
+      const response = VerifyAuthResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
   verifyRecovery: publicProcedure
-    .input(VerifyTokenHashSchema)
+    .input(VerifyTokenHashInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const authService = makeAuthService(ctx.cookies);
-      await authService.verifyRecovery(input.token_hash);
-      return { success: true };
+      const result = await makeVerifyRecoveryController(ctx.cookies)
+        .execute(input);
+      return wrapResponse(RecoveryResponseSchema.parse(result));
     }),
 });
 ```
@@ -1172,13 +1477,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/shared/infra/supabase/create-client";
 import { env } from "@/lib/env";
-import { logger } from "@/shared/infra/logger";
+import { appLogger } from "@/shared/infra/logger";
+import {
+  APP_ATTRIBUTES,
+  withRequestObservability,
+} from "@/shared/infra/observability";
 
 /**
  * Auth confirm route handler for PKCE flow (magic link, signup, recovery).
  * Verifies token_hash and creates session via verifyOtp.
  */
-export async function GET(request: NextRequest) {
+async function handleAuthConfirm(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
@@ -1191,8 +1500,12 @@ export async function GET(request: NextRequest) {
   redirectTo.pathname = "/dashboard";
 
   if (!token_hash || !type) {
-    logger.warn(
-      { scope: "auth:confirm", token_hash: !!token_hash, type },
+    appLogger.warn(
+      {
+        "otel.event.name": "auth.confirm.invalid_request",
+        "code.function.name": "GET",
+        [APP_ATTRIBUTES.authVerificationType]: type,
+      },
       "Missing token_hash or type parameter",
     );
     redirectTo.pathname = "/";
@@ -1226,18 +1539,21 @@ export async function GET(request: NextRequest) {
         if (error) throw error;
 
         if (data.user) {
-          logger.info(
-            { event: "user.magic_link_verified", userId: data.user.id },
+          appLogger.info(
+            { "otel.event.name": "user.magic_link_verified", "user.id": data.user.id },
             "Magic link verified",
           );
         }
 
         return NextResponse.redirect(redirectTo);
       } catch (error) {
-        logger.error(
+        appLogger.error(
           {
-            scope: "auth:magiclink_verification",
-            error: error instanceof Error ? error.message : "Unknown error",
+            "otel.event.name": "auth.verification.failed",
+            "code.function.name": "GET",
+            "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
+            [APP_ATTRIBUTES.authVerificationType]: "magiclink",
+            err: error,
           },
           "Magic link verification failed",
         );
@@ -1254,18 +1570,21 @@ export async function GET(request: NextRequest) {
         if (error) throw error;
 
         if (data.user) {
-          logger.info(
-            { event: "user.signup_verified", userId: data.user.id },
+          appLogger.info(
+            { "otel.event.name": "user.signup_verified", "user.id": data.user.id },
             "Signup verified",
           );
         }
 
         return NextResponse.redirect(redirectTo);
       } catch (error) {
-        logger.error(
+        appLogger.error(
           {
-            scope: "auth:signup_verification",
-            error: error instanceof Error ? error.message : "Unknown error",
+            "otel.event.name": "auth.verification.failed",
+            "code.function.name": "GET",
+            "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
+            [APP_ATTRIBUTES.authVerificationType]: "signup",
+            err: error,
           },
           "Signup verification failed",
         );
@@ -1281,17 +1600,20 @@ export async function GET(request: NextRequest) {
 
         if (error) throw error;
 
-        logger.info(
-          { event: "user.recovery_verified" },
+        appLogger.info(
+          { "otel.event.name": "user.recovery_verified" },
           "Password recovery verified",
         );
 
         return NextResponse.redirect(redirectTo);
       } catch (error) {
-        logger.error(
+        appLogger.error(
           {
-            scope: "auth:recovery_verification",
-            error: error instanceof Error ? error.message : "Unknown error",
+            "otel.event.name": "auth.verification.failed",
+            "code.function.name": "GET",
+            "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
+            [APP_ATTRIBUTES.authVerificationType]: "recovery",
+            err: error,
           },
           "Password recovery verification failed",
         );
@@ -1299,12 +1621,23 @@ export async function GET(request: NextRequest) {
       break;
 
     default:
-      logger.warn({ scope: "auth:confirm", type }, "Unknown verification type");
+      appLogger.warn(
+        {
+          "otel.event.name": "auth.confirm.unknown_verification_type",
+          "code.function.name": "GET",
+          [APP_ATTRIBUTES.authVerificationType]: type,
+        },
+        "Unknown verification type",
+      );
   }
 
   // Fallback: redirect to home on error
   redirectTo.pathname = "/";
   return NextResponse.redirect(redirectTo);
+}
+
+export async function GET(request: NextRequest) {
+  return withRequestObservability(request, () => handleAuthConfirm(request));
 }
 ```
 
@@ -1437,55 +1770,46 @@ src/
 │           └── [trpc]/
 │               └── route.ts
 ├── proxy.ts                       # Session refresh + route protection (Next.js 16+)
-├── shared/
-│   ├── kernel/
-│   │   ├── auth.ts               # Session, UserRole, Permission
-│   │   ├── context.ts            # RequestContext
-│   │   ├── transaction.ts        # TransactionManager
-│   │   └── errors.ts             # Base error classes
-│   └── infra/
-│       ├── supabase/
-│       │   ├── create-client.ts  # SSR client factory
-│       │   └── types.ts          # SupabaseClient type
-│       ├── db/
-│       │   ├── drizzle.ts        # Database client
-│       │   ├── transaction.ts    # DrizzleTransactionManager
-│       │   ├── types.ts          # DbClient, DrizzleTransaction
-│       │   └── schema/
-│       │       ├── user-roles.ts # user_roles table
-│       │       └── index.ts
-│       ├── trpc/
-│       │   ├── trpc.ts           # tRPC init + procedures
-│       │   ├── context.ts        # Session extraction
-│       │   └── root.ts           # Root router
-│       └── container.ts          # Composition root
-└── modules/
-    ├── auth/
-    │   ├── dtos/
-    │   │   ├── login.dto.ts
-    │   │   ├── register.dto.ts
-    │   │   ├── verify.dto.ts     # PKCE verification DTO
-    │   │   └── index.ts
-    │   ├── errors/
-    │   │   └── auth.errors.ts
-    │   ├── repositories/
-    │   │   └── auth.repository.ts
-    │   ├── services/
-    │   │   └── auth.service.ts
-    │   ├── use-cases/
-    │   │   └── register-user.use-case.ts
-    │   ├── factories/
-    │   │   └── auth.factory.ts
-    │   └── auth.router.ts
-    └── user-role/
-        ├── errors/
-        │   └── user-role.errors.ts
-        ├── repositories/
-        │   └── user-role.repository.ts
-        ├── services/
-        │   └── user-role.service.ts
-        └── factories/
-            └── user-role.factory.ts
+└── lib/
+    ├── shared/
+    │   ├── kernel/
+    │   │   ├── auth.ts               # Session, UserRole, Permission
+    │   │   ├── transaction.ts        # TransactionManager + TransactionOptions
+    │   │   └── errors.ts             # Base error classes
+    │   └── infra/
+    │       ├── supabase/
+    │       │   ├── create-client.ts  # SSR client factory
+    │       │   └── types.ts          # SupabaseClient type
+    │       ├── db/
+    │       │   ├── drizzle.ts        # Database client
+    │       │   ├── transaction.ts    # DrizzleTransactionManager
+    │       │   ├── types.ts          # DbClient, DrizzleTransaction
+    │       │   └── schema/
+    │       │       ├── user-roles.ts # user_roles table
+    │       │       └── index.ts
+    │       ├── trpc/
+    │       │   ├── trpc.ts           # tRPC init + procedures
+    │       │   ├── context.ts        # Session extraction
+    │       │   └── root.ts           # Root router
+    │       └── container.ts          # Composition root
+    └── modules/
+        ├── auth/
+        │   ├── shared/contracts/     # Public input/response payloads
+        │   ├── models/               # Provider-neutral auth models
+        │   ├── errors/
+        │   ├── repositories/
+        │   ├── services/
+        │   ├── use-cases/
+        │   │   ├── complete-signup.use-case.ts
+        │   │   └── provision-managed-user.use-case.ts
+        │   ├── providers/            # Privileged compensator adapter
+        │   ├── factories/
+        │   └── auth.router.ts
+        └── user-role/
+            ├── errors/
+            ├── repositories/
+            ├── services/
+            └── factories/
 ```
 
 ---
@@ -1521,7 +1845,7 @@ src/
 - [ ] `AuthRepository` with PKCE methods (`verifyMagicLink`, `verifySignUp`, `verifyRecovery`)
 - [ ] `AuthService` with redirect URL construction to `/auth/confirm?redirect=...`
 - [ ] Domain errors (`InvalidCredentialsError`, etc.)
-- [ ] DTOs with Zod schemas (including `VerifyTokenHashSchema`)
+- [ ] Shared auth Zod contracts (including `VerifyTokenHashInputSchema`)
 - [ ] Request-scoped factories
 
 ### User Role Module
@@ -1532,8 +1856,8 @@ src/
 
 ### tRPC Integration
 - [ ] Context extracts session + role
-- [ ] `publicProcedure` and `protectedProcedure`
-- [ ] Error formatter maps `AppError`
+- [ ] `publicProcedure` and `protectedProcedure` inherit shared error mapping + request logging
+- [ ] Shared middleware maps `AppError.kind`; formatter sanitizes the public error shape
 - [ ] Auth router with verification endpoints
 
 ### Next.js
@@ -1543,8 +1867,11 @@ src/
 - [ ] `/auth/callback` route handler for OAuth
 
 ### Registration Flow
-- [ ] `RegisterUserUseCase` orchestrates Supabase + DB
-- [ ] User role created on registration
+- [ ] Public self-signup always returns the same accepted response and does not expose account existence
+- [ ] `CompleteSignupUseCase` provisions the local role idempotently after verification
+- [ ] Authorization fails closed while the local role is missing
+- [ ] Reconciliation retries failed post-verification provisioning
+- [ ] Optional trusted managed-user provisioning tests provider compensation and failed-compensation repair
 - [ ] Email confirmation flow works with PKCE
 
 ---
@@ -1558,6 +1885,6 @@ src/
 | **Domain errors** | Supabase errors mapped to `AppError` subclasses |
 | **Request-scoped DI** | Factories accept `cookies` parameter |
 | **Transaction ownership** | `UserRoleService` owns DB transaction |
-| **Use case orchestration** | `RegisterUserUseCase` coordinates auth + DB |
+| **Use case orchestration** | `CompleteSignupUseCase` provisions verified users; trusted managed provisioning uses compensation |
 | **Kernel types** | `Session`, `UserRole`, `Permission` in kernel |
 | **PKCE flow** | `verifyOtp` with `token_hash` for magic links |

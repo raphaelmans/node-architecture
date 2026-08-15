@@ -25,10 +25,21 @@ src/
         error-adapter.test.ts
       query-keys/
         query-keys.test.ts
+      logging/
+        logger.test.ts
+        adapters/
+          debug.test.ts
+          sentry.test.ts
+      analytics/
+        analytics.test.ts
+      runtime/
+        browser.test.ts
     lib/
       modules/
         <module>/
           shared/
+            contracts/
+              <capability>.contract.test.ts # shared wire schema acceptance/rejection
             domain.test.ts   # pure shared domain rules
             transform.test.ts
 ```
@@ -44,7 +55,8 @@ Every test follows **Arrange → Act → Assert**, one behavioral assertion per 
 it("returns AppError when clientApi rejects", () => {
   // Arrange
   const clientApi = stubClientApi({ rejects: networkError });
-  const api = new FeatureApi({ clientApi, toAppError });
+  const logger = createLoggerSpy();
+  const api = createFeatureApi({ clientApi, toAppError, logger });
 
   // Act
   const result = await api.fetchItem("id-1");
@@ -112,6 +124,18 @@ Rules:
 - Keep cases in source order matching the function's branching logic.
 - Name `label` as the scenario, not the assertion.
 
+## Shared Contract Tests (`shared/contracts/`)
+
+Test canonical Zod wire contracts once in the mirrored shared-contract test path.
+
+Rules:
+
+- Assert representative valid request and response payloads.
+- Assert sensitive/internal fields are not part of serialized responses.
+- Cover wire-specific boundaries such as UUIDs, pagination, enums, nullable values, and ISO datetimes.
+- Do not duplicate the same schema acceptance tests in client and server suites; both runtimes import the same schema.
+- Transport tests should still verify that the route and `featureApi` actually invoke the shared contract boundary.
+
 ## Dependency-Injected Tests (api.ts classes)
 
 Test `<Feature>Api` by mocking **only its injected dependencies**, not internals.
@@ -122,13 +146,14 @@ describe("FeatureApi.fetchItem", () => {
     // Arrange
     const raw = { id: "1", name: "Item" };
     const clientApi = stubClientApi({ resolves: raw });
-    const api = createFeatureApi({ clientApi, toAppError });
+    const logger = createLoggerSpy();
+    const api = createFeatureApi({ clientApi, toAppError, logger });
 
     // Act
     const result = await api.fetchItem("1");
 
     // Assert
-    expect(result).toEqual(featureItemSchema.parse(raw));
+    expect(result).toEqual(toFeatureItem(FeatureItemResponseSchema.parse(raw)));
   });
 
   it("returns AppError when transport fails", async () => {
@@ -136,7 +161,8 @@ describe("FeatureApi.fetchItem", () => {
     const error = new Error("network");
     const clientApi = stubClientApi({ rejects: error });
     const toAppError = (e: unknown) => AppError.unknown(e);
-    const api = createFeatureApi({ clientApi, toAppError });
+    const logger = createLoggerSpy();
+    const api = createFeatureApi({ clientApi, toAppError, logger });
 
     // Act
     const result = await api.fetchItem("1");
@@ -151,6 +177,7 @@ Rules:
 - Mock at the injected interface boundary — not at the HTTP client or fetch level.
 - Do not test Zod schema behavior here; that belongs in schema-specific tests.
 - Assert returned values, not internal implementation details.
+- Inject a no-op/spy logger when required; assert records only for boundary-owned diagnostics, not provider formatting.
 
 ## Hook / Query Adapter Tests (hooks.ts)
 
@@ -176,6 +203,39 @@ Rules:
 - Use a fake `I<Feature>Api` implementation, not a mock of the class.
 - Verify cache invalidation and query key usage if they are behavioral decisions.
 - Do not assert network calls — that belongs in `api.test.ts`.
+- Use a `ProductAnalytics` spy when the mutation/workflow owns a typed event; assert completion events occur once after success and never after failure.
+
+## Logging and Product Analytics Tests
+
+Application tests use ports, never live providers:
+
+- logger spy/no-op for `AppLogger`;
+- analytics spy/fake for `ProductAnalytics`;
+- no `debug`, Sentry, or analytics vendor network calls.
+
+Adapter tests separately cover enrichment, redaction, filtering/sampling, consent, identity/reset, and non-fatal sink failures. A test should fail if a delivery adapter can reject the business workflow.
+
+## Factory and Composition-Root Tests
+
+Call the same named factories used by production:
+
+```ts
+const logger = createAppLogger({ sinks: [logSinkSpy], context: fixedContext });
+const analytics = createProductAnalytics({
+  adapters: [analyticsSpy],
+  consent: allowAllConsent,
+  logger,
+});
+const clientApi = createClientApi({ transport: fakeTransport, logger });
+const api = createFeatureApi({ clientApi, toAppError, logger });
+```
+
+Verify:
+
+- browser composition creates stable application-scoped instances;
+- request composition does not leak request/user context between invocations;
+- consumers receive specific ports rather than the full runtime container; and
+- provider construction remains behind factories.
 
 ## Test Doubles Policy
 
@@ -222,16 +282,21 @@ describe("<ClassName or moduleName>")
 - **Mocking internals**: assert behavior via the public API, not private calls.
 - **Over-specifying**: asserting exact argument shapes on stubs that don't affect output.
 - **Testing multiple behaviors in one `it`**: split when you see multiple `act` sections.
-- **Mixing layer concerns**: service logic assertions inside controller/hook tests.
+- **Mixing layer concerns**: service logic assertions inside server framework-adapter/controller tests or client hook tests.
 - **Duplicating invariant tests**: shared domain rules tested once in `shared/`; client and server do not repeat them.
 - **Fragile snapshot tests for logic**: use explicit value assertions for behavioral tests.
 - **Horizontal slicing**: writing all tests up front and then implementing in bulk; prefer one behavior per red-green loop.
+- **Live telemetry in unit tests**: loading `debug`, Sentry, or analytics vendors instead of spies/fakes.
+- **Testing through a service locator**: obtaining every dependency from a runtime container instead of constructing the subject with specific ports.
 
 ## Related Docs
 
 - `client/core/testing-vitest.md` — Vitest runner configuration, scripts, setup file
 - `client/core/domain-logic.md` — pure function placement and testing strategy
 - `client/core/client-api-architecture.md` — testability contract per layer
+- `client/core/composition-root.md` — factory/lifetime test boundaries
+- `client/core/logging.md` — operational logging adapter tests
+- `client/core/product-analytics.md` — analytics event and delivery tests
 - `client/core/folder-structure.md` — `__tests__` layout
 - `server/core/testing-service-layer.md` — server-side layer testing standard
 - `https://github.com/mattpocock/skills/tree/main/tdd` — optional reference workflow for red-green-refactor execution

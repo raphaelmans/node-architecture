@@ -59,7 +59,7 @@ These patterns match RHF docs and prevent missed subscriptions.
 ### Three-Layer Schema Pattern
 
 ```
-DTO Schema (API Contract)
+Shared Input Contract
        │
        ▼ .merge()
 Form Schema (UI-specific)
@@ -74,34 +74,34 @@ TypeScript Type
 // src/features/profile/schemas.ts
 
 import { z } from "zod";
-import { updateProfileDtoSchema } from "@/path/to/profile/dto-schemas";
-import { imageUploadSchema } from "@/path/to/shared/common-schemas";
+import { UpdateProfileInputSchema } from "@/lib/modules/profile/shared/contracts";
+import { ImageUploadSchema } from "@/features/profile/image-upload.schema";
 
-// Compose DTO with UI-specific fields
-export const profileFormSchema =
-  updateProfileDtoSchema.merge(imageUploadSchema);
+// Compose the shared wire input with UI-only fields.
+export const ProfileFormSchema =
+  UpdateProfileInputSchema.merge(ImageUploadSchema);
 
-export type ProfileFormShape = z.infer<typeof profileFormSchema>;
+export type ProfileFormShape = z.infer<typeof ProfileFormSchema>;
 ```
 
-### Common Schemas
+### UI-Only Schema
 
 ```typescript
-// src/<shared>/common-schemas.ts
+// src/features/profile/image-upload.schema.ts
 
 import { z } from "zod";
 
 // Image asset for file uploads
-export const imageAssetSchema = z.object({
+export const ImageAssetSchema = z.object({
   file: z.instanceof(File).optional(),
   url: z.string(),
 });
 
-export const imageUploadSchema = z.object({
-  imageAsset: imageAssetSchema,
+export const ImageUploadSchema = z.object({
+  imageAsset: ImageAssetSchema,
 });
 
-export type ImageAsset = z.infer<typeof imageAssetSchema>;
+export type ImageAsset = z.infer<typeof ImageAssetSchema>;
 ```
 
 ### Cleared Inputs ("" -> undefined)
@@ -537,6 +537,15 @@ const onSubmit = async (data: ProfileFormShape) => {
 - Upload + follow-up mutation: Variant C is often the cleanest split.
 - Multi-panel settings screen: coordinator can call multiple `useMut*` hooks and batch invalidation in one place.
 
+### Form Telemetry Ownership
+
+- Reusable completion analytics belong in the successful mutation hook.
+- Route/form-specific flow analytics may emit after the complete submit/invalidate/refetch sequence succeeds.
+- Validation failures remain UI/form concerns and are not operational errors by default.
+- Transport and contract failures are already logged by `clientApi`/`featureApi`; forms must not report them again.
+- Forms never import `debug`, Sentry, or analytics vendor SDKs.
+- Telemetry delivery never blocks the submit pipeline, toast, reset, or navigation.
+
 ## Layout Patterns
 
 ### Vertical (Default)
@@ -663,7 +672,7 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 | Convention         | Standard                                        |
 | ------------------ | ----------------------------------------------- |
 | Schema location    | `features/<feature>/schemas.ts`                 |
-| Schema composition | DTO `.merge()` with UI schemas                  |
+| Schema composition | Shared input contract `.merge()` with UI schemas |
 | Type inference     | `z.infer<typeof schema>`                        |
 | Form wrapper       | `StandardFormProvider`                          |
 | Field components   | `StandardFormInput`, `StandardFormSelect`, etc. |
@@ -674,7 +683,7 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 
 ## Checklist
 
-- [ ] Schema defined in `schemas.ts`, composed from DTOs
+- [ ] Form schema defined in `schemas.ts`, composed from a shared input contract
 - [ ] Form uses `zodResolver(schema)`
 - [ ] Form wrapped in `StandardFormProvider`
 - [ ] `StandardFormError` included for API errors

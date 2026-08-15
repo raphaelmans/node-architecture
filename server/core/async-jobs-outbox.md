@@ -4,7 +4,7 @@
 
 ## Purpose
 
-When write operations trigger external side effects (email, SMS, push, webhooks), use an outbox job model to keep business writes and background delivery consistent.
+When write operations trigger external side effects (email, SMS, push, webhooks, important product analytics events), use an outbox job model to keep business writes and background delivery consistent.
 
 ## Core Rule
 
@@ -47,15 +47,20 @@ The key must be unique for equivalent delivery attempts to prevent duplicates.
 
 - Claim jobs transactionally (`PENDING`/retryable `FAILED` -> `SENDING`)
 - Mark terminal states explicitly (`SENT` / exhausted `FAILED` / `SKIPPED`)
-- Include correlation metadata (`requestId`, job id, provider message id if available)
+- Give each worker invocation its own request/invocation ID
+- Persist an optional `causationRequestId` for the originating request and standard trace carrier metadata where supported
+- Include job ID and provider message ID in operational records
+- Never reuse a producer `spanId` as the worker's active span
 
 ## Ownership and Boundaries
 
-- Use case/service layer decides **what event to enqueue**
+- Use case decides **what cross-service event to enqueue**; a single-domain service may write an event owned entirely by that same module
 - Dispatcher decides **how/when to deliver**
 - Transport/metaframework layer decides **how dispatchers are triggered** (cron, worker, queue consumer)
+- Product analytics dispatchers depend on `ProductAnalytics`; they do not repurpose `AppLogger`
 
 For Next.js cron-triggered dispatch patterns, see:
 
 - `server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md`
 
+For correlation semantics across producer/consumer boundaries, see [Observability](./observability.md#async-and-queue-boundaries).

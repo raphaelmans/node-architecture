@@ -15,6 +15,7 @@ client/
     README.md
     architecture.md
     conventions.md
+    composition-root.md
     client-api-architecture.md
     validation-zod.md
     domain-logic.md
@@ -23,6 +24,7 @@ client/
     state-management.md
     error-handling.md
     logging.md
+    product-analytics.md
     folder-structure.md
 
   frameworks/                      # framework-specific
@@ -81,15 +83,18 @@ UI interaction
 [Query adapter (server/IO state)]
   - defines queryKey + useQuery/useMutation
   - owns invalidation / optimistic updates
+  - emits typed success analytics when it owns the action
   - depends on I<Feature>Api contract
   |
   v
 [featureApi boundary]
   - one per feature domain: I<Feature>Api + class <Feature>Api + create<Feature>Api(...)
-  - owns endpoint paths + request/response schemas
-  - parses at boundaries (Zod)
+  - owns endpoint paths + contract parsing/mapping
+  - imports canonical schemas from lib/modules/<module>/shared/contracts/
+  - parses network responses at the boundary (Zod)
   - maps DTO -> feature model
   - normalizes unknown -> AppError via toAppError
+  - logs contract/mapping failures it owns
   - depends on clientApi (interface)
   |
   v
@@ -98,6 +103,7 @@ UI interaction
   - response envelope decoding
   - typed, inspectable errors
   - retry/timeouts (if global)
+  - owns transport logs + response requestId correlation
   |
   v
 Network
@@ -110,7 +116,31 @@ Zod parsing boundary:      featureApi
 Cache + invalidation:      query adapter
 Transport details:         clientApi (implementation varies)
 Route parsing + SSR:       metaframework docs (Next.js)
+Wire contract source:      lib/modules/<module>/shared/contracts/
+Operational logging:       AppLogger -> debug/Sentry adapters
+Product analytics:         ProductAnalytics -> consent-aware adapter(s)
+Dependency lifecycle:      client composition root + named factories
 ```
+
+Shared contract flow:
+
+```text
+src/lib/modules/<module>/shared/contracts/<capability>.contract.ts
+                         |
+             +-----------+-----------+
+             |                       |
+             v                       v
+      client featureApi       server route/tRPC adapter
+      parses response         parses input + response
+             |                       |
+             v                       v
+      client feature model    controller
+                                      |
+                                      v
+                               use case/service
+```
+
+The shared module contains wire contracts only. Database entities stay server-side; form schemas and view models stay client-side.
 
 ---
 
@@ -146,34 +176,40 @@ Store only IDs/flags and derive server objects from the query cache.
 
 ---
 
-## 4) Request and Error Correlation (Boundary-Owned)
+## 4) Logging, Analytics, and Correlation
 
 ```text
-Request
+Client composition root
   |
-  v
-Route / proxy boundary
-  - attach/propagate request metadata (e.g. requestId, pathname)
+  +--> createAppLogger() ---------> debug sink (local)
+  |                          \----> Sentry sink (optional/filtered)
   |
-  v
-Server transport handler (tRPC / route.ts)
-  - enforce security/rate limits
-  - return structured error envelope (code/message/requestId/details)
+  +--> createProductAnalytics() -> consent -> analytics adapter(s)
   |
-  v
-clientApi / transport adapter
-  - map transport error -> typed client error
+  +--> createClientApi(logger)
   |
-  v
-toAppError(err)
-  - normalize to AppError
-  |
-  +--> logger facade (correlated logs)
-  |
-  +--> toast facade (user-facing message)
-  |
-  v
-UI branches on AppError.kind only
+  +--> createFeatureApi(clientApi, logger, toAppError)
+```
+
+```text
+Create mutation
+  -> featureApi
+  -> clientApi --------------------> AppLogger transport record
+  -> server
+  <- response + requestId
+  <- typed result / AppError
+  +-> ProductAnalytics success event
+  +-> cache update
+  -> toast/navigation
+```
+
+```text
+Common context (route/release/trace/safe actor)
+  -> logger adapter enrichment
+  -> analytics adapter identity/consent
+
+Never:
+  business DTO + { logger, analytics, requestId, traceId, runtimeContainer }
 ```
 
 ---

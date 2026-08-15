@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en" class="scheme-only-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive guide to the canonical client architecture: UI composition, TanStack Query adapters, feature APIs, client transport, runtime factories, operational logging, product analytics, and testing.">
+  <title>Client Architecture — Field Guide</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #edf3f1;
+      --muted: #95a39e;
+      --faint: #66746f;
+      --base: #080c0c;
+      --panel: #0e1515;
+      --panel-2: #121d1c;
+      --line: #263331;
+      --line-hot: #486a64;
+      --lime: #c9f45d;
+      --mint: #70e1bd;
+      --cyan: #70c9e8;
+      --amber: #f4bc63;
+      --coral: #f17c68;
+      --violet: #ad9df0;
+      --pink: #eb8fbe;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .38);
+      --display: "Avenir Next Condensed", "DIN Condensed", "Franklin Gothic Condensed", sans-serif;
+      --body: "Avenir Next", "Segoe UI", sans-serif;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(112, 201, 232, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(112, 201, 232, .035) 1px, transparent 1px),
+        radial-gradient(circle at 8% 0%, rgba(112, 201, 232, .09), transparent 30rem),
+        radial-gradient(circle at 92% 70%, rgba(173, 157, 240, .07), transparent 34rem),
+        var(--base);
+      background-size: 32px 32px, 32px 32px, auto, auto, auto;
+      font-family: var(--body);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { font: inherit; }
+    a { color: inherit; }
+    code, pre { font-family: var(--mono); }
+    ::selection { color: var(--base); background: var(--cyan); }
+
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      color: var(--base);
+      background: var(--cyan);
+      transform: translateY(-150%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .shell { width: min(1440px, 100%); margin: 0 auto; }
+
+    .masthead {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: grid;
+      grid-template-columns: 260px 1fr auto;
+      min-height: 72px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 12, 12, .9);
+      backdrop-filter: blur(16px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 24px;
+      border-right: 1px solid var(--line);
+      text-decoration: none;
+    }
+    .brand-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      color: var(--base);
+      background: var(--cyan);
+      font: 800 13px/1 var(--mono);
+      box-shadow: 5px 5px 0 rgba(112, 201, 232, .15);
+    }
+    .brand-copy { display: grid; line-height: 1; }
+    .brand-copy strong { font: 800 18px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; }
+    .brand-copy small { margin-top: 5px; color: var(--muted); font: 600 9px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+    .primary-nav { display: flex; align-items: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .primary-nav::-webkit-scrollbar { display: none; }
+    .nav-button {
+      position: relative;
+      flex: 0 0 auto;
+      padding: 0 16px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font: 700 9px/1 var(--mono);
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .nav-button::after {
+      position: absolute;
+      right: 14px;
+      bottom: 0;
+      left: 14px;
+      height: 2px;
+      content: "";
+      background: var(--cyan);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .2s ease;
+    }
+    .nav-button:hover { color: var(--ink); background: rgba(255, 255, 255, .02); }
+    .nav-button[aria-selected="true"] { color: var(--cyan); }
+    .nav-button[aria-selected="true"]::after { transform: scaleX(1); }
+    .status { display: flex; align-items: center; gap: 9px; padding: 0 22px; color: var(--muted); font: 700 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 5px rgba(112, 225, 189, .08), 0 0 18px var(--mint); }
+    .menu-toggle { display: none; }
+
+    .nav-button:focus-visible, .menu-toggle:focus-visible, .control:focus-visible,
+    .layer-button:focus-visible, .copy-button:focus-visible, .flow-node:focus-visible,
+    a:focus-visible { outline: 2px solid var(--cyan); outline-offset: -3px; }
+
+    main { isolation: isolate; }
+    .guide-panel { display: none; }
+    .guide-panel.is-active { display: block; animation: reveal .24s ease both; }
+    @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .page { padding: clamp(28px, 5vw, 72px) clamp(20px, 4vw, 64px) 80px; }
+    .section-kicker { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; color: var(--cyan); font: 700 10px/1 var(--mono); letter-spacing: .17em; text-transform: uppercase; }
+    .section-kicker::before { width: 34px; height: 1px; content: ""; background: currentColor; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 900px; margin-bottom: 22px; font: 800 clamp(52px, 8.4vw, 120px)/.84 var(--display); letter-spacing: -.035em; text-transform: uppercase; }
+    h1 .outline { color: transparent; -webkit-text-stroke: 1px var(--line-hot); }
+    h2 { margin-bottom: 14px; font: 750 clamp(31px, 4vw, 52px)/.95 var(--display); letter-spacing: -.02em; text-transform: uppercase; }
+    h3 { margin-bottom: 9px; font: 750 19px/1.05 var(--display); letter-spacing: .025em; text-transform: uppercase; }
+    .lede { max-width: 760px; color: #bdc9c5; font-size: clamp(17px, 2vw, 22px); line-height: 1.55; }
+    .quiet { color: var(--muted); }
+    .micro { color: var(--muted); font: 600 10px/1.55 var(--mono); }
+    .label { color: var(--muted); font: 700 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .rule { height: 1px; margin: 54px 0; border: 0; background: var(--line); }
+
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr); gap: clamp(32px, 6vw, 90px); align-items: center; min-height: calc(100vh - 170px); }
+    .hero-index { display: grid; grid-template-columns: repeat(3, 1fr); max-width: 650px; margin-top: 38px; border: 1px solid var(--line); }
+    .metric { padding: 17px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric strong { display: block; color: var(--ink); font: 700 24px/1 var(--mono); font-variant-numeric: tabular-nums; }
+    .metric span { display: block; margin-top: 8px; color: var(--faint); font: 700 8px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .system-plate { position: relative; padding: 36px; border: 1px solid var(--line-hot); background: linear-gradient(145deg, rgba(18, 29, 28, .95), rgba(8, 12, 12, .85)); box-shadow: var(--shadow); }
+    .system-plate::before, .system-plate::after { position: absolute; width: 28px; height: 28px; content: ""; pointer-events: none; }
+    .system-plate::before { top: -1px; left: -1px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+    .system-plate::after { right: -1px; bottom: -1px; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); }
+    .plate-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+    .plate-head span { font: 700 9px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    .plate-head span:last-child { color: var(--mint); }
+    .architecture-map { display: grid; gap: 10px; }
+    .map-node { position: relative; display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; min-height: 60px; padding: 10px 16px 10px 10px; border: 1px solid var(--line); color: var(--ink); background: rgba(255, 255, 255, .018); }
+    .map-node + .map-node::before { position: absolute; top: -11px; left: 31px; width: 1px; height: 10px; content: ""; background: var(--line-hot); }
+    .map-index { display: grid; width: 38px; height: 38px; place-items: center; color: var(--base); background: var(--node-color); font: 800 11px/1 var(--mono); }
+    .map-node strong { display: block; font: 750 16px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+    .map-node small { color: var(--muted); font: 500 9px/1.3 var(--mono); }
+    .map-verb { color: var(--node-color); font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .telemetry-fork { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; color: var(--muted); font: 700 8px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .telemetry-fork::before, .telemetry-fork::after { height: 1px; content: ""; background: var(--line); }
+    .telemetry-fork span { padding: 0 12px; }
+
+    .truth-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .truth-card { min-height: 210px; padding: 26px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(14, 21, 21, .6); }
+    .truth-card .number { margin-bottom: 42px; color: var(--cyan); font: 700 10px/1 var(--mono); }
+    .truth-card p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
+    .decision { display: grid; grid-template-columns: 1fr 90px 1fr; align-items: stretch; margin-top: 28px; border: 1px solid var(--line); background: var(--panel); }
+    .decision-card { padding: 26px; }
+    .decision-card strong { display: block; margin: 12px 0 6px; font: 750 22px/1 var(--display); text-transform: uppercase; }
+    .decision-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .decision-axis { display: grid; place-items: center; border-right: 1px solid var(--line); border-left: 1px solid var(--line); color: var(--cyan); font: 700 10px/1 var(--mono); writing-mode: vertical-rl; text-transform: uppercase; letter-spacing: .16em; }
+
+    .section-head { display: grid; grid-template-columns: 1fr minmax(260px, 420px); gap: 30px; align-items: end; margin-bottom: 40px; }
+    .section-head p { margin: 0; color: var(--muted); }
+    .layer-explorer { display: grid; grid-template-columns: 330px 1fr; min-height: 620px; border: 1px solid var(--line); background: rgba(8, 12, 12, .72); box-shadow: var(--shadow); }
+    .layer-list { border-right: 1px solid var(--line); }
+    .layer-list-head { padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .layer-button { position: relative; display: grid; grid-template-columns: 36px 1fr; gap: 14px; width: 100%; padding: 18px 22px; border: 0; border-bottom: 1px solid var(--line); color: var(--muted); text-align: left; background: transparent; cursor: pointer; }
+    .layer-button::after { position: absolute; top: 0; right: 0; bottom: 0; width: 3px; content: ""; background: var(--tone); transform: scaleY(0); transition: transform .2s ease; }
+    .layer-button:hover { color: var(--ink); background: rgba(255, 255, 255, .018); }
+    .layer-button[aria-selected="true"] { color: var(--ink); background: var(--panel-2); }
+    .layer-button[aria-selected="true"]::after { transform: scaleY(1); }
+    .layer-num { color: var(--tone); font: 700 11px/1.2 var(--mono); }
+    .layer-button strong { display: block; font: 750 18px/1 var(--display); text-transform: uppercase; }
+    .layer-button small { display: block; margin-top: 6px; color: var(--faint); font: 500 9px/1.35 var(--mono); }
+    .layer-detail { display: none; padding: clamp(28px, 5vw, 58px); }
+    .layer-detail.is-active { display: block; animation: reveal .25s ease both; }
+    .layer-title { display: flex; gap: 18px; align-items: center; margin-bottom: 28px; }
+    .layer-glyph { display: grid; width: 56px; height: 56px; flex: 0 0 auto; place-items: center; border: 1px solid var(--tone); color: var(--tone); font: 800 18px/1 var(--mono); }
+    .layer-title h2 { margin: 0; color: var(--tone); }
+    .responsibility-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+    .responsibility { padding: 20px; border-left: 2px solid var(--tone); background: rgba(255, 255, 255, .022); }
+    .responsibility p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 24px; border: 1px solid var(--line); background: var(--line); }
+    .do-dont > div { padding: 20px; background: var(--panel); }
+    .do-dont ul { margin: 12px 0 0; padding: 0; list-style: none; }
+    .do-dont li { position: relative; margin: 8px 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+    .do-dont li::before { position: absolute; left: 0; color: var(--tone); content: "+"; font-family: var(--mono); }
+    .do-dont .dont li::before { color: var(--coral); content: "−"; }
+
+    .code-block { position: relative; margin: 22px 0 0; border: 1px solid var(--line); background: #070a0a; overflow: hidden; }
+    .code-head { display: flex; justify-content: space-between; align-items: center; min-height: 42px; padding-left: 15px; border-bottom: 1px solid var(--line); color: var(--faint); font: 700 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .copy-button { align-self: stretch; padding: 0 15px; border: 0; border-left: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer; font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .copy-button:hover { color: var(--cyan); background: rgba(112, 201, 232, .04); }
+    pre { margin: 0; padding: 20px; color: #cad6d2; overflow: auto; font-size: 11px; line-height: 1.75; tab-size: 2; }
+    .tok-key { color: var(--violet); }
+    .tok-type { color: var(--cyan); }
+    .tok-str { color: var(--lime); }
+    .tok-comment { color: var(--faint); }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+    .control { position: relative; padding: 11px 14px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); cursor: pointer; font: 700 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .control:hover { border-color: var(--line-hot); color: var(--ink); }
+    .control[aria-pressed="true"] { border-color: var(--cyan); color: var(--base); background: var(--cyan); }
+    .flow-workbench { display: grid; grid-template-columns: minmax(330px, .7fr) minmax(420px, 1.3fr); min-height: 610px; border: 1px solid var(--line); background: var(--panel); }
+    .flow-canvas { padding: 28px; border-right: 1px solid var(--line); }
+    .flow-meta { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .flow-meta span { color: var(--muted); font: 700 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+    .flow-stack { display: grid; gap: 18px; }
+    .flow-node { position: relative; display: grid; grid-template-columns: 38px 1fr auto; gap: 13px; align-items: center; width: 100%; min-height: 62px; padding: 11px 14px; border: 1px solid var(--line); color: var(--ink); text-align: left; background: rgba(255, 255, 255, .018); cursor: pointer; animation: nodeIn .35s ease both; animation-delay: calc(var(--i) * 55ms); }
+    @keyframes nodeIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+    .flow-node:not(:last-child)::after { position: absolute; bottom: -19px; left: 32px; width: 1px; height: 18px; content: ""; background: var(--line-hot); }
+    .flow-node:hover, .flow-node.is-active { border-color: var(--node-color); background: color-mix(in srgb, var(--node-color) 7%, transparent); }
+    .flow-node .node-mark { display: grid; width: 34px; height: 34px; place-items: center; color: var(--base); background: var(--node-color); font: 800 10px/1 var(--mono); }
+    .flow-node strong { display: block; font: 750 16px/1 var(--display); text-transform: uppercase; }
+    .flow-node small { display: block; margin-top: 5px; color: var(--faint); font: 500 8px/1.3 var(--mono); }
+    .flow-node .verb { color: var(--node-color); font: 700 8px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .flow-inspector { display: flex; flex-direction: column; min-width: 0; }
+    .inspector-copy { padding: 34px; }
+    .inspector-copy h3 { color: var(--cyan); font-size: 27px; }
+    .inspector-copy p { max-width: 680px; color: var(--muted); }
+    .flow-inspector .code-block { margin: auto 24px 24px; }
+    .callout { position: relative; margin-top: 22px; padding: 18px 20px 18px 46px; border: 1px solid var(--line); background: rgba(112, 201, 232, .035); color: #bac7c2; font-size: 12px; }
+    .callout::before { position: absolute; top: 17px; left: 19px; color: var(--cyan); content: "!"; font: 800 14px/1 var(--mono); }
+
+    .slice-walkthrough { margin-top: 42px; border: 1px solid var(--line-hot); background: rgba(8, 12, 12, .78); box-shadow: var(--shadow); }
+    .slice-summary { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 18px; align-items: center; min-height: 92px; padding: 18px 22px; cursor: pointer; list-style: none; }
+    .slice-summary::-webkit-details-marker { display: none; }
+    .slice-summary:hover { background: rgba(112, 201, 232, .025); }
+    .slice-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: -3px; }
+    .slice-mark { display: grid; width: 48px; height: 48px; place-items: center; color: var(--base); background: var(--cyan); font: 800 11px/1 var(--mono); }
+    .slice-summary-copy { min-width: 0; }
+    .slice-summary-copy span { display: block; margin-bottom: 7px; color: var(--cyan); font: 700 9px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    .slice-summary-copy strong { display: block; font: 750 23px/1 var(--display); text-transform: uppercase; }
+    .slice-summary-copy small { display: block; margin-top: 7px; color: var(--muted); font: 500 10px/1.4 var(--mono); }
+    .slice-toggle { min-width: 116px; padding: 11px 14px; border: 1px solid var(--line-hot); color: var(--cyan); text-align: center; font: 700 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .slice-walkthrough[open] .slice-toggle { color: var(--base); background: var(--cyan); border-color: var(--cyan); }
+    .slice-toggle-open { display: none; }
+    .slice-walkthrough[open] .slice-toggle-closed { display: none; }
+    .slice-walkthrough[open] .slice-toggle-open { display: inline; }
+    .slice-body { padding: 30px; border-top: 1px solid var(--line); }
+    .slice-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 440px); gap: 28px; align-items: end; }
+    .slice-intro h3 { margin: 0; color: var(--cyan); font-size: 28px; }
+    .slice-intro p { margin: 0; color: var(--muted); font-size: 13px; }
+    .slice-chain { display: flex; align-items: center; gap: 8px; margin: 26px 0 12px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: thin; }
+    .slice-chain span { flex: 0 0 auto; padding: 10px 12px; border: 1px solid var(--line); color: var(--tone); background: var(--panel); font: 700 9px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .slice-chain i { flex: 0 0 auto; color: var(--line-hot); font: 700 12px/1 var(--mono); font-style: normal; }
+    .slice-steps { margin-top: 10px; }
+    .slice-step { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 26px; padding: 28px 0; border-top: 1px solid var(--line); }
+    .slice-step-meta { position: relative; min-width: 0; padding-left: 18px; border-left: 2px solid var(--tone); }
+    .slice-step-meta .ordinal { color: var(--tone); font: 700 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .slice-step-meta h3 { margin: 18px 0 9px; color: var(--tone); }
+    .slice-step-meta p { margin: 0; color: var(--muted); font-size: 12px; }
+    .slice-file { display: block; margin-top: 18px; color: var(--faint); overflow-wrap: anywhere; font: 600 9px/1.5 var(--mono); }
+    .slice-step .code-block { min-width: 0; margin: 0; }
+
+    .key-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .key-card { min-height: 250px; padding: 24px; border-top: 2px solid var(--tone); border-bottom: 1px solid var(--line); background: rgba(14, 21, 21, .72); }
+    .key-card .tag, .boundary-card .tag { display: inline-block; margin-bottom: 38px; padding: 6px 8px; color: var(--tone); border: 1px solid var(--tone); font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .key-card p { color: var(--muted); font-size: 13px; }
+    .key-card code { color: var(--tone); font-size: 11px; }
+    .key-card ul, .boundary-card ul, .test-card ul { margin: 16px 0 0; padding: 0; list-style: none; }
+    .key-card li, .boundary-card li { margin-top: 9px; padding-left: 16px; color: #b6c2be; font-size: 12px; }
+    .key-card li::before, .boundary-card li::before { margin-left: -16px; margin-right: 9px; color: var(--tone); content: "→"; font-family: var(--mono); }
+    .ownership-table { width: 100%; border-collapse: collapse; }
+    .ownership-table th { padding: 13px 16px; color: var(--muted); text-align: left; white-space: nowrap; font: 700 10px/1 var(--mono); }
+    .ownership-table td { padding: 16px; border-top: 1px solid var(--line); color: #bdc8c4; font-size: 13px; vertical-align: top; }
+    .ownership-table td:first-child { color: var(--cyan); font-family: var(--mono); }
+    .table-scroll { overflow-x: auto; white-space: nowrap; }
+
+    .boundary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .boundary-card { position: relative; min-height: 330px; padding: 28px; border: 1px solid var(--line); background: linear-gradient(150deg, rgba(18, 29, 28, .88), rgba(8, 12, 12, .8)); overflow: hidden; }
+    .boundary-card::after { position: absolute; right: -34px; bottom: -54px; color: rgba(255, 255, 255, .025); content: attr(data-mark); font: 800 180px/1 var(--display); }
+    .boundary-card > * { position: relative; z-index: 1; }
+    .boundary-card p { max-width: 520px; color: var(--muted); font-size: 13px; }
+    .signal-map { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 38px; border: 1px solid var(--line); }
+    .signal { min-height: 180px; padding: 22px; border-right: 1px solid var(--line); background: var(--panel); }
+    .signal:last-child { border-right: 0; }
+    .signal strong { display: block; margin: 22px 0 8px; color: var(--tone); font: 750 19px/1 var(--display); text-transform: uppercase; }
+    .signal p { margin: 0; color: var(--muted); font-size: 11px; }
+    .signal .mode { color: var(--faint); font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+
+    .runtime-stack { position: relative; display: grid; gap: 12px; max-width: 1040px; margin: 40px auto 0; }
+    .runtime-layer { display: grid; grid-template-columns: 150px 1fr auto; gap: 20px; align-items: center; min-height: 92px; padding: 18px 22px; border: 1px solid var(--line); background: var(--panel); clip-path: polygon(var(--cut, 0) 0, calc(100% - var(--cut, 0)) 0, 100% 100%, 0 100%); }
+    .runtime-layer:nth-child(1) { margin: 0 120px; --tone: var(--cyan); }
+    .runtime-layer:nth-child(2) { margin: 0 80px; --tone: var(--mint); }
+    .runtime-layer:nth-child(3) { margin: 0 40px; --tone: var(--violet); }
+    .runtime-layer:nth-child(4) { --tone: var(--amber); }
+    .runtime-layer .ordinal { color: var(--tone); font: 800 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .runtime-layer strong { display: block; font: 750 23px/1 var(--display); text-transform: uppercase; }
+    .runtime-layer p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .runtime-layer .direction { color: var(--tone); font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .adapter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 46px; }
+    .adapter-card { padding: 24px; border: 1px solid var(--line); background: rgba(14, 21, 21, .75); }
+    .adapter-card .adapter-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 34px; }
+    .adapter-card .adapter-top span { color: var(--tone); font: 700 9px/1 var(--mono); text-transform: uppercase; }
+    .adapter-card p { color: var(--muted); font-size: 12px; }
+    .adapter-card code { color: var(--tone); font-size: 10px; }
+
+    .test-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .test-card { min-height: 270px; padding: 24px; border: 1px solid var(--line); background: var(--panel); }
+    .test-card .test-number { color: var(--tone); font: 700 10px/1 var(--mono); }
+    .test-card h3 { margin-top: 36px; color: var(--tone); }
+    .test-card p { color: var(--muted); font-size: 12px; }
+    .test-card li { margin-top: 8px; color: #b3c0bb; font-size: 11px; }
+    .test-card li::before { margin-right: 8px; color: var(--tone); content: "·"; }
+    .tdd-loop { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 36px; border: 1px solid var(--line); }
+    .tdd-step { position: relative; min-height: 190px; padding: 25px; border-right: 1px solid var(--line); background: rgba(14, 21, 21, .8); }
+    .tdd-step:last-child { border-right: 0; }
+    .tdd-step:not(:last-child)::after { position: absolute; z-index: 2; top: 50%; right: -12px; display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid var(--line); color: var(--cyan); background: var(--base); content: "→"; font: 700 10px/1 var(--mono); transform: translateY(-50%); }
+    .tdd-step strong { display: block; margin: 30px 0 8px; color: var(--tone); font: 750 24px/1 var(--display); text-transform: uppercase; }
+    .tdd-step p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .structure-layout { display: grid; grid-template-columns: minmax(420px, 1.1fr) minmax(340px, .9fr); gap: 22px; }
+    .tree { padding: 28px; border: 1px solid var(--line); background: #070a0a; overflow: auto; font: 500 11px/1.8 var(--mono); white-space: pre; }
+    .tree .folder { color: var(--cyan); }
+    .tree .contract { color: var(--mint); }
+    .tree .adapter { color: var(--amber); }
+    .tree .runtime { color: var(--violet); }
+    .tree .comment { color: var(--faint); }
+    .checklist { border: 1px solid var(--line); background: var(--panel); }
+    .checklist-head { padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .check-item { display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 15px 20px; border-bottom: 1px solid var(--line); }
+    .check-item:last-child { border-bottom: 0; }
+    .check-box { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid var(--line-hot); color: var(--cyan); font: 700 9px/1 var(--mono); }
+    .check-item strong { display: block; font-size: 12px; }
+    .check-item small { color: var(--muted); font-size: 10px; }
+    .tone-cyan { --tone: var(--cyan); }
+    .tone-mint { --tone: var(--mint); }
+    .tone-lime { --tone: var(--lime); }
+    .tone-amber { --tone: var(--amber); }
+    .tone-coral { --tone: var(--coral); }
+    .tone-violet { --tone: var(--violet); }
+    .tone-pink { --tone: var(--pink); }
+
+    footer { display: grid; grid-template-columns: 1fr auto; gap: 24px; padding: 30px clamp(20px, 4vw, 64px); border-top: 1px solid var(--line); color: var(--faint); font: 600 9px/1.6 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    footer a { color: var(--muted); text-underline-offset: 3px; }
+    footer a:hover { color: var(--cyan); }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 16px; }
+
+    @media (max-width: 1120px) {
+      .masthead { grid-template-columns: 210px 1fr; }
+      .status { display: none; }
+      .hero-grid { grid-template-columns: 1fr; min-height: auto; }
+      .system-plate { max-width: 720px; }
+      .truth-grid { grid-template-columns: repeat(2, 1fr); }
+      .flow-workbench { grid-template-columns: 1fr 1.15fr; }
+      .key-grid, .adapter-grid, .test-grid { grid-template-columns: repeat(2, 1fr); }
+      .signal-map { grid-template-columns: repeat(2, 1fr); }
+      .signal:nth-child(2) { border-right: 0; }
+      .signal:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .structure-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 780px) {
+      .masthead { position: relative; grid-template-columns: 1fr auto; min-height: 62px; }
+      .brand { min-height: 62px; border-right: 1px solid var(--line); }
+      .menu-toggle { position: relative; display: grid; min-width: 64px; min-height: 62px; place-items: center; border: 0; color: var(--cyan); background: transparent; cursor: pointer; font: 800 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+      .menu-toggle::after { position: absolute; width: 48px; height: 48px; content: ""; }
+      .primary-nav { position: absolute; z-index: 30; top: 62px; right: 0; left: 0; display: none; max-height: calc(100vh - 62px); flex-direction: column; overflow-y: auto; border-bottom: 1px solid var(--line-hot); background: rgba(8, 12, 12, .98); }
+      .primary-nav.is-open { display: flex; }
+      .nav-button { min-height: 52px; padding: 0 24px; border-right: 0; border-bottom: 1px solid var(--line); text-align: left; }
+      .nav-button::after { top: 12px; right: auto; bottom: 12px; left: 0; width: 2px; height: auto; transform: scaleY(0); }
+      .nav-button[aria-selected="true"]::after { transform: scaleY(1); }
+      .page { padding-top: 38px; }
+      h1 { font-size: clamp(48px, 16vw, 78px); }
+      .section-head { grid-template-columns: 1fr; }
+      .layer-explorer, .flow-workbench { grid-template-columns: 1fr; }
+      .layer-list { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .layer-list-head { display: none; }
+      .layer-button { flex: 0 0 180px; border-right: 1px solid var(--line); border-bottom: 0; }
+      .layer-button::after { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: 3px; transform: scaleX(0); }
+      .layer-button[aria-selected="true"]::after { transform: scaleX(1); }
+      .flow-canvas { border-right: 0; border-bottom: 1px solid var(--line); }
+      .slice-intro { grid-template-columns: 1fr; }
+      .slice-step { grid-template-columns: 160px minmax(0, 1fr); }
+      .boundary-grid, .key-grid, .adapter-grid, .test-grid { grid-template-columns: 1fr; }
+      .runtime-layer, .runtime-layer:nth-child(n) { grid-template-columns: 88px 1fr; margin: 0; }
+      .runtime-layer .direction { display: none; }
+      .structure-layout { grid-template-columns: minmax(0, 1fr); }
+      .tree { font-size: 9px; }
+      footer { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .hero-index, .responsibility-grid, .do-dont, .decision, .signal-map, .tdd-loop { grid-template-columns: 1fr; }
+      .metric { border-right: 0; border-bottom: 1px solid var(--line); }
+      .metric:last-child { border-bottom: 0; }
+      .truth-grid { grid-template-columns: 1fr; }
+      .decision-axis { min-height: 46px; border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); writing-mode: initial; }
+      .system-plate { padding: 22px; }
+      .map-node { grid-template-columns: 40px 1fr; }
+      .map-verb { display: none; }
+      .slice-summary { grid-template-columns: 48px minmax(0, 1fr); padding: 16px; }
+      .slice-toggle { grid-column: 1 / -1; width: 100%; }
+      .slice-body { padding: 20px 16px; }
+      .slice-step { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+      .signal { border-right: 0; border-bottom: 1px solid var(--line); }
+      .signal:last-child { border-bottom: 0; }
+      .runtime-layer, .runtime-layer:nth-child(n) { grid-template-columns: 1fr; }
+      .tdd-step { border-right: 0; border-bottom: 1px solid var(--line); }
+      .tdd-step:last-child { border-bottom: 0; }
+      .tdd-step:not(:last-child)::after { top: auto; right: 50%; bottom: -12px; transform: translateX(50%) rotate(90deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+    @media print {
+      :root { color-scheme: light; --ink: #101413; --muted: #46514d; --faint: #68736f; --base: #fff; --panel: #fff; --panel-2: #f4f7f6; --line: #bcc8c4; --line-hot: #71827c; --lime: #577500; --mint: #08785c; --cyan: #176b82; --amber: #915600; --coral: #a92f22; --violet: #5a479f; --pink: #98365f; }
+      body { background: #fff; }
+      .masthead { position: static; display: block; border-bottom: 2px solid #222; background: #fff; }
+      .brand { min-height: 58px; border: 0; }
+      .primary-nav, .status, .menu-toggle, .controls, .copy-button { display: none !important; }
+      .guide-panel { display: block !important; animation: none; break-before: page; }
+      .guide-panel:first-child { break-before: auto; }
+      .hero-grid { min-height: auto; }
+      .system-plate, .layer-explorer, .flow-workbench { box-shadow: none; }
+      .layer-detail { display: block !important; border-bottom: 1px solid var(--line); }
+      .layer-list { display: none; }
+      .layer-explorer, .flow-workbench { display: block; }
+      .flow-inspector .code-block { margin: 20px 0 0; }
+      .page { padding: 32px 24px; }
+      footer { break-before: page; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to guide</a>
+
+  <header class="masthead shell">
+    <a class="brand" href="#system" data-open-panel="system" aria-label="Client Architecture home">
+      <span class="brand-mark">C/</span>
+      <span class="brand-copy"><strong>Client Field Guide</strong><small>Canonical architecture</small></span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="guide-navigation">Menu</button>
+    <nav class="primary-nav" id="guide-navigation" role="tablist" aria-label="Guide sections">
+      <button class="nav-button" id="tab-system" role="tab" aria-selected="true" aria-controls="panel-system" data-panel="system">System</button>
+      <button class="nav-button" id="tab-layers" role="tab" aria-selected="false" aria-controls="panel-layers" data-panel="layers">Layers</button>
+      <button class="nav-button" id="tab-flow" role="tab" aria-selected="false" aria-controls="panel-flow" data-panel="flow">Data flow</button>
+      <button class="nav-button" id="tab-state" role="tab" aria-selected="false" aria-controls="panel-state" data-panel="state">Server state</button>
+      <button class="nav-button" id="tab-telemetry" role="tab" aria-selected="false" aria-controls="panel-telemetry" data-panel="telemetry">Telemetry</button>
+      <button class="nav-button" id="tab-runtime" role="tab" aria-selected="false" aria-controls="panel-runtime" data-panel="runtime">Runtime</button>
+      <button class="nav-button" id="tab-tests" role="tab" aria-selected="false" aria-controls="panel-tests" data-panel="tests">Tests</button>
+      <button class="nav-button" id="tab-structure" role="tab" aria-selected="false" aria-controls="panel-structure" data-panel="structure">Structure</button>
+    </nav>
+    <div class="status"><span class="status-dot"></span>Core rules active</div>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="guide-panel is-active" id="panel-system" role="tabpanel" aria-labelledby="tab-system" tabindex="0">
+      <div class="page">
+        <div class="hero-grid">
+          <div>
+            <p class="section-kicker">Client system / 01</p>
+            <h1>Intent at the <span class="outline">top.</span><br>Tools at the edge.</h1>
+            <p class="lede">Components express user intent. Query adapters own server state. Feature APIs own endpoint contracts. The client transport and telemetry vendors stay replaceable at the runtime edge.</p>
+            <div class="hero-index">
+              <div class="metric"><strong>4</strong><span>Primary data layers</span></div>
+              <div class="metric"><strong>2</strong><span>Telemetry channels</span></div>
+              <div class="metric"><strong>1</strong><span>Composition root</span></div>
+            </div>
+          </div>
+          <div class="system-plate" aria-label="Canonical client request flow">
+            <div class="plate-head"><span>Canonical path</span><span>Dependencies point down</span></div>
+            <div class="architecture-map">
+              <div class="map-node" style="--node-color:var(--pink)"><span class="map-index">UI</span><span><strong>Component</strong><small>Render state · capture intent</small></span><span class="map-verb">calls hook</span></div>
+              <div class="map-node" style="--node-color:var(--violet)"><span class="map-index">Q</span><span><strong>Query adapter</strong><small>Cache · status · mutation lifecycle</small></span><span class="map-verb">calls feature</span></div>
+              <div class="map-node" style="--node-color:var(--mint)"><span class="map-index">FA</span><span><strong>Feature API</strong><small>Endpoint · Zod · feature mapping</small></span><span class="map-verb">calls client</span></div>
+              <div class="map-node" style="--node-color:var(--cyan)"><span class="map-index">CA</span><span><strong>Client API</strong><small>Transport · auth · request correlation</small></span><span class="map-verb">calls network</span></div>
+              <div class="telemetry-fork"><span>Telemetry branches from the owner</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="truth-grid">
+          <article class="truth-card"><div class="number">RULE / 01</div><h3>Render, do not transport</h3><p>Components render state and submit intent through feature-specific query adapters.</p></article>
+          <article class="truth-card"><div class="number">RULE / 02</div><h3>Cache has one owner</h3><p>Query adapters own invalidation, optimistic state, and server-state lifecycle through stable shared keys.</p></article>
+          <article class="truth-card"><div class="number">RULE / 03</div><h3>Validate at boundaries</h3><p>Feature APIs parse wire responses and map transport data into feature-facing results.</p></article>
+          <article class="truth-card"><div class="number">RULE / 04</div><h3>Lifecycle is explicit</h3><p>Factories build heavy infrastructure once; the composition root owns its lifetime.</p></article>
+        </div>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Orchestration decision</p><h2>Query adapter or feature API?</h2></div>
+          <p>Choose by ownership. UI workflow and cache coordination stay above the network boundary; endpoint mechanics and response contracts stay below it.</p>
+        </div>
+        <div class="decision">
+          <div class="decision-card tone-violet"><span class="label">UI workflow</span><strong>Query adapter</strong><p>Mutation status, cache updates, invalidation, navigation ordering, and successful product events.</p></div>
+          <div class="decision-axis">Owns</div>
+          <div class="decision-card tone-mint"><span class="label">Endpoint boundary</span><strong>Feature API</strong><p>Request mapping, endpoint selection, Zod parsing, response mapping, and owned contract failures.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-layers" role="tabpanel" aria-labelledby="tab-layers" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head">
+          <div><p class="section-kicker">Layer explorer / 02</p><h2>Each layer owns one kind of client decision.</h2></div>
+          <p>Select a layer to inspect its responsibilities and boundary rules. No controller is required for the standard client request path.</p>
+        </div>
+        <div class="layer-explorer">
+          <div class="layer-list" role="tablist" aria-label="Client layers" aria-orientation="vertical">
+            <div class="layer-list-head"><span class="label">Select responsibility</span></div>
+            <button class="layer-button tone-pink" role="tab" aria-selected="true" aria-controls="layer-ui" data-layer="ui"><span class="layer-num">01</span><span><strong>UI coordinator</strong><small>Intent and view composition</small></span></button>
+            <button class="layer-button tone-violet" role="tab" aria-selected="false" aria-controls="layer-query" data-layer="query" tabindex="-1"><span class="layer-num">02</span><span><strong>Query adapter</strong><small>Server state and cache</small></span></button>
+            <button class="layer-button tone-mint" role="tab" aria-selected="false" aria-controls="layer-feature" data-layer="feature" tabindex="-1"><span class="layer-num">03</span><span><strong>Feature API</strong><small>Endpoint contract</small></span></button>
+            <button class="layer-button tone-cyan" role="tab" aria-selected="false" aria-controls="layer-client" data-layer="client" tabindex="-1"><span class="layer-num">04</span><span><strong>Client API</strong><small>Transport policy</small></span></button>
+            <button class="layer-button tone-lime" role="tab" aria-selected="false" aria-controls="layer-domain" data-layer="domain" tabindex="-1"><span class="layer-num">05</span><span><strong>Domain + schema</strong><small>Pure policy and wire validation</small></span></button>
+            <button class="layer-button tone-amber" role="tab" aria-selected="false" aria-controls="layer-runtime" data-layer="runtime" tabindex="-1"><span class="layer-num">06</span><span><strong>Composition root</strong><small>Construction and lifetime</small></span></button>
+          </div>
+          <div>
+            <article class="layer-detail is-active tone-pink" id="layer-ui" role="tabpanel">
+              <div class="layer-title"><span class="layer-glyph">UI</span><div><span class="label">React edge</span><h2>UI coordinator</h2></div></div>
+              <p class="lede">Turns user intent into hook calls and composes view state. Presentation components remain dependency-light.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Owns</span><p>Rendering, local interaction state, form intent, and user-facing feedback.</p></div><div class="responsibility"><span class="label">Receives</span><p>Feature-specific hooks or focused ports—never the complete runtime container.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Compose leaf sections</li><li>Submit typed intent</li><li>Render query state</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Build API clients</li><li>Invent query keys inline</li><li>Report the same failure again</li></ul></div></div>
+            </article>
+            <article class="layer-detail tone-violet" id="layer-query" role="tabpanel" hidden>
+              <div class="layer-title"><span class="layer-glyph">Q</span><div><span class="label">Server-state boundary</span><h2>Query adapter</h2></div></div>
+              <p class="lede">Wraps TanStack Query with feature-specific hooks and owns cache behavior for one operation.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Owns</span><p>Key selection, enabled state, mutation lifecycle, optimistic updates, invalidation, and cache synchronization.</p></div><div class="responsibility"><span class="label">Emits</span><p>Product analytics after a confirmed success, when the workflow owner has enough context.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Use centralized key factories</li><li>Call one feature API operation</li><li>Invalidate the narrowest stable prefix</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Parse wire payloads</li><li>Construct vendors</li><li>Duplicate lower-layer logs</li></ul></div></div>
+            </article>
+            <article class="layer-detail tone-mint" id="layer-feature" role="tabpanel" hidden>
+              <div class="layer-title"><span class="layer-glyph">FA</span><div><span class="label">Feature network boundary</span><h2>Feature API</h2></div></div>
+              <p class="lede">Names endpoint operations, validates responses, and maps transport data into stable feature-facing values.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Owns</span><p>Endpoint path, request mapping, Zod response parsing, feature DTO mapping, and contract failures.</p></div><div class="responsibility"><span class="label">Factory</span><p><code>create&lt;Feature&gt;Api({ clientApi, logger })</code> receives only the specific dependencies it uses.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Keep a typed method per operation</li><li>Log owned schema violations once</li><li>Remain framework-agnostic</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Manage React Query cache</li><li>Navigate or toast</li><li>Create a hidden client singleton</li></ul></div></div>
+            </article>
+            <article class="layer-detail tone-cyan" id="layer-client" role="tabpanel" hidden>
+              <div class="layer-title"><span class="layer-glyph">CA</span><div><span class="label">Shared transport edge</span><h2>Client API</h2></div></div>
+              <p class="lede">Centralizes transport mechanics and cross-cutting request behavior without learning feature semantics.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Owns</span><p>Base URL, headers, auth, serialization, timeout, retry policy, request IDs, and transport error normalization.</p></div><div class="responsibility"><span class="label">Observes</span><p>Emits transport logs with safe structured attributes and correlation identifiers.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Build Ky or tRPC inside its factory</li><li>Normalize transport failures</li><li>Redact before any sink</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Know feature query keys</li><li>Emit product events</li><li>Import React</li></ul></div></div>
+            </article>
+            <article class="layer-detail tone-lime" id="layer-domain" role="tabpanel" hidden>
+              <div class="layer-title"><span class="layer-glyph">D0</span><div><span class="label">Stable policy</span><h2>Domain + schema</h2></div></div>
+              <p class="lede">Keeps pure client policy, transformations, and canonical wire schemas independent from runtime tools.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Domain</span><p>Pure helpers and business-facing calculations that need no network, UI, or cache.</p></div><div class="responsibility"><span class="label">Contracts</span><p>Zod schemas validate untrusted wire data at client and server boundaries.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Test with plain values</li><li>Share canonical wire schemas</li><li>Keep helpers deterministic</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Wrap pure helpers in factories</li><li>Expose ORM models</li><li>Import vendor SDKs</li></ul></div></div>
+            </article>
+            <article class="layer-detail tone-amber" id="layer-runtime" role="tabpanel" hidden>
+              <div class="layer-title"><span class="layer-glyph">CR</span><div><span class="label">Client runtime edge</span><h2>Composition root</h2></div></div>
+              <p class="lede">Constructs dependency-heavy infrastructure once, owns lifecycle, and exposes focused dependencies to framework integration.</p>
+              <div class="responsibility-grid"><div class="responsibility"><span class="label">Browser</span><p>Application-scoped instances for logger, analytics, client API, feature APIs, and query client.</p></div><div class="responsibility"><span class="label">SSR</span><p>Request-scoped instances only when auth, cookies, locale, or trace context varies by request.</p></div></div>
+              <div class="do-dont"><div><span class="label">Do</span><ul><li>Keep vendor construction in factories</li><li>Export focused accessors or providers</li><li>Use the same factories in tests</li></ul></div><div class="dont"><span class="label">Do not</span><ul><li>Export a service locator</li><li>Pass the full runtime container</li><li>Create hidden feature singletons</li></ul></div></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-flow" role="tabpanel" aria-labelledby="tab-flow" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">Data workbench / 03</p><h2>Follow ownership through the method chain.</h2></div><p>Choose a scenario, then inspect each stage. Operational logs and product analytics branch from the layer that owns the fact.</p></div>
+        <div class="controls" aria-label="Flow scenarios">
+          <button class="control" type="button" aria-pressed="true" data-flow="read">Query read</button>
+          <button class="control" type="button" aria-pressed="false" data-flow="create">Create mutation</button>
+          <button class="control" type="button" aria-pressed="false" data-flow="optimistic">Optimistic write</button>
+          <button class="control" type="button" aria-pressed="false" data-flow="failure">Contract failure</button>
+        </div>
+        <div class="flow-workbench">
+          <div class="flow-canvas"><div class="flow-meta"><span id="flow-title">Query read</span><span id="flow-count">06 stages</span></div><div class="flow-stack" id="flow-stack"></div></div>
+          <div class="flow-inspector">
+            <div class="inspector-copy"><span class="label" id="flow-step-label">Stage 01</span><h3 id="flow-step-title">Component intent</h3><p id="flow-step-body"></p><div class="callout" id="flow-step-rule"></div></div>
+            <div class="code-block"><div class="code-head"><span id="flow-code-label">Flow / Query read</span><button class="copy-button" type="button">Copy</button></div><pre><code id="flow-code"></code></pre></div>
+          </div>
+        </div>
+
+        <details class="slice-walkthrough">
+          <summary class="slice-summary">
+            <span class="slice-mark">TS</span>
+            <span class="slice-summary-copy"><span>Small vertical slice</span><strong>Create user, end to end</strong><small>5 connected snippets · React + TanStack Query + feature API + Ky + composition root</small></span>
+            <span class="slice-toggle"><span class="slice-toggle-closed">Expand code</span><span class="slice-toggle-open">Collapse code</span></span>
+          </summary>
+          <div class="slice-body">
+            <div class="slice-intro">
+              <h3>One user action. Five explicit owners.</h3>
+              <p>Read top to bottom. The business input moves through the standard data path; analytics and cache work branch only after a confirmed success. Runtime construction stays outside the feature.</p>
+            </div>
+            <div class="slice-chain" aria-label="Create user method chain">
+              <span class="tone-pink">UserCreateForm</span><i>→</i>
+              <span class="tone-violet">useCreateUser</span><i>→</i>
+              <span class="tone-mint">userApi.create</span><i>→</i>
+              <span class="tone-cyan">clientApi.post</span><i>→</i>
+              <span class="tone-amber">POST /api/users</span>
+            </div>
+
+            <div class="slice-steps">
+              <article class="slice-step tone-pink">
+                <div class="slice-step-meta"><span class="ordinal">Owner / 01</span><h3>Component</h3><p>Captures valid user intent and calls one mutation adapter. It does not know endpoints, cache keys, or analytics vendors.</p><span class="slice-file">features/users/components/user-create-form.tsx</span></div>
+                <div class="code-block"><div class="code-head"><span>UserCreateForm</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">UserCreateForm</span>() {
+  <span class="tok-key">const</span> form = useForm&lt;CreateUserInput&gt;({
+    resolver: zodResolver(CreateUserInputSchema),
+  });
+  <span class="tok-key">const</span> createUser = useCreateUser();
+
+  <span class="tok-key">return</span> (
+    &lt;form onSubmit={form.handleSubmit((input) =&gt; createUser.mutate(input))}&gt;
+      &lt;UserFields register={form.register} /&gt;
+      &lt;button type=<span class="tok-str">"submit"</span> disabled={createUser.isPending}&gt;
+        {createUser.isPending ? <span class="tok-str">"Creating…"</span> : <span class="tok-str">"Create user"</span>}
+      &lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</code></pre></div>
+              </article>
+
+              <article class="slice-step tone-violet">
+                <div class="slice-step-meta"><span class="ordinal">Owner / 02</span><h3>Query adapter</h3><p>Owns mutation status, success analytics, and cache synchronization. Analytics failure remains non-fatal behind its port.</p><span class="slice-file">features/users/hooks.ts</span></div>
+                <div class="code-block"><div class="code-head"><span>useCreateUser</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">useCreateUser</span>() {
+  <span class="tok-key">const</span> queryClient = useQueryClient();
+  <span class="tok-key">const</span> analytics = useProductAnalytics();
+  <span class="tok-key">const</span> userApi = getUserApi();
+
+  <span class="tok-key">return</span> useMutation({
+    mutationFn: (input: CreateUserInput) =&gt; userApi.create(input),
+    onSuccess: <span class="tok-key">async</span> (user) =&gt; {
+      analytics.track({
+        name: <span class="tok-str">"user_created"</span>,
+        properties: { source: <span class="tok-str">"settings"</span> },
+      });
+
+      queryClient.setQueryData(userKeys.detail(user.id), user);
+      <span class="tok-key">await</span> queryClient.invalidateQueries({
+        queryKey: userKeys.lists(),
+      });
+    },
+  });
+}</code></pre></div>
+              </article>
+
+              <article class="slice-step tone-mint">
+                <div class="slice-step-meta"><span class="ordinal">Owner / 03</span><h3>Feature API</h3><p>Owns the endpoint contract, parses untrusted data, maps the DTO, and reports only schema failures owned by this boundary.</p><span class="slice-file">features/users/api.ts</span></div>
+                <div class="code-block"><div class="code-head"><span>UserApi + factory</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export interface</span> <span class="tok-type">IUserApi</span> {
+  create(input: CreateUserInput): Promise&lt;User&gt;;
+}
+
+<span class="tok-key">export class</span> <span class="tok-type">UserApi</span> <span class="tok-key">implements</span> <span class="tok-type">IUserApi</span> {
+  constructor(<span class="tok-key">private readonly</span> deps: UserApiDeps) {}
+
+  <span class="tok-key">async</span> create(input: CreateUserInput): Promise&lt;User&gt; {
+    <span class="tok-key">const</span> request = CreateUserInputSchema.parse(input);
+
+    <span class="tok-key">try</span> {
+      <span class="tok-key">const</span> raw = <span class="tok-key">await</span> <span class="tok-key">this</span>.deps.clientApi.post&lt;unknown&gt;(
+        <span class="tok-str">"api/users"</span>,
+        request,
+      );
+      <span class="tok-key">return</span> toUser(CreateUserResponseSchema.parse(raw));
+    } <span class="tok-key">catch</span> (error) {
+      <span class="tok-key">if</span> (error <span class="tok-key">instanceof</span> ZodError) {
+        <span class="tok-key">this</span>.deps.logger.error({
+          eventName: <span class="tok-str">"user.create.response.invalid"</span>,
+          attributes: { <span class="tok-str">"error.type"</span>: <span class="tok-str">"api.invalid_response"</span> },
+          error,
+        }, <span class="tok-str">"Create user response violated contract"</span>);
+      }
+      <span class="tok-key">throw</span> <span class="tok-key">this</span>.deps.toAppError(error);
+    }
+  }
+}
+
+<span class="tok-key">export const</span> createUserApi = (deps: UserApiDeps): IUserApi =&gt;
+  <span class="tok-key">new</span> UserApi(deps);</code></pre></div>
+              </article>
+
+              <article class="slice-step tone-cyan">
+                <div class="slice-step-meta"><span class="ordinal">Owner / 04</span><h3>Client API</h3><p>Contains Ky construction and shared transport policy. Its implementation decodes the envelope, correlates, logs once, and returns only payload data.</p><span class="slice-file">common/api/client-api.ts</span></div>
+                <div class="code-block"><div class="code-head"><span>createClientApi</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">createClientApi</span>(deps: ClientApiDeps): IClientApi {
+  <span class="tok-key">const</span> transport = ky.create({
+    prefixUrl: deps.prefixUrl,
+    timeout: deps.timeoutMs ?? 30_000,
+    throwHttpErrors: <span class="tok-key">false</span>,
+  });
+
+  <span class="tok-key">return new</span> KyClientApi({
+    transport,
+    logger: deps.logger.child(<span class="tok-str">"http"</span>),
+  });
+}
+
+<span class="tok-comment">// KyClientApi.post owns the shared transport sequence:</span>
+<span class="tok-comment">// request ID → POST → envelope decode → one outcome log → data.</span></code></pre></div>
+              </article>
+
+              <article class="slice-step tone-amber">
+                <div class="slice-step-meta"><span class="ordinal">Owner / 05</span><h3>Composition root</h3><p>Creates vendors and infrastructure once, wires focused dependencies, and exposes only the feature API accessor used upstream.</p><span class="slice-file">common/runtime/browser.ts</span></div>
+                <div class="code-block"><div class="code-head"><span>Browser runtime wiring</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">createBrowserRuntime</span>(config: BrowserRuntimeConfig) {
+  <span class="tok-key">const</span> logger = createAppLogger(config.logging);
+  <span class="tok-key">const</span> analytics = createProductAnalytics({
+    ...config.analytics,
+    logger,
+  });
+  <span class="tok-key">const</span> clientApi = createClientApi({
+    prefixUrl: config.apiBaseUrl,
+    logger,
+  });
+  <span class="tok-key">const</span> userApi = createUserApi({
+    clientApi,
+    logger: logger.child(<span class="tok-str">"user:api"</span>),
+    toAppError,
+  });
+
+  <span class="tok-key">return</span> { logger, analytics, clientApi, userApi };
+}
+
+<span class="tok-key">let</span> runtime: ReturnType&lt;<span class="tok-key">typeof</span> createBrowserRuntime&gt; | undefined;
+
+<span class="tok-key">export const</span> getUserApi = (): IUserApi =&gt;
+  (runtime ??= createBrowserRuntime(readPublicRuntimeConfig())).userApi;</code></pre></div>
+              </article>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-state" role="tabpanel" aria-labelledby="tab-state" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">TanStack Query / 04</p><h2>Keys describe identity. Adapters own lifecycle.</h2></div><p>Query keys are centralized, hierarchical, serializable, and specific enough to target cache work without coupling components to cache mechanics.</p></div>
+        <div class="key-grid">
+          <article class="key-card tone-cyan"><span class="tag">Strategy</span><h3>Match the adapter</h3><p>Direct tRPC uses generated utilities; wrapped tRPC uses matching internal keys; REST and fetch use plain key factories.</p><code>useUtils · buildTrpcQueryKey · userKeys</code><ul><li>One strategy per adapter path</li><li>Preserve tRPC cache interop</li><li>Keep every key serializable</li></ul></article>
+          <article class="key-card tone-violet"><span class="tag">Ownership</span><h3>Shared key registry</h3><p>Reusable feature-specific keys live under common so cross-feature coordinators can invalidate without importing feature internals.</p><code>common/query-keys/users.ts</code><ul><li>No inline keys in components</li><li>Normalize inputs inside builders</li><li>Keep query functions out of key files</li></ul></article>
+          <article class="key-card tone-mint"><span class="tag">Invalidation</span><h3>Narrowest stable scope</h3><p>Invalidate or patch only what the successful operation made stale.</p><code>invalidateQueries({ queryKey: userKeys.lists() })</code><ul><li>Batch related invalidations</li><li>Set detail data when returned</li><li>Avoid invalidating the entire cache</li></ul></article>
+        </div>
+        <div class="code-block"><div class="code-head"><span>Canonical non-tRPC query key factory</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export const</span> userKeys = {
+  all: [<span class="tok-str">"users"</span>] <span class="tok-key">as const</span>,
+  lists: () =&gt; [...userKeys.all, <span class="tok-str">"list"</span>] <span class="tok-key">as const</span>,
+  list: (filters: UserListFilters) =&gt; [...userKeys.lists(), normalizeFilters(filters)] <span class="tok-key">as const</span>,
+  details: () =&gt; [...userKeys.all, <span class="tok-str">"detail"</span>] <span class="tok-key">as const</span>,
+  detail: (userId: string) =&gt; [...userKeys.details(), userId] <span class="tok-key">as const</span>,
+};</code></pre></div>
+        <hr class="rule">
+        <div class="section-head"><div><p class="section-kicker">Mutation ownership</p><h2>Pick one invalidation owner.</h2></div><p>Hooks are the preferred default. Component coordination is allowed when a screen combines independent feature workflows and makes the broader decision.</p></div>
+        <div class="table-scroll">
+          <table class="ownership-table">
+            <thead><tr><th>Scenario</th><th>Owner</th><th>Reason</th><th>Guardrail</th></tr></thead>
+            <tbody>
+              <tr><td>Create or edit one feature</td><td>Mutation hook</td><td>Reusable, predictable cache behavior</td><td>Do not repeat invalidation in the component</td></tr>
+              <tr><td>Screen coordinates several features</td><td>Screen coordinator</td><td>The broader UI workflow owns the combined effect</td><td>Hook must document that invalidation is external</td></tr>
+              <tr><td>Optimistic update</td><td>Mutation hook</td><td>Cancel, snapshot, patch, rollback, reconcile are one lifecycle</td><td>Always restore from the captured snapshot</td></tr>
+              <tr><td>Successful product event</td><td>Workflow owner</td><td>It knows user intent and confirmed outcome</td><td>Analytics failure never fails the mutation</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-telemetry" role="tabpanel" aria-labelledby="tab-telemetry" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">Telemetry boundaries / 05</p><h2>Related signals. Separate contracts.</h2></div><p>Operational logs explain runtime behavior. Product analytics explains user behavior. Error reporting receives selected failures through an adapter. None becomes a general telemetry service locator.</p></div>
+        <div class="boundary-grid">
+          <article class="boundary-card tone-cyan" data-mark="L"><span class="tag">Injected port</span><h3>AppLogger</h3><p>OpenTelemetry-shaped structured operational events for local debugging and production diagnosis.</p><ul><li><code>debug</code> namespaces in the browser</li><li>Optional filtered Sentry log sink</li><li>One failure owner; redact before fan-out</li></ul></article>
+          <article class="boundary-card tone-violet" data-mark="A"><span class="tag">Separate typed port</span><h3>Product Analytics</h3><p>Typed events describing meaningful user and product outcomes after success.</p><ul><li>Consent gates capture</li><li>Identify and reset stay explicit</li><li>Critical durable events originate server-side</li></ul></article>
+          <article class="boundary-card tone-coral" data-mark="E"><span class="tag">Adapter destination</span><h3>Error Reporting</h3><p>Sentry receives selected handled failures from the owning boundary and unhandled failures from the error boundary.</p><ul><li>Not every log is an exception</li><li>No blanket QueryClient reporting</li><li>Transport and schema errors retain safe metadata</li></ul></article>
+          <article class="boundary-card tone-mint" data-mark="C"><span class="tag">Ambient runtime context</span><h3>Correlation</h3><p>Request and trace identifiers enrich operational records without entering business DTOs or feature method signatures.</p><ul><li>Client API owns request IDs</li><li>Standard trace headers cross the network</li><li>Context never becomes a dependency bag</li></ul></article>
+        </div>
+        <div class="signal-map">
+          <div class="signal tone-cyan"><span class="mode">Debugging</span><strong>Log</strong><p><code>user.create.failed</code> with level, timestamp, request ID, error kind, and safe attributes.</p></div>
+          <div class="signal tone-violet"><span class="mode">Product insight</span><strong>Track</strong><p><code>user_created</code> after confirmed success with a typed, low-cardinality event schema.</p></div>
+          <div class="signal tone-coral"><span class="mode">Incident</span><strong>Report</strong><p>An actionable exception with stack, release, environment, and scrubbed diagnostic context.</p></div>
+          <div class="signal tone-mint"><span class="mode">Correlation</span><strong>Trace</strong><p>Connect browser work to server handling without manually threading context through every call.</p></div>
+        </div>
+        <div class="code-block"><div class="code-head"><span>Structured client signals</span><button class="copy-button" type="button">Copy</button></div><pre><code>logger.info(<span class="tok-str">"user.create.succeeded"</span>, {
+  <span class="tok-str">"event.name"</span>: <span class="tok-str">"user.create.succeeded"</span>,
+  <span class="tok-str">"request.id"</span>: result.requestId,
+  <span class="tok-str">"user.id"</span>: result.user.id,
+  duration_ms: elapsedMs,
+});
+
+analytics.track({
+  name: <span class="tok-str">"user_created"</span>,
+  properties: { source: <span class="tok-str">"settings"</span> },
+});</code></pre></div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-runtime" role="tabpanel" aria-labelledby="tab-runtime" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">Construction and lifetime / 06</p><h2>Build once. Inject narrowly.</h2></div><p>Factories hide provider construction. The composition root assembles them. Framework integration receives focused ports and feature APIs, never the complete runtime container.</p></div>
+        <div class="runtime-stack">
+          <div class="runtime-layer"><span class="ordinal">Layer / 01</span><div><strong>React integration</strong><p>Providers and hooks receive focused runtime dependencies.</p></div><span class="direction">Consumes ports</span></div>
+          <div class="runtime-layer"><span class="ordinal">Layer / 02</span><div><strong>Feature factories</strong><p><code>createUserApi</code>, <code>createBillingApi</code>, and other focused endpoint boundaries.</p></div><span class="direction">Depend on client API</span></div>
+          <div class="runtime-layer"><span class="ordinal">Layer / 03</span><div><strong>Core factories</strong><p><code>createClientApi</code>, <code>createAppLogger</code>, and <code>createProductAnalytics</code>.</p></div><span class="direction">Contain vendors</span></div>
+          <div class="runtime-layer"><span class="ordinal">Layer / 04</span><div><strong>Composition root</strong><p>Owns application scope in the browser and contextual request scope during SSR.</p></div><span class="direction">Owns lifecycle</span></div>
+        </div>
+        <div class="adapter-grid">
+          <article class="adapter-card tone-pink"><div class="adapter-top"><span>UI runtime</span><span>01</span></div><h3>React</h3><p>Coordinates rendering and passes focused ports through explicit framework integration.</p><code>app/providers.tsx</code></article>
+          <article class="adapter-card tone-violet"><div class="adapter-top"><span>Server state</span><span>02</span></div><h3>TanStack Query</h3><p>Query adapters expose feature-specific hooks; one application-scoped QueryClient serves the browser.</p><code>features/*/queries/</code></article>
+          <article class="adapter-card tone-cyan"><div class="adapter-top"><span>Transport</span><span>03</span></div><h3>Ky or tRPC</h3><p>The provider-specific client is constructed inside <code>createClientApi</code> and hidden behind the client contract.</p><code>common/api/client-api.ts</code></article>
+          <article class="adapter-card tone-mint"><div class="adapter-top"><span>Operational logs</span><span>04</span></div><h3>debug + Sentry</h3><p>Adapters implement <code>AppLogger</code>; namespace routing, redaction, and sink policy remain infrastructure.</p><code>common/logging/</code></article>
+          <article class="adapter-card tone-violet"><div class="adapter-top"><span>Product events</span><span>05</span></div><h3>Analytics vendors</h3><p>A no-op, composite, or provider adapter implements the typed analytics port behind consent.</p><code>common/analytics/</code></article>
+          <article class="adapter-card tone-amber"><div class="adapter-top"><span>Construction</span><span>06</span></div><h3>Factories</h3><p>Tests call the same factories with fakes, spies, or no-op adapters. Feature modules create no hidden singletons.</p><code>common/runtime/</code></article>
+        </div>
+        <div class="code-block"><div class="code-head"><span>Browser composition root</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">createClientRuntime</span>(config: ClientRuntimeConfig) {
+  <span class="tok-key">const</span> logger = createAppLogger(config.logging);
+  <span class="tok-key">const</span> analytics = createProductAnalytics(config.analytics);
+  <span class="tok-key">const</span> clientApi = createClientApi({ baseUrl: config.baseUrl, logger });
+  <span class="tok-key">const</span> userApi = createUserApi({ clientApi, logger });
+
+  <span class="tok-key">return</span> { logger, analytics, clientApi, userApi };
+}
+
+<span class="tok-comment">// Browser: initialize once at application bootstrap.</span>
+<span class="tok-comment">// SSR: initialize per request only when request context is required.</span></code></pre></div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-tests" role="tabpanel" aria-labelledby="tab-tests" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">Test architecture / 07</p><h2>Test the owner of each behavior.</h2></div><p>Use the least theatrical test double. Pure policy gets plain values; unstable boundaries get fakes or spies; runtime factories prove the complete wiring.</p></div>
+        <div class="test-grid">
+          <article class="test-card tone-lime"><span class="test-number">TEST / 01</span><h3>Contract</h3><p>Prove canonical wire schemas.</p><ul><li>Valid and invalid fixtures</li><li>Required and optional fields</li><li>Sensitive-field exclusion</li></ul></article>
+          <article class="test-card tone-mint"><span class="test-number">TEST / 02</span><h3>Feature API</h3><p>Prove endpoint and mapping ownership.</p><ul><li>Request and response mapping</li><li>Zod contract failure</li><li>One owned failure log</li></ul></article>
+          <article class="test-card tone-violet"><span class="test-number">TEST / 03</span><h3>Query adapter</h3><p>Prove server-state lifecycle.</p><ul><li>Key selection and enabled state</li><li>Success invalidation</li><li>Optimistic rollback</li></ul></article>
+          <article class="test-card tone-pink"><span class="test-number">TEST / 04</span><h3>Component</h3><p>Prove visible behavior and intent.</p><ul><li>Loading, error, and success UI</li><li>User action submits once</li><li>No transport implementation test</li></ul></article>
+          <article class="test-card tone-amber"><span class="test-number">TEST / 05</span><h3>Factory</h3><p>Prove dependency wiring and isolation.</p><ul><li>Same factory as production</li><li>Fake transport and no-op adapters</li><li>No hidden singleton leakage</li></ul></article>
+          <article class="test-card tone-cyan"><span class="test-number">TEST / 06</span><h3>Telemetry</h3><p>Prove signal ownership and safety.</p><ul><li>Typed event and attributes</li><li>Redaction and consent</li><li>Sink failure never breaks product flow</li></ul></article>
+        </div>
+        <div class="tdd-loop">
+          <div class="tdd-step tone-coral"><span class="label">Step / 01</span><strong>Red</strong><p>Write one observable behavior at the layer that owns the decision.</p></div>
+          <div class="tdd-step tone-lime"><span class="label">Step / 02</span><strong>Green</strong><p>Supply the smallest fake boundary and implement only enough to pass.</p></div>
+          <div class="tdd-step tone-cyan"><span class="label">Step / 03</span><strong>Refactor</strong><p>Improve structure without moving behavior into the wrong layer.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="panel-structure" role="tabpanel" aria-labelledby="tab-structure" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head"><div><p class="section-kicker">Implementation blueprint / 08</p><h2>Folders make ownership visible.</h2></div><p>Feature modules contain their UI, server-state adapters, endpoint API, schemas, and pure domain policy. Shared infrastructure lives under common and is assembled by runtime.</p></div>
+        <div class="structure-layout">
+          <div class="tree"><span class="folder">src/</span>
+├── <span class="folder">app/</span>
+│   ├── providers.tsx              <span class="comment"># focused framework providers</span>
+│   └── routes/
+├── <span class="folder">common/</span>
+│   ├── <span class="adapter">api/</span>
+│   │   ├── client-api.ts          <span class="comment"># contract + createClientApi</span>
+│   │   └── errors.ts
+│   ├── <span class="adapter">logging/</span>
+│   │   ├── app-logger.ts          <span class="comment"># port</span>
+│   │   └── create-app-logger.ts   <span class="comment"># debug/Sentry adapters</span>
+│   ├── <span class="adapter">analytics/</span>
+│   │   ├── product-analytics.ts   <span class="comment"># typed port</span>
+│   │   └── create-analytics.ts    <span class="comment"># vendor construction</span>
+│   ├── query-keys/
+│   │   ├── shared.ts              <span class="comment"># normalization utilities</span>
+│   │   └── users.ts               <span class="comment"># reusable feature keys</span>
+│   └── <span class="runtime">runtime/</span>
+│       ├── create-runtime.ts      <span class="comment"># composition root</span>
+│       └── browser-runtime.ts     <span class="comment"># app-scoped instance</span>
+├── <span class="folder">features/</span>
+│   └── <span class="folder">users/</span>
+│       ├── components/
+│       ├── queries/
+│       │   └── hooks.ts           <span class="comment"># query adapters</span>
+│       ├── api/
+│       │   ├── api.ts             <span class="comment"># UserApi contract</span>
+│       │   ├── create-user-api.ts <span class="comment"># factory</span>
+│       │   └── schemas.ts         <span class="contract"># Zod boundary</span>
+│       └── domain.ts              <span class="comment"># pure policy</span>
+└── <span class="folder">shared/contracts/</span>          <span class="contract"># canonical wire schemas</span></div>
+          <div class="checklist">
+            <div class="checklist-head"><span class="label">Feature readiness checklist</span></div>
+            <div class="check-item"><span class="check-box">01</span><span><strong>Component submits intent</strong><small>No direct transport or inline query key.</small></span></div>
+            <div class="check-item"><span class="check-box">02</span><span><strong>Query adapter owns cache</strong><small>Key, status, invalidation, and rollback are explicit.</small></span></div>
+            <div class="check-item"><span class="check-box">03</span><span><strong>Feature API validates wire data</strong><small>Zod parsing occurs at the endpoint boundary.</small></span></div>
+            <div class="check-item"><span class="check-box">04</span><span><strong>Transport stays generic</strong><small>Auth, retry, correlation, and normalization only.</small></span></div>
+            <div class="check-item"><span class="check-box">05</span><span><strong>Telemetry has one owner</strong><small>Operational and product channels remain separate.</small></span></div>
+            <div class="check-item"><span class="check-box">06</span><span><strong>Factory owns construction</strong><small>No SDK creation or singleton inside the feature.</small></span></div>
+            <div class="check-item"><span class="check-box">07</span><span><strong>Lifetime matches context</strong><small>Application-scoped browser; contextual SSR request scope.</small></span></div>
+            <div class="check-item"><span class="check-box">08</span><span><strong>Tests use the same seams</strong><small>Factories receive spies, fakes, or no-op adapters.</small></span></div>
+          </div>
+        </div>
+        <div class="code-block"><div class="code-head"><span>Create mutation / reference chain</span><button class="copy-button" type="button">Copy</button></div><pre><code>UserCreateForm.onSubmit(input)
+  → useCreateUser().mutate(input)
+    → userApi.create(input)
+      → clientApi.post(<span class="tok-str">"api/users"</span>, input)
+        → HTTP POST /api/users
+      → CreateUserResponseSchema.parse(response)
+    → onSuccess(user)
+      → analytics.track({ name: <span class="tok-str">"user_created"</span>, ... })
+      → queryClient.setQueryData(userKeys.detail(user.id), user)
+      → queryClient.invalidateQueries({ queryKey: userKeys.lists() })</code></pre></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <div>Canonical companion to the client documentation · standalone HTML · no external dependencies</div>
+    <div class="footer-links">
+      <a href="../client/core/README.md">Core</a>
+      <a href="../client/core/client-api-architecture.md">API flow</a>
+      <a href="../client/core/composition-root.md">Composition</a>
+      <a href="../client/core/logging.md">Logging</a>
+      <a href="../client/core/product-analytics.md">Analytics</a>
+      <a href="../client/core/server-state-tanstack-query.md">Server state</a>
+      <a href="../client/core/testing.md">Testing</a>
+    </div>
+  </footer>
+
+  <noscript><div style="position:fixed;right:12px;bottom:12px;left:12px;z-index:99;padding:14px;border:1px solid #f4bc63;background:#080c0c;color:#edf3f1;font-family:monospace">JavaScript enables section navigation and the flow explorer. Print this page to view every section without interaction.</div></noscript>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const panelButtons = [...document.querySelectorAll("[data-panel]")];
+      const panels = [...document.querySelectorAll(".guide-panel")];
+      const panelNames = panelButtons.map((button) => button.dataset.panel);
+      const navigation = document.querySelector("#guide-navigation");
+      const menuToggle = document.querySelector(".menu-toggle");
+
+      function setMenu(open) {
+        navigation.classList.toggle("is-open", open);
+        menuToggle.setAttribute("aria-expanded", String(open));
+        menuToggle.textContent = open ? "Close" : "Menu";
+      }
+
+      function openPanel(name, updateHash = true) {
+        if (!panelNames.includes(name)) name = "system";
+        panelButtons.forEach((button) => {
+          const active = button.dataset.panel === name;
+          button.setAttribute("aria-selected", String(active));
+          button.tabIndex = active ? 0 : -1;
+        });
+        panels.forEach((panel) => {
+          const active = panel.id === `panel-${name}`;
+          panel.classList.toggle("is-active", active);
+          panel.hidden = !active;
+        });
+        setMenu(false);
+        if (updateHash && location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
+        window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      }
+
+      menuToggle.addEventListener("click", () => setMenu(!navigation.classList.contains("is-open")));
+      panelButtons.forEach((button, index) => {
+        button.addEventListener("click", () => openPanel(button.dataset.panel));
+        button.addEventListener("keydown", (event) => {
+          if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          let next = index;
+          if (event.key === "ArrowRight") next = (index + 1) % panelButtons.length;
+          if (event.key === "ArrowLeft") next = (index - 1 + panelButtons.length) % panelButtons.length;
+          if (event.key === "Home") next = 0;
+          if (event.key === "End") next = panelButtons.length - 1;
+          panelButtons[next].focus();
+          openPanel(panelButtons[next].dataset.panel);
+        });
+      });
+      document.querySelectorAll("[data-open-panel]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); openPanel(link.dataset.openPanel); }));
+
+      const layerButtons = [...document.querySelectorAll("[data-layer]")];
+      const layerPanels = [...document.querySelectorAll(".layer-detail")];
+      layerButtons.forEach((button, index) => {
+        const selectLayer = () => {
+          const name = button.dataset.layer;
+          layerButtons.forEach((item) => { const active = item === button; item.setAttribute("aria-selected", String(active)); item.tabIndex = active ? 0 : -1; });
+          layerPanels.forEach((panel) => { const active = panel.id === `layer-${name}`; panel.classList.toggle("is-active", active); panel.hidden = !active; });
+        };
+        button.addEventListener("click", selectLayer);
+        button.addEventListener("keydown", (event) => {
+          if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(event.key)) return;
+          event.preventDefault();
+          const forward = event.key === "ArrowDown" || event.key === "ArrowRight";
+          const next = (index + (forward ? 1 : -1) + layerButtons.length) % layerButtons.length;
+          layerButtons[next].click();
+          layerButtons[next].focus();
+        });
+      });
+
+      const tone = { ui: "var(--pink)", query: "var(--violet)", feature: "var(--mint)", client: "var(--cyan)", network: "var(--amber)", analytics: "var(--violet)", cache: "var(--lime)", error: "var(--coral)" };
+      const flows = {
+        read: {
+          title: "Query read",
+          code: `UserScreen\n  → useUser(userId)\n    → useQuery({ queryKey: userKeys.detail(userId) })\n      → userApi.getById(userId)\n        → clientApi.get(\`users/\${userId}\`)\n          → GET /users/:id\n        → UserResponseSchema.parse(response)\n      → TanStack Query caches User\n  → component renders query state`,
+          nodes: [
+            ["Component intent", "Render user by ID", "ui", "The component supplies stable input to a feature-specific query hook and renders its state.", "Components do not construct URLs, clients, or query-key arrays."],
+            ["Query adapter", "Select key and lifecycle", "query", "The adapter builds the detail key, chooses enabled behavior, and calls one feature API operation.", "The query adapter owns server state; it does not parse the wire contract."],
+            ["Feature API", "Endpoint and response schema", "feature", "The feature API selects the endpoint, delegates transport, parses the response, and maps its result.", "A response-schema violation is owned and logged here once."],
+            ["Client API", "Transport policy", "client", "The client adds auth, correlation, timeout, and shared transport behavior.", "Transport logs describe requests without learning user-feature semantics."],
+            ["Network", "Server response", "network", "Serialized data crosses the network and remains untrusted until the feature boundary parses it.", "Shared TypeScript types do not replace runtime validation."],
+            ["Cache and render", "Stable feature result", "cache", "TanStack Query caches the parsed result under the centralized key and notifies subscribed components.", "Render from query state; do not copy server data into redundant local state."]
+          ]
+        },
+        create: {
+          title: "Create mutation",
+          code: `UserCreateForm.onSubmit(input)\n  → useCreateUser().mutate(input)\n    → userApi.create(input)\n      → clientApi.post("api/users", input)\n        → POST /api/users\n      → CreateUserResponseSchema.parse(response)\n    → analytics.track({ name: "user_created", ... })\n    → setQueryData(userKeys.detail(id), user)\n    → invalidateQueries({ queryKey: userKeys.lists() })`,
+          nodes: [
+            ["Form submit", "Typed user intent", "ui", "The form validates local input and submits one create command to the mutation hook.", "User input is not telemetry context; business parameters remain business parameters."],
+            ["Mutation adapter", "Status and workflow", "query", "The hook owns pending state, calls the feature API, and coordinates the confirmed success path.", "Choose this owner once; components must not repeat its invalidation work."],
+            ["Feature API", "Map and parse", "feature", "The feature boundary maps input, calls the client API, and parses the create response.", "Feature API logic remains portable plain TypeScript."],
+            ["Client transport", "POST with correlation", "client", "The client sends the request, attaches auth and request correlation, and normalizes transport failures.", "A transport failure is operationally logged by its owning boundary once."],
+            ["Confirmed success", "Typed user result", "analytics", "The workflow owner emits the typed product event after the operation succeeds.", "Analytics delivery is non-blocking and cannot turn success into failure."],
+            ["Cache synchronization", "Seed detail and stale lists", "cache", "The adapter seeds returned detail data and invalidates the stable list prefix.", "Invalidate the narrowest stable scope made stale by the mutation."]
+          ]
+        },
+        optimistic: {
+          title: "Optimistic write",
+          code: `onMutate(input)\n  → cancelQueries(detailKey)\n  → snapshot previous value\n  → setQueryData(detailKey, optimisticValue)\nmutationFn(input) → featureApi.update(input)\nonError(error, input, context)\n  → setQueryData(detailKey, context.previous)\nonSettled()\n  → invalidateQueries({ queryKey: detailKey })`,
+          nodes: [
+            ["Cancel", "Pause competing refetch", "query", "The mutation adapter cancels queries that could overwrite the optimistic value.", "Optimistic state is a cache lifecycle concern, not a feature API concern."],
+            ["Snapshot", "Capture previous cache", "cache", "The adapter stores the exact previous value in mutation context before changing the cache.", "Rollback must restore captured state, not reconstruct a guess."],
+            ["Patch", "Apply optimistic value", "cache", "The cache is updated immediately with a deterministic optimistic representation.", "Use optimistic updates only when rollback and reconciliation are unambiguous."],
+            ["Transport", "Perform actual update", "feature", "The feature API validates the actual server response through the standard transport path.", "Do not weaken response validation for optimistic flows."],
+            ["Rollback", "Restore on error", "error", "The mutation owner restores the snapshot and lets the UI render actionable feedback.", "The boundary that owns recovery may log; every observer must not log again."],
+            ["Reconcile", "Refetch canonical state", "query", "The adapter invalidates the exact key when the mutation settles so server truth wins.", "The final cache state comes from the server, not the optimistic projection."]
+          ]
+        },
+        failure: {
+          title: "Contract failure",
+          code: `clientApi.get("users/42")\n  → HTTP 200 with malformed payload\n  → UserResponseSchema.safeParse(payload)\n  → featureApi logs "user.response.invalid" once\n  → throws AppError({ kind: "contract", requestId })\n  → query adapter exposes error state\n  → error boundary reports only if unhandled`,
+          nodes: [
+            ["Response arrives", "Transport succeeded", "client", "The network can return a successful status with data that violates the expected feature contract.", "HTTP success and contract validity are separate facts."],
+            ["Schema parse", "Validate untrusted wire", "feature", "The feature API parses the payload against its Zod response schema.", "Validation belongs at the boundary that understands the endpoint contract."],
+            ["Owned log", "Structured schema failure", "error", "The feature boundary records one safe operational event with request correlation and schema metadata.", "Never attach the raw sensitive payload to logs or Sentry."],
+            ["Typed error", "Preserve safe metadata", "feature", "The boundary throws a normalized contract error carrying its safe request ID and error kind.", "Error normalization must not discard useful correlation metadata."],
+            ["Query state", "Render recoverable failure", "query", "TanStack Query exposes the error to the feature hook and component.", "A generic QueryClient handler must not report the same owned error again."],
+            ["Unhandled boundary", "Last-resort reporting", "error", "The React error boundary reports only failures that escape normal feature handling.", "Handled and unhandled reporting paths must not overlap."]
+          ]
+        }
+      };
+
+      const flowStack = document.querySelector("#flow-stack");
+      const flowTitle = document.querySelector("#flow-title");
+      const flowCount = document.querySelector("#flow-count");
+      const flowStepLabel = document.querySelector("#flow-step-label");
+      const flowStepTitle = document.querySelector("#flow-step-title");
+      const flowStepBody = document.querySelector("#flow-step-body");
+      const flowStepRule = document.querySelector("#flow-step-rule");
+      const flowCode = document.querySelector("#flow-code");
+      const flowCodeLabel = document.querySelector("#flow-code-label");
+      let activeFlow = "read";
+
+      function inspectFlowStep(index) {
+        const node = flows[activeFlow].nodes[index];
+        if (!node) return;
+        [...flowStack.children].forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === index));
+        flowStepLabel.textContent = `Stage ${String(index + 1).padStart(2, "0")}`;
+        flowStepTitle.textContent = node[0];
+        flowStepBody.textContent = node[3];
+        flowStepRule.textContent = node[4];
+      }
+
+      function renderFlow(name) {
+        activeFlow = name;
+        const flow = flows[name];
+        flowTitle.textContent = flow.title;
+        flowCount.textContent = `${String(flow.nodes.length).padStart(2, "0")} stages`;
+        flowCode.textContent = flow.code;
+        flowCodeLabel.textContent = `Flow / ${flow.title}`;
+        flowStack.replaceChildren();
+        flow.nodes.forEach((node, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "flow-node";
+          button.style.setProperty("--node-color", tone[node[2]]);
+          button.style.setProperty("--i", index);
+          button.innerHTML = `<span class="node-mark">${String(index + 1).padStart(2, "0")}</span><span><strong>${node[0]}</strong><small>${node[1]}</small></span><span class="verb">inspect</span>`;
+          button.addEventListener("click", () => inspectFlowStep(index));
+          flowStack.append(button);
+        });
+        inspectFlowStep(0);
+      }
+
+      document.querySelectorAll("[data-flow]").forEach((button) => button.addEventListener("click", () => {
+        document.querySelectorAll("[data-flow]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderFlow(button.dataset.flow);
+      }));
+
+      document.querySelectorAll(".copy-button").forEach((button) => button.addEventListener("click", async () => {
+        const code = button.closest(".code-block")?.querySelector("code")?.textContent ?? "";
+        try {
+          await navigator.clipboard.writeText(code);
+          const original = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => { button.textContent = original; }, 1200);
+        } catch { button.textContent = "Select text"; }
+      }));
+
+      renderFlow("read");
+      openPanel(location.hash.slice(1) || "system", false);
+      window.addEventListener("hashchange", () => openPanel(location.hash.slice(1), false));
+    })();
+  </script>
+</body>
+</html>

@@ -66,9 +66,12 @@ For the current Next.js adapters:
 - Queries/mutations are defined in the query adapter layer (React: `src/features/<feature>/hooks.ts`).
 - Query adapters should depend on `I<Feature>Api` contracts, not transport clients.
 - Feature APIs are class-based (`class <Feature>Api implements I<Feature>Api`) and created via factories.
+- Next.js routes and client feature APIs import one Zod wire contract from `src/lib/modules/<module>/shared/contracts/`.
 - Components only wire loading/error/UI and never implement transport logic.
 - Invalidation ownership may be hook-owned (preferred) or component-coordinator (allowed) based on route/form orchestration needs.
 - Prefer typed, injected interfaces at each layer to enable testing doubles.
+- Create logger, analytics, transport, and feature APIs through factories in one client composition root.
+- Keep browser instances application-scoped; create SSR/request instances only when they capture request context.
 
 Decision matrix and scenarios:
 
@@ -124,6 +127,25 @@ Common examples:
 
 Treat header names and exact mechanics as implementation details; the architecture rule is to keep this at boundaries, not in presentation components.
 
+## Client Telemetry Runtime
+
+```text
+client composition root
+  -> createAppLogger(debug sink, optional Sentry sink)
+  -> createProductAnalytics(consent-aware adapter)
+  -> createClientApi(transport, logger)
+  -> create<Feature>Api(clientApi, toAppError, logger)
+```
+
+Rules:
+
+- browser infrastructure is created once and reused;
+- SSR dependencies are request-scoped only when they close over headers, cookies, actor, request ID, or trace context;
+- `localStorage.debug` controls only local browser output;
+- Sentry and analytics vendors remain behind adapters/factories;
+- components receive specific ports/hooks, never the complete runtime container; and
+- transport tracing/correlation is injected at the HTTP/tRPC boundary, not passed through feature inputs.
+
 ## Next.js-Specific Docs
 
 | Document | Description |
@@ -137,3 +159,5 @@ Treat header names and exact mechanics as implementation details; the architectu
 - [ ] Use `appRoutes` helpers for links and redirects
 - [ ] Ensure `proxy.ts` covers access requirements
 - [ ] Confirm layout guard for route group
+- [ ] Confirm client runtime composition does not recreate application-scoped dependencies per render
+- [ ] Confirm request-contextual SSR dependencies cannot leak context across requests

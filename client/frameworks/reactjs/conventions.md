@@ -35,6 +35,27 @@ Two patterns are valid:
 
 Choose component-coordinator when sequencing (submit -> invalidate -> navigate) is specific to one screen flow.
 
+## Operational Logging and Product Analytics
+
+React implements the core telemetry ports without introducing a controller layer:
+
+- `clientApi` owns transport logs and response `requestId` correlation.
+- `featureApi` logs only contract/mapping failures it owns.
+- reusable mutation hooks emit typed completion analytics after success when they own the action.
+- business components emit only UI/workflow events they uniquely own.
+- the framework error boundary owns unhandled render/runtime exceptions.
+- presentation components do not import `debug`, Sentry, or analytics vendors.
+
+Do not re-report a lower-boundary error in QueryClient defaults, hooks, and components.
+
+## Composition and Lifetimes
+
+- Create logger, analytics, transport, and feature APIs through named factories.
+- Assemble browser instances once in the client composition root.
+- Providers expose specific ports such as `ProductAnalytics`, never a complete runtime container.
+- Feature runtime modules reference composition-root-owned instances; they do not create hidden singletons.
+- Tests use the same factories with spies/fakes/no-op adapters.
+
 ## Hook Naming (Server-State Only)
 
 These conventions apply to **server-state hooks** (TanStack Query wrappers) defined in `src/features/<feature>/hooks.ts`.
@@ -80,6 +101,7 @@ Examples:
 ## Testing Conventions (React)
 
 - Query hook tests: mock `I<Feature>Api` methods, assert query keys/invalidation behavior.
+- Mutation/workflow tests: use a `ProductAnalytics` spy and assert success-only typed events.
 - Business component tests: mock feature hooks from `src/features/<feature>/hooks.ts`.
 - Presentation component tests: render with props/fixtures only.
 - Avoid transport-library mocks in component tests (`fetch`, `axios`, `trpc.*`).

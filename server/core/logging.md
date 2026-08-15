@@ -1,111 +1,89 @@
 # Logging
 
-> Logging conventions, Pino configuration, and patterns across the application.
+> Runtime-agnostic operational logging contract, event ownership, and dependency-injection rules.
 
 ## Principles
 
 - Structured JSON logging for machine parsing
 - Human-readable output in development
-- Request correlation via `requestId`
+- Request correlation via namespaced request ID plus OpenTelemetry trace context
 - Sensitive data redaction
 - Log at appropriate levels and layers
+- Application code depends on `AppLogger`, not a concrete logging SDK
+- Product analytics uses a separate `ProductAnalytics` interface
 
-**Library:** Pino
+The Node.js reference adapter uses [Pino](../runtime/nodejs/libraries/pino/README.md), but Pino is not part of the core contract.
 
-## Logger Configuration
+## Boundary
 
-```typescript
-// shared/infra/logger/index.ts
+Server logs exist for debugging and operations. They are not a product analytics stream.
 
-import pino from "pino";
+| Server log | Product analytics |
+| --- | --- |
+| `Database connection failed` | `checkout_completed` |
+| `Request completed` | `feature_used` |
+| Operational log backend | Mixpanel, Google Analytics, or another analytics destination |
 
-const isProduction = process.env.NODE_ENV === "production";
+Follow [Observability](./observability.md) for request/trace propagation and [Product Analytics](./product-analytics.md) for analytics events and vendor fan-out.
 
-export const logger = pino({
-  level: process.env.LOG_LEVEL ?? (isProduction ? "info" : "debug"),
+## Logger Port and Dependency Injection
 
-  // Pretty print in development
-  transport: isProduction
-    ? undefined
-    : {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      },
-
-  // Redact sensitive fields
-  redact: {
-    paths: [
-      "password",
-      "passwordHash",
-      "token",
-      "accessToken",
-      "refreshToken",
-      "authorization",
-      "cookie",
-      "creditCard",
-      "cardNumber",
-      "cvv",
-      "ssn",
-      "*.password",
-      "*.passwordHash",
-      "*.token",
-      "*.accessToken",
-      "*.refreshToken",
-      "*.authorization",
-      "*.creditCard",
-      "*.cardNumber",
-      "*.cvv",
-      "*.ssn",
-    ],
-    censor: "[REDACTED]",
-  },
-
-  // Base context for all logs
-  base: {
-    env: process.env.NODE_ENV,
-    service: process.env.SERVICE_NAME ?? "api",
-  },
-});
-
-export type Logger = typeof logger;
-```
-
-## Request Logger (Child Logger)
-
-Create a child logger with request context for correlation.
+Define a vendor-neutral port in the kernel:
 
 ```typescript
-// shared/infra/logger/index.ts
+// shared/kernel/logger.ts
 
-export interface RequestLogContext {
-  requestId: string;
-  userId?: string;
-  method?: string;
-  path?: string;
-}
+export type LogFields = Record<string, unknown>;
 
-export function createRequestLogger(ctx: RequestLogContext) {
-  return logger.child(ctx);
+export interface AppLogger {
+  debug(fields: LogFields, message: string): void;
+  info(fields: LogFields, message: string): void;
+  warn(fields: LogFields, message: string): void;
+  error(fields: LogFields, message: string): void;
 }
 ```
 
-**Usage:**
+The infrastructure layer adapts its chosen backend to `AppLogger` and enriches records from the active observability scope. Factories inject `AppLogger` into controllers, services, and use cases that produce meaningful operational logs.
+
+Rules:
+
+- Do not import a concrete logging SDK inside a controller, service, or use case.
+- Do not combine logger, analytics, and tracing methods in one service locator.
+- Inject `AppLogger` and `ProductAnalytics` separately when both are needed.
+- Inject a spy or no-op implementation in unit tests.
+
+## Adapter Requirements
+
+Every runtime logger adapter must:
+
+- implement `AppLogger`;
+- emit structured records;
+- merge trusted request/trace correlation from the active observability scope after caller fields;
+- serialize errors with stack/cause for server-side diagnostics;
+- redact secrets and sensitive fields before export;
+- expose stable resource identity such as service and deployment environment;
+- never let logging failure change business behavior.
+
+Concrete configuration belongs to the runtime/library layer. See the [Node.js Pino Adapter](../runtime/nodejs/libraries/pino/README.md).
+
+## Request Context Enrichment
+
+Establish request context once at the transport boundary. The logger adapter reads it for every record and maps runtime names to the canonical serialized names.
 
 ```typescript
-const log = createRequestLogger({
-  requestId: ctx.requestId,
-  userId: ctx.userId,
-  method: "POST",
-  path: "/api/users",
+await withRequestObservability(request, async () => {
+  appLogger.info(
+    {
+      "otel.event.name": "http.request.started",
+      "http.request.method": "POST",
+      "http.route": "/api/users",
+    },
+    "Request started",
+  );
 });
-
-log.info("Processing request");
-// Output: { "requestId": "abc-123", "userId": "usr-456", "method": "POST", "path": "/api/users", "msg": "Processing request" }
 ```
+
+The resulting JSON uses `trace_id`, `span_id`, `trace_flags`, and `com.example.api.request.id`. Do not create per-request concrete logger children with `{ requestId, traceId, spanId }` in application code.
 
 ## Log Levels
 
@@ -113,13 +91,13 @@ log.info("Processing request");
 | ------- | ----------------------------------------- | --------------------------------------- |
 | `error` | Unexpected failures, unhandled exceptions | Unknown errors, system failures         |
 | `warn`  | Expected errors, recoverable issues       | Known application errors, deprecations  |
-| `info`  | Request lifecycle, business events        | Request start/end, user created         |
+| `info`  | Request lifecycle, operational events     | Request start/end, user created         |
 | `debug` | Development details, verbose data         | Input/output bodies, intermediate state |
 
 ```typescript
 log.error({ err }, "Unexpected database failure");
-log.warn({ code: "USER_NOT_FOUND", userId }, "User not found");
-log.info({ userId: user.id }, "User created");
+log.warn({ "error.type": "USER_NOT_FOUND", "user.id": userId }, "User not found");
+log.info({ "otel.event.name": "user.created", "user.id": user.id }, "User created");
 log.debug({ input }, "Request input");
 ```
 
@@ -129,6 +107,7 @@ log.debug({ input }, "Request input");
 | ----------------- | ------------------------------------ | ------- |
 | Router/Middleware | Request start, end, duration, status | `info`  |
 | Router/Middleware | Request input (in development)       | `debug` |
+| Controller        | Nothing routinely; meaningful capability-boundary events only | — / `info` |
 | Error Handler     | Known application errors             | `warn`  |
 | Error Handler     | Unknown/unexpected errors            | `error` |
 | Services          | Significant business events          | `info`  |
@@ -136,15 +115,20 @@ log.debug({ input }, "Request input");
 
 ## Request Lifecycle Logging
 
-### tRPC Middleware
+### Reference Transport Lifecycle
 
-**Important:** Define middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
+Every transport must implement this start/completion/failure lifecycle once. The tRPC-shaped excerpt below illustrates the core contract; the canonical implementation details live in [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md).
 
 ```typescript
 // shared/infra/trpc/trpc.ts
 
 import { initTRPC, TRPCError } from "@trpc/server";
-import { AppError, AuthenticationError } from "@/shared/kernel/errors";
+import {
+  AppError,
+  AuthenticationError,
+  type AppErrorKind,
+} from "@/shared/kernel/errors";
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
 import type { Context, AuthenticatedContext } from "./context";
 
 const t = initTRPC.context<Context>().create({
@@ -156,31 +140,88 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const middleware = t.middleware;
 
+const TRPC_CODE_BY_KIND = {
+  validation: "BAD_REQUEST",
+  authentication: "UNAUTHORIZED",
+  authorization: "FORBIDDEN",
+  not_found: "NOT_FOUND",
+  conflict: "CONFLICT",
+  business_rule: "UNPROCESSABLE_CONTENT",
+  rate_limit: "TOO_MANY_REQUESTS",
+  internal: "INTERNAL_SERVER_ERROR",
+  bad_gateway: "BAD_GATEWAY",
+  unavailable: "SERVICE_UNAVAILABLE",
+  timeout: "GATEWAY_TIMEOUT",
+} as const satisfies Record<AppErrorKind, string>;
+
+const appErrorMiddleware = t.middleware(async ({ ctx, next }) => {
+  try {
+    return await next({ ctx });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new TRPCError({
+        code: TRPC_CODE_BY_KIND[error.kind],
+        message: error.message,
+        cause: error,
+      });
+    }
+    throw error;
+  }
+});
+
 /**
  * Logger middleware - request lifecycle tracing.
  * Defined inline to avoid circular dependency with middleware exports.
  */
-const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+const loggerMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
   const start = Date.now();
 
-  ctx.log.info({ type }, "Request started");
+  ctx.log.info(
+    {
+      "otel.event.name": "rpc.request.started",
+      "rpc.system": "trpc",
+      "rpc.method": path,
+      [APP_ATTRIBUTES.operationType]: type,
+    },
+    "Request started",
+  );
 
   // Log input at debug level only in development
   if (process.env.NODE_ENV !== "production") {
-    ctx.log.debug("Request processing");
+    ctx.log.debug({}, "Request processing");
   }
 
   try {
     const result = await next({ ctx });
     const duration = Date.now() - start;
 
-    ctx.log.info({ duration, status: "success", type }, "Request completed");
+    ctx.log.info(
+      {
+        "otel.event.name": "rpc.request.completed",
+        "rpc.system": "trpc",
+        "rpc.method": path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: "success",
+      },
+      "Request completed",
+    );
 
     return result;
   } catch (error) {
     const duration = Date.now() - start;
 
-    ctx.log.info({ duration, status: "error", type }, "Request failed");
+    ctx.log.info(
+      {
+        "otel.event.name": "rpc.request.failed",
+        "rpc.system": "trpc",
+        "rpc.method": path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: "error",
+      },
+      "Request failed",
+    );
 
     throw error;
   }
@@ -205,40 +246,44 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
 });
 
 /**
- * Base procedure with logging - all procedures use this
+ * Base procedure with central error mapping and logging.
  */
-const loggedProcedure = t.procedure.use(loggerMiddleware);
+const baseProcedure = t.procedure
+  .use(appErrorMiddleware)
+  .use(loggerMiddleware);
 
 /**
  * Public procedure - no authentication required
  */
-export const publicProcedure = loggedProcedure;
+export const publicProcedure = baseProcedure;
 
 /**
  * Protected procedure - authentication required
  */
-export const protectedProcedure = loggedProcedure.use(authMiddleware);
+export const protectedProcedure = baseProcedure.use(authMiddleware);
 ```
 
-## Service-Level Business Events
+## Service-Level Operational Events
 
 Log significant business events in services.
 
 ```typescript
 // modules/user/services/user.service.ts
 
-import { logger } from "@/shared/infra/logger";
-
 export class UserService implements IUserService {
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    const user = await this.createInternal(data, ctx);
+  constructor(
+    private readonly repository: IUserRepository,
+    private readonly logger: AppLogger,
+  ) {}
 
-    // Business event: user created
-    logger.info(
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    const user = await this.createInternal(data, options);
+
+    this.logger.info(
       {
-        event: "user.created",
-        userId: user.id,
-        email: user.email,
+        "otel.event.name": "user.created",
+        "code.function.name": "UserService.create",
+        "user.id": user.id,
       },
       "User created",
     );
@@ -246,14 +291,14 @@ export class UserService implements IUserService {
     return user;
   }
 
-  async delete(id: string, ctx?: RequestContext): Promise<void> {
-    await this.deleteInternal(id, ctx);
+  async delete(id: string, options?: TransactionOptions): Promise<void> {
+    await this.deleteInternal(id, options);
 
-    // Business event: user deleted
-    logger.info(
+    this.logger.info(
       {
-        event: "user.deleted",
-        userId: id,
+        "otel.event.name": "user.deleted",
+        "code.function.name": "UserService.delete",
+        "user.id": id,
       },
       "User deleted",
     );
@@ -263,35 +308,38 @@ export class UserService implements IUserService {
 
 ## Log Format Convention
 
-### Field Ordering
+### Field Names
 
-Always order log fields consistently for readability:
+Use constants for custom fields and literal names only for registered OpenTelemetry or backend transport fields:
 
 ```typescript
-// 1. Event type identifier (if business event)
-// 2. Entity identifiers (userId, workspaceId, etc.)
-// 3. Action-specific data
-// 4. Metadata (duration, status, etc.)
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
 
-logger.info(
+appLogger.info(
   {
-    event: "user.logged_in",     // 1. Event type
-    userId: user.id,             // 2. Primary entity
-    email: user.email,           // 3. Action-specific
+    "otel.event.name": "user.logged_in",
+    "code.function.name": "AuthService.completeLogin",
+    "user.id": user.id,
+    [APP_ATTRIBUTES.codeLayer]: "service",
+    [APP_ATTRIBUTES.operationName]: "user.login",
   },
-  "User logged in",              // Human-readable message
+  "User logged in",
 );
 ```
+
+`level`, `time`, and `msg` in the examples are backend transport fields. `trace_id`, `span_id`, and the namespaced request-ID attribute are added by the adapter. See [Observability](./observability.md#canonical-correlated-json-record) for the authoritative mapping.
 
 ### Required Fields by Log Type
 
 | Log Type | Required Fields | Optional Fields |
 |----------|-----------------|-----------------|
-| Request start | `type` | — |
-| Request end | `duration`, `status`, `type` | `error` |
-| Business event | `event`, primary entity ID | Related entity IDs |
-| Known error | `err`, `code`, `requestId` | `details` |
-| Unknown error | `err`, `requestId` | — |
+| Request start | `otel.event.name`, transport semantic attributes | operation type/name |
+| Request end | `otel.event.name`, transport semantic attributes, namespaced duration/outcome | `error.type` |
+| Operational event | `otel.event.name`, primary entity semantic attribute | `code.function.name`, related entity IDs |
+| Known error | `err`, `error.type` | safe details |
+| Unknown error | `err` | `error.type` |
+
+Correlation fields are required on every request-scoped record, but the adapter supplies them; callers do not repeat them.
 
 ### Message Format
 
@@ -301,24 +349,26 @@ logger.info(
 
 ```typescript
 // Good messages
-log.info({ type }, "Request started");
-log.info({ duration, status, type }, "Request completed");
-logger.info({ event: "user.registered", userId }, "User registered");
-logger.warn({ err, code, requestId }, err.message);
+log.info({ "otel.event.name": "rpc.request.started", "rpc.method": path }, "Request started");
+log.info({ "otel.event.name": "rpc.request.completed", "rpc.method": path }, "Request completed");
+appLogger.info({ "otel.event.name": "user.registered", "user.id": userId }, "User registered");
+appLogger.warn({ err, "error.type": error.code }, error.message);
 
 // Bad messages (avoid)
 log.info("Starting request processing...");  // Too verbose
 log.info("Done");                            // Too vague
-logger.info({ event: "user.registered" }, "A new user has been registered in the system");  // Too wordy
+appLogger.info({ "otel.event.name": "user.registered" }, "A new user has been registered in the system"); // Too wordy
 ```
 
-### Business Event Naming Convention
+### Operational Event Naming Convention
 
 Use past tense, dot-separated format:
 
 ```
 <entity>.<action>
 ```
+
+Place this value in `otel.event.name` so a compatible non-OTLP JSON record can map to OpenTelemetry `EventName`. These records are operational breadcrumbs for debugging. If product reporting also needs the action, emit a separate typed `ProductEvent`; do not route the log record to analytics vendors.
 
 **Examples:**
 
@@ -342,26 +392,27 @@ Standard auth-related events:
 
 | Event | When | Fields |
 |-------|------|--------|
-| `user.registered` | New user created | `userId`, `email` |
-| `user.logged_in` | Successful login | `userId`, `email` |
+| `user.registered` | New user created | `user.id` |
+| `user.logged_in` | Successful login | `user.id` |
 | `user.logged_out` | User logged out | — |
-| `user.magic_link_requested` | Magic link sent | `email` |
-| `user.session_exchanged` | OAuth/magic link callback | `userId` |
-| `user.password_reset_requested` | Password reset email sent | `email` |
-| `user.password_changed` | Password updated | `userId` |
+| `user.magic_link_requested` | Magic link sent | Avoid email address in logs |
+| `user.session_exchanged` | OAuth/magic link callback | `user.id` |
+| `user.password_reset_requested` | Password reset email sent | Avoid email address in logs |
+| `user.password_changed` | Password updated | `user.id` |
 
 ## Error Logging
 
 Errors are logged by the error handler (see [Error Handling](./error-handling.md)).
 
 ```typescript
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
 // Known application error - warn level
 logger.warn(
   {
     err: error,
-    code: error.code,
-    details: error.details,
-    requestId,
+    "error.type": error.code,
+    [APP_ATTRIBUTES.errorDetails]: error.details,
   },
   error.message,
 );
@@ -370,25 +421,28 @@ logger.warn(
 logger.error(
   {
     err: error,
-    requestId,
+    "error.type": error.constructor.name,
   },
   "Unexpected error",
 );
 ```
 
-## Request Context Integration
+The contextual `AppLogger` adds the namespaced request ID and active trace fields. Do not pass correlation identifiers manually.
+
+## Request Correlation Integration
 
 ### Request ID Generation
 
-Generate UUID at the tRPC context creation.
+Generate or accept the application `requestId` at the transport boundary. OpenTelemetry owns `traceId` and `spanId`; application services do not pass them manually.
 
 ```typescript
 // shared/infra/trpc/context.ts
 
 import { randomUUID } from "crypto";
+import { getTrustedRequestId } from "@/shared/infra/observability/request-id";
 
 export async function createContext({ req }: { req: Request }) {
-  const requestId = req.headers.get("x-request-id") ?? randomUUID();
+  const requestId = getTrustedRequestId(req.headers) ?? randomUUID();
 
   return {
     requestId,
@@ -399,11 +453,13 @@ export async function createContext({ req }: { req: Request }) {
 export type Context = Awaited<ReturnType<typeof createContext>>;
 ```
 
+The tRPC context may expose the contextual `AppLogger` for transport middleware. Application services still receive the `AppLogger` port from their factories. Next.js, Express, and Hono establish the equivalent request scope in framework middleware or wrappers before invoking a controller. See [Next.js](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md), [Express](../runtime/nodejs/metaframeworks/express/README.md), and [Hono](../runtime/nodejs/metaframeworks/hono/README.md).
+
 ## Sensitive Data Handling
 
 ### Automatic Redaction
 
-Pino's `redact` option handles common sensitive fields automatically.
+The concrete logger adapter must redact common sensitive fields automatically. The Node.js Pino implementation is documented in [Pino Logger Adapter](../runtime/nodejs/libraries/pino/README.md).
 
 ### Manual Sanitization
 
@@ -440,88 +496,76 @@ export function sanitize<T extends Record<string, unknown>>(obj: T): T {
 **Usage:**
 
 ```typescript
-log.debug({ data: sanitize(requestBody) }, "Processing data");
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
+log.debug(
+  { [APP_ATTRIBUTES.debugData]: sanitize(requestBody) },
+  "Processing data",
+);
 ```
 
 ## Log Output Examples
 
-### Development (pino-pretty)
+### Development (Human-Readable Adapter Output)
 
 ```
-[2024-01-15 10:30:45] INFO: Request started
-    requestId: "req-abc-123"
-    userId: "usr-456"
-    method: "mutation"
-    path: "user.create"
+[2026-08-15 10:30:45] INFO: Request started
+    otel.event.name: "http.request.started"
+    http.request.method: "POST"
+    http.route: "/api/users"
+    trace_id: "4bf92f3577b34da6a3ce929d0e0e4736"
+    span_id: "00f067aa0ba902b7"
+    com.example.api.request.id: "req-abc-123"
 
-[2024-01-15 10:30:45] DEBUG: Request input
-    requestId: "req-abc-123"
-    input: { email: "john@example.com", name: "John" }
-
-[2024-01-15 10:30:46] INFO: User created
-    event: "user.created"
-    userId: "usr-789"
-    email: "john@example.com"
-
-[2024-01-15 10:30:46] INFO: Request completed
-    requestId: "req-abc-123"
-    duration: 145
-    status: "success"
+[2026-08-15 10:30:46] INFO: User created
+    otel.event.name: "user.created"
+    code.function.name: "CreateUserUseCase.execute"
+    user.id: "usr-789"
+    trace_id: "4bf92f3577b34da6a3ce929d0e0e4736"
+    span_id: "00f067aa0ba902b7"
+    com.example.api.request.id: "req-abc-123"
 ```
 
 ### Production (JSON)
 
 ```json
-{"level":30,"time":1705312245000,"requestId":"req-abc-123","userId":"usr-456","method":"mutation","path":"user.create","msg":"Request started"}
-{"level":30,"time":1705312246000,"event":"user.created","userId":"usr-789","email":"john@example.com","msg":"User created"}
-{"level":30,"time":1705312246000,"requestId":"req-abc-123","duration":145,"status":"success","msg":"Request completed"}
+{"level":30,"time":1786761045000,"msg":"Request started","otel.event.name":"http.request.started","http.request.method":"POST","http.route":"/api/users","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","trace_flags":"01","com.example.api.request.id":"req-abc-123"}
+{"level":30,"time":1786761046000,"msg":"User created","otel.event.name":"user.created","code.function.name":"CreateUserUseCase.execute","user.id":"usr-789","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","trace_flags":"01","com.example.api.request.id":"req-abc-123"}
 ```
 
-## Future: Observability
+## Observability Integration
 
-When ready for full observability, extend with:
-
-### OpenTelemetry Integration
-
-```typescript
-// Future: Add tracing context
-export interface RequestContext {
-  requestId: string;
-  traceId: string; // W3C Trace Context
-  spanId: string;
-  tx?: TransactionContext;
-}
-
-// Future: Export to observability platform
-// - Traces → Jaeger, Tempo, Datadog
-// - Metrics → Prometheus, Datadog
-// - Logs → Loki, CloudWatch, Datadog
-```
+Request-scoped JSON logs include the configured namespaced request ID and, when tracing is enabled, `trace_id`, `span_id`, and `trace_flags`. Their runtime values come from async observability context and remain separate from `TransactionOptions`. See [Observability](./observability.md).
 
 ## Checklist
 
 ### Configuration
-- [ ] Pino configured with appropriate log level
+- [ ] Concrete adapter configured with an appropriate log level
 - [ ] Pretty printing enabled in development
-- [ ] Sensitive fields redacted via pino config
-- [ ] Base context includes `env` and `service`
+- [ ] Sensitive fields redacted by the concrete adapter/exporter
+- [ ] Resource identity uses `deployment.environment.name` and `service.name`
+- [ ] `AppLogger` port defined independently from the logging backend
+- [ ] Controllers/services/use cases receive `AppLogger` through factories only when they emit meaningful operational events
 
 ### Request Tracing
 - [ ] Request ID generated at context creation (UUID)
-- [ ] Request logger creates child logger with `requestId`, `userId`, `method`, `path`
+- [ ] Transport establishes async observability context once per request
+- [ ] Adapter maps runtime `requestId` to the configured namespaced log attribute
+- [ ] JSON trace correlation uses `trace_id`, `span_id`, and `trace_flags`
 - [ ] Logger middleware logs request start/end with duration
-- [ ] All procedures use `loggedProcedure` as base
+- [ ] All procedures inherit central error mapping and logger middleware from `baseProcedure`
 - [ ] Request input logged at `debug` level only (not in production)
 
-### Business Events
+### Operational Events
 - [ ] Services log significant business events at `info` level
-- [ ] Business events use `event` field with `<entity>.<action>` format
-- [ ] Business events include primary entity ID (e.g., `userId`)
+- [ ] Operational events use `otel.event.name` with a stable dot-separated value
+- [ ] Entity identifiers use registered semantic attributes when available (for example, `user.id`)
 - [ ] Auth events follow standard naming (`user.logged_in`, `user.registered`, etc.)
 - [ ] Message is past tense, concise ("User logged in", not "A user has logged in")
 
 ### Error Logging
-- [ ] Error handler logs known errors at `warn` with `code`, `details`, `requestId`
+- [ ] Error handler logs known errors at `warn` with `error.type` and safe details
+- [ ] Correlation fields come from `AppLogger`; callers do not pass them manually
 - [ ] Error handler logs unknown errors at `error` with full stack
 - [ ] Error message used as log message (not generic text)
 
@@ -529,4 +573,13 @@ export interface RequestContext {
 - [ ] Routers: No logging (handled by middleware)
 - [ ] Services: Log business events
 - [ ] Repositories: No logging
-- [ ] Use cases: No logging (services log the events)
+- [ ] Use cases: Log orchestration outcomes when they own the business action
+- [ ] No service/use case imports the concrete logger
+- [ ] Product analytics is emitted through `ProductAnalytics`, never through `AppLogger`
+
+## Standards References
+
+- [OpenTelemetry Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-model/)
+- [Trace Context in non-OTLP Log Formats](https://opentelemetry.io/docs/specs/otel/compatibility/logging_trace_context/)
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/)
+- [OpenTelemetry Attribute Naming](https://opentelemetry.io/docs/specs/semconv/general/naming/)

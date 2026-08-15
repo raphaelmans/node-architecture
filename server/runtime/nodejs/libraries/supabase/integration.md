@@ -2,7 +2,7 @@
 
 > Vendor-specific integration patterns for Supabase, including authentication, storage, and database access within the layered architecture.
 
-> **For complete authentication implementation**, see [auth.md](./auth.md) which covers tRPC integration, user roles, Next.js middleware, and the full registration flow.
+> **For complete authentication implementation**, see [auth.md](./auth.md) which covers tRPC integration, user roles, Next.js Proxy, and the full registration flow.
 
 ## Overview
 
@@ -10,31 +10,18 @@ Supabase provides three main services used in this architecture:
 
 | Service      | Purpose                                    | Layer                          | Documentation |
 | ------------ | ------------------------------------------ | ------------------------------ | ------------- |
-| **Auth**     | User authentication, sessions, magic links | Repository → Service → Use Case | [auth.md](./auth.md) |
-| **Storage**  | Object/file storage with signed URLs       | Repository (adapter) → Service | Below |
+| **Auth**     | User authentication, sessions, magic links | Controller → Service/Use Case → Repository | [auth.md](./auth.md) |
+| **Storage**  | Object/file storage with signed URLs       | Controller → Use Case → Provider adapter | Below |
 | **Database** | PostgreSQL via Drizzle ORM                 | Repository                     | Below |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Service Layer                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │ AuthService  │  │ ProfileSvc   │  │ ObjectStorageClient  │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
-└─────────┼─────────────────┼─────────────────────┼───────────────┘
-          │                 │                     │
-┌─────────┼─────────────────┼─────────────────────┼───────────────┐
-│         │           Repository Layer            │               │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌─────────▼────────────┐   │
-│  │   AuthRepo   │  │  ProfileRepo │  │ SupabaseObjectStorage│   │
-│  │ (Supabase)   │  │  (Drizzle)   │  │      (Adapter)       │   │
-│  └──────┬───────┘  └──────┬───────┘  └─────────┬────────────┘   │
-└─────────┼─────────────────┼─────────────────────┼───────────────┘
-          │                 │                     │
-          ▼                 ▼                     ▼
-   ┌─────────────┐   ┌─────────────┐   ┌─────────────────────┐
-   │  Supabase   │   │  PostgreSQL │   │   Supabase Storage  │
-   │    Auth     │   │  (Drizzle)  │   │       Bucket        │
-   └─────────────┘   └─────────────┘   └─────────────────────┘
+```text
+framework adapter
+  -> AuthController
+       -> AuthService -> IAuthRepository -> Supabase Auth adapter
+  -> UpdateProfileImageController
+       -> UpdateProfileImageUseCase
+            +-> ProfileService -> IProfileRepository -> Drizzle/PostgreSQL
+            +-> ObjectStorage -> Supabase Storage adapter
 ```
 
 ---
@@ -46,7 +33,7 @@ Supabase provides three main services used in this architecture:
 > - tRPC context and session extraction
 > - User roles table with Drizzle
 > - Registration use case with multi-service orchestration
-> - Next.js middleware for route protection
+> - Next.js Proxy for route protection
 > - Request-scoped factory patterns
 > - Supabase Dashboard configuration (Site URL, email templates)
 
@@ -62,20 +49,28 @@ This implementation uses **PKCE flow** (not implicit flow) for magic links:
 | OAuth | `/auth/callback?code=xxx` | `exchangeCodeForSession()` |
 
 ```typescript
-// Request-scoped factories (need cookies)
-export function makeAuthService(cookies: CookieMethodsServer) {
+// Inner request-scoped service factory (needs cookies)
+function makeAuthService(cookies: CookieMethodsServer) {
   const client = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, cookies);
-  return new AuthService(new AuthRepository(client));
+  return new AuthService(
+    new AuthRepository(client),
+    getContainer().appLogger,
+  );
+}
+
+// Public framework adapters resolve this outer factory.
+export function makeLoginWithMagicLinkController(cookies: CookieMethodsServer) {
+  return new LoginWithMagicLinkController(makeAuthService(cookies));
 }
 
 // In tRPC router
 loginWithMagicLink: publicProcedure
-  .input(MagicLinkSchema)
+  .input(MagicLinkInputSchema)
   .mutation(async ({ input, ctx }) => {
-    const authService = makeAuthService(ctx.cookies);
-    // Redirects to /auth/confirm for PKCE flow
-    await authService.signInWithMagicLink(input.email, ctx.origin);
-    return { success: true };
+    const result = await makeLoginWithMagicLinkController(ctx.cookies)
+      .execute(input, { origin: ctx.origin });
+    const response = MagicLinkResponseSchema.parse(result);
+    return wrapResponse(response);
   }),
 ```
 
@@ -108,8 +103,8 @@ Define a vendor-agnostic interface in the kernel or shared layer:
 
 export interface ObjectStorage {
   uploadFile(file: Blob, path: string): Promise<void>;
-  getSignedURL(path: string): Promise<string>;
-  getPublicURL(path: string): string;
+  getSignedUrl(path: string): Promise<string>;
+  getPublicUrl(path: string): string;
   downloadBlob(path: string): Promise<Blob>;
   deleteFile(path: string): Promise<void>;
 }
@@ -138,7 +133,7 @@ export class SupabaseObjectStorage implements ObjectStorage {
     if (error) throw error;
   }
 
-  async getSignedURL(path: string): Promise<string> {
+  async getSignedUrl(path: string): Promise<string> {
     const { data, error } = await this.client.storage
       .from(this.bucket)
       .createSignedUrl(path, this.signedURLExpSeconds);
@@ -149,7 +144,7 @@ export class SupabaseObjectStorage implements ObjectStorage {
     return data.signedUrl;
   }
 
-  getPublicURL(path: string): string {
+  getPublicUrl(path: string): string {
     const { data } = this.client.storage.from(this.bucket).getPublicUrl(path);
     return data.publicUrl;
   }
@@ -201,12 +196,12 @@ class PathScopedOperations {
     return this.storage.uploadFile(file, this.basePath + filename);
   }
 
-  getPublicURL(filename: string): string {
-    return this.storage.getPublicURL(this.basePath + filename);
+  getPublicUrl(filename: string): string {
+    return this.storage.getPublicUrl(this.basePath + filename);
   }
 
-  async getSignedURL(filename: string): Promise<string> {
-    return this.storage.getSignedURL(this.basePath + filename);
+  async getSignedUrl(filename: string): Promise<string> {
+    return this.storage.getSignedUrl(this.basePath + filename);
   }
 
   async downloadBlob(filename: string): Promise<Blob> {
@@ -221,19 +216,19 @@ class PathScopedOperations {
 export class StorageClient {
   constructor(private storage: ObjectStorage) {}
 
-  Images() {
+  images() {
     return new PathScopedOperations(this.storage, PATHS.IMAGES);
   }
 
-  ProfileImages() {
+  profileImages() {
     return new PathScopedOperations(this.storage, PATHS.PROFILE_IMAGES);
   }
 
-  CompanyLogos() {
+  companyLogos() {
     return new PathScopedOperations(this.storage, PATHS.COMPANY_LOGOS);
   }
 
-  Documents() {
+  documents() {
     return new PathScopedOperations(this.storage, PATHS.DOCUMENTS);
   }
 }
@@ -242,17 +237,17 @@ export class StorageClient {
 ### Usage Pattern
 
 ```typescript
-// In service or use case
+// In a use case (external storage is a side effect)
 const storage = makeStorageClient();
 
 // Upload profile image
-await storage.ProfileImages().uploadFile(imageBlob, `${userId}.jpg`);
+await storage.profileImages().uploadFile(imageBlob, `${userId}.jpg`);
 
 // Get public URL
-const url = storage.ProfileImages().getPublicURL(`${userId}.jpg`);
+const url = storage.profileImages().getPublicUrl(`${userId}.jpg`);
 
 // Get signed URL (for private buckets)
-const signedUrl = await storage.ProfileImages().getSignedURL(`${userId}.jpg`);
+const signedUrl = await storage.profileImages().getSignedUrl(`${userId}.jpg`);
 ```
 
 ---
@@ -331,140 +326,100 @@ export class ProfileRepo {
 
 ---
 
-## Service Provider (Factory)
+## Request-Scoped Composition
 
-The service provider wires up all Supabase-dependent services:
+Keep global infrastructure in the shared container, but create cookie-bound Supabase clients through module factories for each request. Do not pass a `ServiceProvider`/service locator into application code.
 
 ```typescript
-// shared/infra/container.ts
+// modules/auth/factories/auth.factory.ts
 
-import { CookieMethodsServer } from "@supabase/ssr";
-import { createClient } from "./supabase/create-client";
-import { SupabaseObjectStorage } from "./supabase/object-storage";
-import { StorageClient } from "./services/storage-client";
-import { AuthRepo } from "@/modules/auth/repositories/auth.repository";
-import { AuthService } from "@/modules/auth/services/auth.service";
-import { ProfileRepo } from "@/modules/profile/repositories/profile.repository";
-import { ProfileService } from "@/modules/profile/services/profile.service";
-import db from "./db/drizzle";
-import { env } from "@/shared/env";
+function makeAuthService(cookies: CookieMethodsServer): IAuthService {
+  const client = createRequestSupabaseClient(cookies);
+  const repository: IAuthRepository = new AuthRepository(client);
+  return new AuthService(repository, getContainer().appLogger);
+}
 
-const SIGNED_URL_EXPIRY = 24 * 60 * 60; // 24 hours
+// modules/profile/factories/profile-image.factory.ts
 
-export class ServiceProvider {
-  private sbClient?: ReturnType<typeof createClient>;
-  private dbInstance = db;
+export function makeUpdateProfileImageUseCase(
+  cookies: CookieMethodsServer,
+): UpdateProfileImageUseCase {
+  const storage: ObjectStorage = new SupabaseObjectStorage(
+    createRequestSupabaseClient(cookies),
+    "default-bucket",
+  );
 
-  // Cached instances
-  private authRepo?: AuthRepo;
-  private authService?: AuthService;
-  private profileRepo?: ProfileRepo;
-  private profileService?: ProfileService;
-  private objectStorage?: StorageClient;
+  return new UpdateProfileImageUseCase(
+    makeProfileService(),
+    storage,
+    getContainer().appLogger,
+  );
+}
 
-  constructor(private cookies: CookieMethodsServer) {}
-
-  // Supabase client (for auth + storage)
-  private sb() {
-    if (!this.sbClient) {
-      this.sbClient = createClient(
-        env.SUPABASE_URL,
-        env.SUPABASE_SERVICE_ROLE_KEY,
-        this.cookies,
-      );
-    }
-    return this.sbClient;
-  }
-
-  // Auth
-  AuthRepo() {
-    if (!this.authRepo) {
-      this.authRepo = new AuthRepo(this.sb());
-    }
-    return this.authRepo;
-  }
-
-  AuthService() {
-    if (!this.authService) {
-      this.authService = new AuthService(this.AuthRepo());
-    }
-    return this.authService;
-  }
-
-  // Profile (uses Drizzle, not Supabase client)
-  ProfileRepo() {
-    if (!this.profileRepo) {
-      this.profileRepo = new ProfileRepo(this.dbInstance);
-    }
-    return this.profileRepo;
-  }
-
-  ProfileService() {
-    if (!this.profileService) {
-      this.profileService = new ProfileService(this.ProfileRepo());
-    }
-    return this.profileService;
-  }
-
-  // Object Storage
-  ObjectStorage() {
-    if (!this.objectStorage) {
-      this.objectStorage = new StorageClient(
-        new SupabaseObjectStorage(
-          this.sb(),
-          "default-bucket",
-          SIGNED_URL_EXPIRY,
-        ),
-      );
-    }
-    return this.objectStorage;
-  }
+export function makeUpdateProfileImageController(
+  cookies: CookieMethodsServer,
+): IUpdateProfileImageController {
+  return new UpdateProfileImageController(
+    makeUpdateProfileImageUseCase(cookies),
+  );
 }
 ```
+
+Privileged service-role clients use a separate server-only factory and are injected only into narrowly scoped admin/worker adapters. Never expose them through a generic locator.
 
 ---
 
 ## Auth-Storage Relationship
 
-Storage operations often require authentication context:
+Storage plus database mutation is multi-system orchestration, so a use case owns it. The profile service remains unaware of Supabase and storage SDKs.
 
 ```typescript
-// Example: Upload profile image (requires authenticated user)
+// modules/profile/use-cases/update-profile-image.use-case.ts
 
-export class ProfileService {
+export class UpdateProfileImageUseCase {
   constructor(
-    private profileRepo: ProfileRepo,
-    private storage: StorageClient,
-    private transactionManager: TransactionManager,
+    private readonly profileService: IProfileService,
+    private readonly storage: ObjectStorage,
+    private readonly logger: AppLogger,
   ) {}
 
-  async uploadProfileImage(
+  async execute(
     userId: string,
     imageFile: Blob,
-    ctx?: RequestContext,
   ): Promise<string> {
-    // 1. Verify user exists
-    const profile = await this.profileRepo.getByUserId(userId, ctx?.tx);
+    const profile = await this.profileService.findByUserId(userId);
     if (!profile) {
       throw new ProfileNotFoundError(userId);
     }
 
-    // 2. Upload to storage
-    const filename = `${profile.id}.jpg`;
-    await this.storage.ProfileImages().uploadFile(imageFile, filename);
+    const path = `profile-images/${profile.id}.jpg`;
+    await this.storage.uploadFile(imageFile, path);
 
-    // 3. Update profile with image URL
-    const imageUrl = this.storage.ProfileImages().getPublicURL(filename);
-    await this.profileRepo.update(
-      profile.id,
-      { profileImageUrl: imageUrl },
-      ctx?.tx,
-    );
+    const imageUrl = this.storage.getPublicUrl(path);
+    try {
+      await this.profileService.setProfileImage(profile.id, imageUrl);
+    } catch (error) {
+      try {
+        await this.storage.deleteFile(path);
+      } catch (compensationError) {
+        this.logger.error(
+          {
+            err: compensationError,
+            "otel.event.name": "profile.image.compensation_failed",
+            "user.id": userId,
+          },
+          "Profile image compensation failed",
+        );
+      }
+      throw error;
+    }
 
     return imageUrl;
   }
 }
 ```
+
+This is a compensating workflow, not a database transaction spanning Supabase Storage and PostgreSQL. Add an orphan-object reconciliation job if failed deletion cannot be ignored.
 
 ---
 
@@ -529,15 +484,15 @@ DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/pos
 - [ ] Create Supabase client with cookie handling
 - [ ] Implement AuthRepo with auth methods
 - [ ] Implement AuthService
-- [ ] Wire in ServiceProvider
+- [ ] Wire request-scoped auth dependencies in module factories
 
 ### Storage
 
 - [ ] Define `ObjectStorage` interface (vendor-agnostic)
 - [ ] Implement `SupabaseObjectStorage` adapter
-- [ ] Create `StorageClient` with path-scoped operations
+- [ ] Optionally add a path-scoped storage adapter when repeated prefixes justify it
 - [ ] Configure bucket and RLS policies
-- [ ] Wire in ServiceProvider
+- [ ] Wire storage adapters into use cases through module factories
 
 ### Database
 
@@ -547,7 +502,7 @@ DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/pos
 
 ### Integration
 
-- [ ] ServiceProvider accepts `CookieMethodsServer`
+- [ ] Request-scoped factories accept `CookieMethodsServer`
 - [ ] Auth and Storage use Supabase client
 - [ ] Database uses Drizzle client
 - [ ] Service role key for server-side operations
@@ -558,8 +513,8 @@ DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/pos
 
 | Core Principle            | Supabase Implementation                       |
 | ------------------------- | --------------------------------------------- |
-| **Explicit DI**           | ServiceProvider creates all instances         |
+| **Explicit DI**           | Module factories create request-scoped instances |
 | **Interface abstraction** | `ObjectStorage` interface hides Supabase      |
 | **Repository pattern**    | AuthRepo, ProfileRepo encapsulate data access |
-| **Service layer**         | Business logic in services, not repos         |
+| **Application/domain**    | Use cases orchestrate providers; services own one domain |
 | **Transaction context**   | Drizzle repos accept `tx` parameter           |

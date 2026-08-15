@@ -8,12 +8,15 @@ Use this as the default startup path for new projects and new contributors.
 2. `client/core/architecture.md`
 3. `client/core/conventions.md`
 4. `client/core/folder-structure.md`
-5. `client/core/client-api-architecture.md`
-6. `client/core/server-state-tanstack-query.md`
-7. `client/core/error-handling.md`
-8. `client/core/logging.md`
-9. `client/core/testing.md`
-10. `client/core/testing-vitest.md`
+5. `client/core/composition-root.md`
+6. `client/core/client-api-architecture.md`
+7. `client/core/validation-zod.md`
+8. `client/core/server-state-tanstack-query.md`
+9. `client/core/error-handling.md`
+10. `client/core/logging.md`
+11. `client/core/product-analytics.md`
+12. `client/core/testing.md`
+13. `client/core/testing-vitest.md`
 
 Then move to framework/metaframework docs.
 
@@ -24,9 +27,16 @@ Then move to framework/metaframework docs.
 - [ ] Define `src/common/query-keys/*` for non-tRPC adapters.
 - [ ] Define `src/common/errors/*` for `AppError` normalization.
 - [ ] Define `src/common/toast/*` facade so features do not couple to provider APIs.
-- [ ] Define `src/common/logging/*` facade/adapters (`debug` default).
+- [ ] Define the OpenTelemetry-shaped `src/common/logging/*` port, enrichment/redaction wrappers, and `debug` adapter.
+- [ ] Define a separate typed `src/common/analytics/*` port with consent-aware adapters.
+- [ ] Keep optional Sentry integration behind the logger/error-reporting adapter.
+- [ ] Add one client composition root for logger, analytics, transport, and feature API factories.
+- [ ] Keep browser instances application-scoped and request-contextual SSR dependencies request-scoped.
+- [ ] Inject specific ports; never inject the complete runtime container.
 - [ ] Adopt client API chain: `clientApi -> featureApi -> query adapter -> components`.
 - [ ] Enforce feature API contract: `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`.
+- [ ] Put public Zod input/response contracts in `src/lib/modules/<module>/shared/contracts/`.
+- [ ] Import the same contracts from client `featureApi` and server transport adapters.
 - [ ] Keep domain transform precedence: `src/lib/modules/<module>/shared/*` first, then feature-local.
 - [ ] Set up Vitest as the unit test runner per `client/core/testing-vitest.md`.
 - [ ] Add `test:unit` and `test:unit:watch` scripts to `package.json`.
@@ -36,13 +46,19 @@ Then move to framework/metaframework docs.
 ## First Feature Definition of Done
 
 - [ ] Feature has required starter files (`api.ts`, `hooks.ts`, `schemas.ts`, components).
+- [ ] Public wire contracts are shared imports, not client copies or ORM/server types.
+- [ ] `schemas.ts` contains only client form/UI composition.
 - [ ] Query/mutation units are single-responsibility.
 - [ ] Hook naming uses `useQuery*` / `useMut*` / `useMod*`.
 - [ ] Presentation components have no direct transport or cache manipulation.
 - [ ] Errors are normalized to `AppError` before UI branching.
 - [ ] Invalidation is centralized and deterministic.
-- [ ] Logging uses `src/common/logging/*`, not ad-hoc `console.log`.
-- [ ] `api.ts` is unit-tested with mocked injected deps (`clientApi`, `toAppError`).
+- [ ] Operational logging uses `src/common/logging/*`, not `console`, `debug`, or Sentry imports in features.
+- [ ] Product events use typed `ProductAnalytics`, not operational logs or vendor imports.
+- [ ] Transport errors have one logging owner and preserve `requestId` when available.
+- [ ] `api.ts` is unit-tested with mocked injected deps (`clientApi`, `toAppError`, and logger when used).
+- [ ] Mutation/workflow analytics are tested with a spy/fake and emit only after success.
+- [ ] Feature runtime modules reference composition-root-owned instances instead of constructing hidden singletons.
 - [ ] `domain.ts` / `helpers.ts` are unit-tested as pure functions (no mocks).
 
 ## Contributor PR Checklist (Client Core Contracts)

@@ -24,11 +24,30 @@ src/
       login/page.tsx
     layout.tsx
     page.tsx
+  common/
+    logging/                       # AppLogger + debug/Sentry adapters
+    analytics/                     # ProductAnalytics + consent/vendor adapters
+    runtime/
+      browser.ts                   # application-scoped client composition root
+      request.ts                   # request-scoped composition when required
+  lib/
+    modules/<module>/
+      shared/
+        contracts/                  # Shared client/server Zod wire contracts
+  features/<feature>/
+    api.ts                          # Parses shared response contracts
+    hooks.ts                        # TanStack Query adapter
+    schemas.ts                      # Client-only form/UI schemas
+    components/
 ```
 
 Notes:
 
 - Group names such as `(protected)`, `(auth)`, `(owner)`, `(admin)`, etc. are implementation choices.
 - The architectural rule is ownership and boundary, not fixed group naming.
+- `route.ts` and the corresponding client `featureApi` import the same contract from `lib/modules/<module>/shared/contracts/`.
+- `common/runtime/browser.ts` owns browser singletons created through factories; feature modules do not construct hidden singletons.
+- `common/runtime/request.ts` is used only when SSR dependencies capture request context.
+- Runtime consumers receive specific ports or feature API accessors, never the whole runtime container.
 
 For the framework-agnostic feature module structure, see `client/core/folder-structure.md`.

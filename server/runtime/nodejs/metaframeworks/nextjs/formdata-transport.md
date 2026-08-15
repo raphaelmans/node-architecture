@@ -23,12 +23,12 @@ splitLink({
 
 ## Server Parsing
 
-Use `zod-form-data` for FormData payload parsing in DTO/schema modules:
+Use `zod-form-data` for a public FormData input in the owning module's `shared/contracts/` directory:
 
 ```ts
 import { zfd } from "zod-form-data";
 
-export const UploadSchema = zfd.formData({
+export const UploadInputSchema = zfd.formData({
   entityId: zfd.text(z.string().uuid()),
   file: zfd.file(),
 });
@@ -36,7 +36,8 @@ export const UploadSchema = zfd.formData({
 
 ## Validation Boundary
 
-- Transport schema validates shape and file-level constraints (size/type).
+- The shared input contract validates the public wire shape and serializable/file-level constraints.
+- The framework adapter normalizes framework-specific multipart details, validates the shared input, then calls the capability controller.
 - Domain/service layer validates business rules.
 - Storage adapter handles provider upload concerns.
 
@@ -59,4 +60,3 @@ Don't:
 
 - Batch FormData operations.
 - Parse raw multipart payloads inside service/business layers.
-

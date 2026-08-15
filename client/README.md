@@ -4,6 +4,8 @@
 
 See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
 
+Interactive companion: [Client Architecture Field Guide](../assets/client-architecture-guide.html).
+
 ## Focus
 
 This documentation emphasizes:
@@ -11,7 +13,9 @@ This documentation emphasizes:
 - Feature-based organization
 - A strict client API chain: `clientApi -> featureApi -> query adapter -> components`
 - Clear separation of business and presentation logic
+- One shared Zod wire contract across client and server
 - Typed validation and normalized error handling
+- Structured operational logging plus separate typed product analytics
 
 ## Technology Stack
 
@@ -28,6 +32,8 @@ This documentation emphasizes:
 | UI | shadcn/ui + Radix |
 | Styling | Tailwind CSS |
 | Testing | Vitest |
+| Local client logging | `debug` behind `AppLogger` |
+| Production diagnostics | Optional Sentry adapter |
 
 ## Canonical Navigation
 
@@ -39,6 +45,7 @@ This documentation emphasizes:
 | [Onboarding](./core/onboarding.md) | New project + contributor startup checklist |
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
+| [Composition Root](./core/composition-root.md) | Factories, dependency injection, runtime lifetimes |
 | [Client API Architecture](./core/client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
@@ -46,7 +53,8 @@ This documentation emphasizes:
 | [Query Keys](./core/query-keys.md) | Query key conventions |
 | [State Management](./core/state-management.md) | State decision guide |
 | [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
-| [Logging](./core/logging.md) | Client logging conventions |
+| [Operational Logging](./core/logging.md) | Structured records, local `debug`, optional Sentry |
+| [Product Analytics](./core/product-analytics.md) | Typed behavioral events and vendor adapters |
 | [Testing](./core/testing.md) | Unit testing standard |
 | [Testing — Vitest Runner](./core/testing-vitest.md) | Runner configuration and setup |
 | [Realtime Subscriptions](./core/realtime.md) | Realtime cache patching and reconnection |
@@ -62,6 +70,7 @@ This documentation emphasizes:
 
 ### Supplemental
 
+- [Client Architecture Field Guide](../assets/client-architecture-guide.html) for the standalone interactive system, flow, state, telemetry, runtime, testing, and structure guide
 - [client/diagrams.md](./diagrams.md) for ASCII diagrams
 - [Legacy Client Overview](../legacy/client/overview.md) for non-canonical historical references
 
@@ -78,15 +87,18 @@ This documentation emphasizes:
 | --------- | ----------- |
 | Feature-based | Co-locate components, hooks, schemas by feature |
 | Business/presentation split | Business components own data/forms; presentation components render |
-| Type-safe data flow | Zod + typed APIs + TanStack Query to components |
+| Type-safe data flow | Shared Zod contracts + typed APIs + TanStack Query to components |
 | URL as state | Prefer URL-state adapters where route state matters |
 | Standardized forms | Shared form primitives for consistency |
+| Separate telemetry ports | `AppLogger` for diagnostics; `ProductAnalytics` for behavior |
+| Explicit infrastructure lifecycle | Factories assembled once in a client composition root |
 
 ## Feature Checklist
 
 - [ ] Create `src/features/<feature>/`
+- [ ] Define public input/response schemas in `src/lib/modules/<module>/shared/contracts/`
 - [ ] Define `api.ts` with `I<Feature>Api`, `<Feature>Api`, and `create<Feature>Api`
-- [ ] Define schemas in `schemas.ts`
+- [ ] Define client-only form/UI schemas in `schemas.ts` by composing shared inputs
 - [ ] Keep transport and cache ownership out of presentation components
 - [ ] Add tests in `src/__tests__/features/<feature>/`
 - [ ] Add route registration in the project-defined route registry

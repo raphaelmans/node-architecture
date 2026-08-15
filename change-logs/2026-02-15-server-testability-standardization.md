@@ -4,6 +4,8 @@
 
 Standardized server-layer testability as a MUST-level rule across modules.
 
+> Historical note (2026-08-15): the canonical flow was later sharpened to require a framework-neutral controller between framework adapters and use cases/services. See `server/core/controllers.md`.
+
 Canonical architecture flow is now explicitly documented as:
 
 `controller -> usecase (optional) -> service -> repository`
@@ -37,4 +39,3 @@ Canonical architecture flow is now explicitly documented as:
 
 - This change is documentation-only.
 - Webhook testing docs remain specialized; global testability contract now lives in core.
-

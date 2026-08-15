@@ -29,7 +29,7 @@ Every client follows the same structural blueprint:
 - A runtime type guard (`isXxxRow`) to validate the payload before forwarding
 - A channel name generator using `Date.now() + random()` to avoid collisions
 - A filter builder generating PostgREST filter strings (`column=eq.value`)
-- A class implementing an interface, with a singleton exported via `getXxxClient()`
+- A class implementing an interface, constructed by the composition root and exposed through a stable `getXxxClient()` accessor
 - Subscription returns `{ channelName, unsubscribe }` where `unsubscribe()` calls `supabase.removeChannel(channel)`
 
 Clients subscribe to `postgres_changes` with `event: "INSERT"` and `schema: "public"`. This is an append-only event log contract — no UPDATE or DELETE events.

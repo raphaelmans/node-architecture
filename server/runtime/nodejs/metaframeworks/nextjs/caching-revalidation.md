@@ -45,6 +45,5 @@ Use stable namespace tags:
 
 ## Failure Handling
 
-- Invalidation failures should be logged with `requestId`.
+- Invalidation failures should use contextual `AppLogger`; it adds the namespaced request ID and active trace fields.
 - Mutation success should not silently depend on invalidation success for correctness.
-

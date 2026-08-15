@@ -1,6 +1,6 @@
 # Webhook Testing: Routing + Business Logic
 
-> **Purpose**: Validate that incoming webhook events are routed to the correct handler and processed safely (idempotency + use case delegation).
+> **Purpose**: Validate that incoming webhook events are routed to the correct specialized controller/handler and safely delegated to one use case.
 
 ---
 
@@ -17,12 +17,12 @@ Key assertion: no event type is silently ignored.
 
 ---
 
-## 2. Handler Tests (The Most Valuable Layer)
+## 2. Handler/Controller Tests (The Most Valuable Layer)
 
 Handlers should:
 
 - validate payload with event-specific Zod schema
-- enforce idempotency through domain logic (repository check)
+- map provider data to the use-case command
 - call the appropriate use case (not service directly)
 
 ### 2.1 Mapping Tests
@@ -34,7 +34,7 @@ Use a **spy** or **mock** use case and assert:
 
 This is where most webhook bugs happen (field mapping and assumptions).
 
-### 2.2 Idempotency Tests
+### 2.2 Idempotency Use-Case Tests
 
 You want explicit tests for duplicates:
 
@@ -56,7 +56,7 @@ This aligns with the response structure in `server/core/webhook/README.md`.
 
 ---
 
-## 3. Route/Controller Tests (Thin Layer)
+## 3. Framework-Adapter Route Tests (Thin Layer)
 
 The route should remain thin:
 
@@ -78,7 +78,8 @@ Use a stubbed signature verifier + handler to test:
 
 If you assert logs, focus on structured context (not strings):
 
-- `provider`, `eventType`, `eventId`, `requestId`
+- namespaced provider/event metadata from `APP_ATTRIBUTES`
+- contextual request ID plus `trace_id` and `span_id`
 - event names: `webhook.received`, `webhook.processed`, `webhook.skipped`, `webhook.failed`
 
 These expectations are documented in `server/core/webhook/README.md`.

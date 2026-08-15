@@ -27,12 +27,15 @@ Domain files stay function-based:
 - avoid feature API classes in domain files
 - keep mutable IO collaborators in `api.ts` (`I<Feature>Api` + class)
 
+API request/response contracts are related but separate: they live in `shared/contracts/`, not `domain.ts`.
+
 ## Precedence Rule
 
 When deciding where logic goes:
 
-1. Prefer module-owned shared code: `src/lib/modules/<module>/shared/*`
-2. Otherwise keep it feature-local: `src/features/<feature>/(domain.ts|helpers.ts)`
+1. Serialized API request/response contract: `src/lib/modules/<module>/shared/contracts/*`
+2. Other module-owned shared code: `src/lib/modules/<module>/shared/*`
+3. Otherwise keep it feature-local: `src/features/<feature>/(domain.ts|helpers.ts)`
 
 ## Module-Owned Shared Code (`<module>/shared/`)
 
@@ -41,7 +44,9 @@ In a Next.js-first repo, place reusable domain logic under:
 ```text
 src/lib/modules/<module>/
   shared/
-    schemas.ts      # (optional) Zod schemas + inferred types
+    contracts/
+      <capability>.contract.ts # Zod wire schemas + inferred types
+    schemas.ts      # (optional) non-transport domain schemas
     types.ts        # (optional) non-Zod types
     domain.ts       # pure rules + calculations
     transform.ts    # pure canonical transforms (non-UI)
@@ -64,6 +69,8 @@ Import from anywhere (client or server) via:
 - server-only infra (DB/ORM clients, logger, auth session attachment, tRPC router setup)
 - client-only UI (React/Next components, shadcn/ui, browser-only APIs)
 - environment/config access (`process.env`-driven config)
+
+Contracts add a stricter rule: they model only serialized wire data and must not import ORM/database entity types. Use ISO datetime strings and other JSON-safe representations, then map them at runtime-specific boundaries.
 
 **Goal:** if a file is under `<module>/shared/`, it should remain importable by both server and client without side effects.
 

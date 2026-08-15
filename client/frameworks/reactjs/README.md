@@ -7,6 +7,9 @@ Read core first:
 1. [Client Core Onboarding](../../core/onboarding.md)
 2. [Client Core README](../../core/README.md)
 3. [Client Core Conventions](../../core/conventions.md)
+4. [Client Composition Root](../../core/composition-root.md)
+5. [Client Operational Logging](../../core/logging.md)
+6. [Client Product Analytics](../../core/product-analytics.md)
 
 ## Start Here
 

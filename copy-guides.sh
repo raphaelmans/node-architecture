@@ -44,7 +44,7 @@ mkdir -p "$GUIDES_DIR"
 echo -e "${GREEN}Copying guides to:${NC} $GUIDES_DIR"
 echo ""
 
-for DIR in client server legacy; do
+for DIR in client server legacy assets; do
     if [ -d "$SCRIPT_DIR/$DIR" ]; then
         echo "  Copying $DIR/..."
         rm -rf "$GUIDES_DIR/$DIR"
@@ -80,6 +80,7 @@ echo "  $GUIDES_DIR/"
 echo "  ├── client/"
 echo "  ├── server/"
 echo "  ├── legacy/"
+echo "  ├── assets/                    (standalone HTML guides)"
 echo "  ├── README.md                  (DO NOT EDIT — generated)"
 echo "  ├── AGENTS-MD-ALIGNMENT.md     (configure AGENTS.md / CLAUDE.md)"
 echo "  ├── UPDATE-ARCHITECTURE.md     (how to update these guides)"

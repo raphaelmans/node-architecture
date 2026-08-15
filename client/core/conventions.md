@@ -26,11 +26,13 @@ Owns:
 - loading/error wiring
 - form orchestration
 - calling the query adapter
+- UI/workflow product events when the business component owns the occurrence
 
 Does not own:
 
 - transport (HTTP/tRPC)
 - cache invalidation rules
+- direct logging or analytics vendor calls
 
 ### Query Adapter Layer (Server State + Cache)
 
@@ -41,10 +43,12 @@ Owns:
 - cache utilities/invalidation (for tRPC adapters, via generated tRPC query utilities)
 - invalidation / optimistic updates
 - combined loading/success/error composition for multiple query units
+- successful mutation product events when the mutation hook owns the reusable action
 
 Depends on:
 
 - `featureApi` (not transport)
+- injected/facade `ProductAnalytics` when the hook emits a typed event
 
 ### Presentation Layer
 
@@ -67,18 +71,40 @@ Use this decision chain:
    - Put in `clientApi` or metaframework boundary docs.
 2. Is this endpoint-scoped request/response orchestration?
    - Put in `src/features/<feature>/api.ts` (`featureApi`).
-3. Is this cache/query behavior (keys, invalidation, optimistic update)?
+3. Is this a serialized request/response contract shared with the server?
+   - Put it in `src/lib/modules/<module>/shared/contracts/`.
+4. Is this an operational transport log or correlation field?
+   - Emit through `AppLogger` at `clientApi`; enrich context in the logging adapter.
+5. Is this a contract parsing/mapping diagnostic?
+   - Emit through injected `AppLogger` in `featureApi` without re-logging the transport failure.
+6. Is this a product event for a successful reusable mutation?
+   - Emit through typed `ProductAnalytics` in the mutation/workflow owner after success.
+7. Is this cache/query behavior (keys, invalidation, optimistic update)?
    - Put in `src/features/<feature>/hooks.ts` (query adapter).
-4. Is this pure domain rule or deterministic transformation?
+8. Is this pure domain rule or deterministic transformation?
    - Put in `domain.ts` or `helpers.ts`.
-5. Is this render-only?
+9. Is this render-only?
    - Keep in presentation component.
 
 ### 2) Should it live in `feature` or `common`?
 
 1. Used by multiple features and no feature ownership? Put in `src/common/*`.
 2. Owned by one feature even if reused nearby? Keep in that feature.
-3. Reusable across server + client for one module? Use `src/lib/modules/<module>/shared/*` first.
+3. A request/response contract used by client and server? Use `src/lib/modules/<module>/shared/contracts/*` even when only one feature consumes it.
+4. Other logic reusable across server + client for one module? Use `src/lib/modules/<module>/shared/*` first.
+
+### 3) Does it need a factory?
+
+Use a factory for dependency-heavy infrastructure with swappable adapters or runtime lifecycle:
+
+- `createAppLogger`
+- `createProductAnalytics`
+- `createClientApi`
+- `create<Feature>Api`
+
+Assemble factories once in the client composition root. Browser dependencies are application-scoped. SSR dependencies are request-scoped only when they capture request context. Inject specific ports, never the complete runtime container.
+
+Do not add factories for React components, Zod schemas, pure helpers, or simple hooks.
 
 ## Feature Module File Boundaries
 
@@ -86,10 +112,10 @@ In `src/features/<feature>/`:
 
 - `hooks.ts`: query adapter (framework-specific)
 - `api.ts`: `I<Feature>Api` contract + `<Feature>Api` class + `create<Feature>Api` factory
-- `schemas.ts`: Zod schemas + derived types + DTO-to-feature mapping helpers
+- `schemas.ts`: client-only form/UI schemas composed from shared input contracts
 - `types.ts`: shared feature types (non-DTO)
 - `domain.ts`: business rules (pure, deterministic)
-- `helpers.ts`: small pure utilities (formatting, grouping, transforms)
+- `helpers.ts`: DTO-to-feature-model mapping and small pure utilities
 
 ## Feature API Contract (Required)
 
@@ -103,6 +129,7 @@ Dependency rules:
 
 - inject transport boundary (`clientApi`)
 - inject error normalizer (`toAppError`)
+- inject `AppLogger` only when the feature API emits boundary-owned diagnostics
 - inject optional deterministic utilities only when needed (`clock`, `idFactory`)
 
 Testing rules:
@@ -118,8 +145,9 @@ Full standard: `client/core/testing.md`.
 
 When you need domain-specific rules or transformations:
 
-1. Prefer module-owned shared code (reusable across server + client): `src/lib/modules/<module>/shared/*`
-2. Otherwise keep it client-only in the feature: `src/features/<feature>/(domain.ts|helpers.ts)`
+1. API request/response contract: `src/lib/modules/<module>/shared/contracts/*`
+2. Other module-owned shared code: `src/lib/modules/<module>/shared/*`
+3. Client-only logic: `src/features/<feature>/(domain.ts|helpers.ts)`
 
 More details: `client/core/domain-logic.md`.
 
@@ -127,16 +155,27 @@ More details: `client/core/domain-logic.md`.
 
 - Components never talk to HTTP directly.
 - Cache rules live in the query adapter layer.
-- Zod parses at boundaries (recommended).
+- Client and server import one shared Zod wire contract; client-only schemas compose it rather than copy it.
+- Zod parses at both network boundaries.
 - Hook/query units follow single responsibility.
 
-## Non-Blocking Side Effects
+## Operational Logging and Product Analytics
 
-Treat telemetry/analytics and other best-effort side effects as non-blocking:
+Use separate ports:
+
+- `AppLogger`: operational diagnostics; `debug` is the local browser sink and Sentry may be a filtered remote sink
+- `ProductAnalytics`: typed user/business behavior with consent-aware vendor adapters
+
+Rules:
 
 - never block submit/navigation UX on non-critical side effects
-- swallow/report failures appropriately
+- keep provider SDKs behind adapters
+- enrich correlation/context at boundaries; do not add telemetry fields to business DTOs
+- assign one owner per failure to prevent duplicate reporting
+- emit completion analytics only after the meaningful operation succeeds
 - keep business-critical workflows independent from telemetry success
+
+Critical durable business facts belong in the server-side analytics/outbox flow, not browser-only analytics.
 
 ## Transport Guard Boundaries
 
@@ -152,9 +191,9 @@ Feature files:
 
 - `api.ts`: `I<Feature>Api` + `<Feature>Api` + factory
 - `hooks.ts`: query adapter hooks (framework-specific implementation)
-- `schemas.ts`: zod schemas + derived types + mapping helpers
+- `schemas.ts`: client-only form/UI schemas composed from shared input contracts
 - `domain.ts`: pure domain logic
-- `helpers.ts`: small pure transforms
+- `helpers.ts`: DTO-to-feature-model mapping + small pure transforms
 
 Hook naming (for hook-based frameworks):
 
@@ -167,6 +206,7 @@ Rules:
 - `useQuery*` / `useMut*` must each own one server-state responsibility.
 - Composition belongs in `useMod*`, not in a single query/mutation hook.
 - Feature API classes stay in `api.ts` behind `I<Feature>Api`.
+- Provider/vendor construction and singleton lifecycle stay in the composition root, not feature modules.
 - `domain.ts` / `helpers.ts` remain function-based (no feature API classes there).
 
 ## Import and Colocation Rules
@@ -192,8 +232,16 @@ Colocation:
 - [ ] Hook names follow `useQuery*` / `useMut*` / `useMod*` convention
 - [ ] `api.ts` follows `I<Feature>Api` + `<Feature>Api` + factory contract
 - [ ] Query adapters depend on `I<Feature>Api` (not direct transport clients)
+- [ ] Feature code imports `AppLogger` / `ProductAnalytics` ports, never provider SDKs
+- [ ] Operational records use stable event names and typed primitive attributes
+- [ ] Product events are typed and emitted only by the occurrence owner
+- [ ] Telemetry context is absent from business DTOs and ordinary method parameters
+- [ ] The same error is not reported by multiple client layers
+- [ ] Dependency-heavy infrastructure uses factories assembled by one composition root
+- [ ] Consumers receive specific ports rather than a runtime/service-locator container
+- [ ] Browser and request-contextual SSR lifetimes are explicit
 - [ ] Domain transforms follow precedence (`lib/modules/<module>/shared` first, then feature-local)
 - [ ] `domain.ts` / `helpers.ts` tests are pure (no mocks)
-- [ ] `api.ts` unit tests mock injected dependencies (`clientApi`, `toAppError`)
+- [ ] `api.ts` unit tests mock injected dependencies (`clientApi`, `toAppError`, logger when used)
 - [ ] Test files are in `src/__tests__/` mirroring source tree (not colocated)
 - [ ] Shared contracts are in `src/common/*` only when truly cross-feature

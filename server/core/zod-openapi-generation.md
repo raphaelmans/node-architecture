@@ -47,9 +47,9 @@ openapi.json / openapi.yaml (build artifact)
         +--> Swagger UI / ReDoc / external portal
         +--> SDK generation pipeline
 
-tRPC transport ----------\
-                          +--> same usecase/service/repository
-OpenAPI transport -------/
+tRPC adapter ------------\
+                          +--> same controller --> usecase/service --> repository
+OpenAPI adapter ---------/
 ```
 
 ## Recommended Generation Strategy

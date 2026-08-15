@@ -23,6 +23,8 @@ Use this matrix when deciding where invalidation/cache orchestration should live
 | Mutation has base cache effects, component has extra route-local effects | Hybrid | Shared defaults + local orchestration |
 | Legacy feature currently coordinating in component | Component-coordinator (transitional) | Keeps behavior stable while migrating incrementally |
 
+Product analytics follows the same occurrence ownership: a reusable mutation hook emits its typed completion event after success; a route-local workflow event stays with the component coordinator or `useMod*` workflow hook.
+
 ## Pattern A: Hook-Owned Invalidation (Preferred Default)
 
 Use when mutation effects are reusable across multiple components.
@@ -31,10 +33,16 @@ Use when mutation effects are reusable across multiple components.
 // src/features/profile/hooks.ts
 export function useMutProfileUpdate() {
   const queryClient = useQueryClient();
+  const analytics = useProductAnalytics();
 
   return useMutation({
     mutationFn: updateProfile,
     onSuccess: async () => {
+      analytics.track({
+        name: "profile_updated",
+        properties: { source: "settings" },
+      });
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
         queryClient.invalidateQueries({ queryKey: profileQueryKeys.detail._def }),
@@ -140,6 +148,9 @@ const onSubmit = async (data: ProfileFormShape) => {
 - Use deterministic key scopes (`src/common/query-keys/*` for non-tRPC).
 - Normalize errors to `AppError` before presentation logic branches.
 - Keep transport checks out of presentation components.
+- Do not re-log transport failures already owned by `clientApi`/`featureApi`.
+- Emit typed completion analytics only after mutation success; analytics delivery remains non-blocking.
+- Resolve feature APIs and telemetry ports from composition-root-owned factories, never hidden feature singletons or a runtime service locator.
 
 ## Testing Cookbook (React Query Layer)
 
@@ -147,12 +158,13 @@ const onSubmit = async (data: ProfileFormShape) => {
 
 - mock `I<Feature>Api` (or factory return) as the data source
 - assert query key usage, invalidation behavior, and status transitions
+- use a `ProductAnalytics` spy for success-only event behavior
 - avoid mocking transport providers directly (`fetch`, `axios`, `trpc` client internals)
 
 ### Feature API Tests
 
-- unit test `class <Feature>Api` with mocked `clientApi` and `toAppError`
-- assert schema parsing, DTO mapping, and error normalization handoff
+- unit test `class <Feature>Api` with mocked `clientApi`, `toAppError`, and logger when used
+- assert shared response-contract parsing, DTO-to-feature-model mapping, and error normalization handoff
 
 ### Domain/Helper Tests
 
@@ -165,6 +177,8 @@ const onSubmit = async (data: ProfileFormShape) => {
 - “God hook” combining unrelated domains.
 - Ad-hoc key arrays repeated across components.
 - Duplicating server entities into local stores as source of truth.
+- Reporting the same mutation failure in transport, hook, and component layers.
+- Importing analytics/logging vendors directly inside hooks.
 
 ## Related Docs
 

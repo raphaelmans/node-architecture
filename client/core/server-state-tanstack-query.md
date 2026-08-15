@@ -12,6 +12,8 @@ Query key conventions live in `client/core/query-keys.md`.
 - Keep query/mutation units single-responsibility.
 - Query adapters depend on `I<Feature>Api` contracts, not transport clients.
 - Preserve error normalization boundaries (`unknown -> AppError`) before UI handling.
+- Do not re-log transport/contract failures already owned by `clientApi`/`featureApi`.
+- Use typed `ProductAnalytics` only when the mutation/workflow owns the product occurrence.
 
 ## Query Lifecycle Patterns
 
@@ -49,6 +51,9 @@ When composing multiple query units:
 
 - A mutation hook owns one write concern.
 - Post-mutation cache behavior stays in query adapter layer.
+- A reusable completion event may emit through `ProductAnalytics` after mutation success.
+- Analytics delivery is non-blocking and never changes the mutation result.
+- UI-attempt events and route-local flow events remain with their actual workflow owner.
 
 ### Invalidation Batching
 

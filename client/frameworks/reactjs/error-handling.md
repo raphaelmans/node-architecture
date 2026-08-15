@@ -44,7 +44,7 @@ Provide a small, consistent API for the rest of the app.
 - `message(appErr) -> string`
 - `retryable(appErr) -> boolean`
 - `applyToForm(appErr, setError)` (react-hook-form)
-- `report(appErr)` (logger/Sentry/etc.)
+- optional `reportUnhandled(error)` delegated to the framework error boundary
 
 Pattern: Facade (built on top of adapters)
 
@@ -93,7 +93,8 @@ ErrorHandling Facade              <-- FACADE
 
 ### Global handling (optional)
 
-- Centralize reporting/logging in QueryClient defaults (if desired).
+- Let the framework error boundary report unhandled render/runtime exceptions through `AppLogger`/Sentry.
+- Do not blanket-report QueryClient failures when `clientApi` or `featureApi` already owns the operational record.
 - Avoid enforcing UI-specific behavior globally (forms often need local mapping).
 
 ## Toasts (Generic, Not Provider-Tied)
@@ -195,9 +196,11 @@ Do:
 - Keep provider checks inside adapters only
 - Preserve only user-safe messages in `AppError.message`; use generic fallback for internal failures
 - Use facade helpers for consistent UX
+- Keep error normalization separate from boundary-owned operational reporting
 
 Don't:
 
 - Sprinkle provider-specific checks across UI
 - Put async error objects into Context to share them
 - Leak provider-specific error shapes into views
+- Import Sentry directly or report the same handled error at multiple layers

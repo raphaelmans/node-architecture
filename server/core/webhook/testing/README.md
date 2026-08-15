@@ -17,7 +17,7 @@ This testing guide aims to ensure:
 - We reject invalid or unverifiable webhooks safely
 - We parse and validate payloads deterministically (Zod)
 - We route each `event.type` to the correct handler
-- Handlers delegate to **use cases** (not services directly)
+- Handlers act as specialized framework-neutral controllers and delegate to **one use case**
 - Idempotency rules prevent double-processing
 - Responses follow our standard envelope and are safe for vendor retries
 - We can run end-to-end scenarios using a **Vendor Simulator** (internal sandbox)
@@ -32,8 +32,9 @@ Use multiple layers so failures are caught early and cheaply.
 | --- | --- | --- |
 | Schema tests | Payload shape + invariants | Zod parsing with fixtures |
 | Routing tests | `event.type` → handler resolution | handler registry tests |
-| Handler tests | Mapping + use case invocation + idempotency | spies/mocks + fakes |
-| Route/controller tests | Signature verification + envelope response | stub verifier + call route directly |
+| Handler/controller tests | Provider-event mapping + one use-case invocation | use-case spies/stubs |
+| Use-case tests | Idempotency + transaction behavior | repository/service fakes |
+| Framework-adapter route tests | Signature verification + envelope response | stub verifier + handler, call route directly |
 | Contract/regression tests | “We still accept what we used to accept” | fixture suite + golden payloads |
 | End-to-end (internal) | Full flow under real HTTP | Vendor Simulator callbacks |
 

@@ -26,28 +26,42 @@ export const RATE_LIMIT_TIERS = {
 Use a middleware factory that:
 
 - resolves limiter by tier
-- resolves identifier (`userId` fallback strategy)
-- throws `TOO_MANY_REQUESTS` via structured error
+- resolves a stable authenticated or trusted anonymous subject
+- throws the transport-neutral `RateLimitError`; shared tRPC middleware maps it to `TOO_MANY_REQUESTS`
 
 Pattern:
 
 ```ts
 export function createRateLimitMiddleware(tier: RateLimitTier) {
   return middleware(async ({ ctx, next }) => {
-    const identifier = ctx.userId ?? ctx.requestId;
-    const result = await getRateLimiter(tier).limit(identifier);
+    const subject = resolveRateLimitSubject({
+      userId: ctx.userId,
+      clientIdentifier: ctx.clientIdentifier,
+      clientIdentifierSource: ctx.clientIdentifierSource,
+    });
+    const result = await getRateLimiter(tier).limit(subject.key);
 
     if (!result.success) {
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message: "Rate limit exceeded. Please try again later.",
-      });
+      throw new RateLimitError("Rate limit exceeded. Please try again later.");
     }
 
     return next();
   });
 }
 ```
+
+`resolveRateLimitSubject` must not fall back to `requestId`. Only trust forwarded IP headers after deployment-specific proxy validation. Log the subject source/class and quota result; do not log raw credentials.
+
+The limiter adapter must implement the system's documented fail-open/fail-closed policy for infrastructure errors. Do not accidentally turn a limiter timeout into an unclassified raw response.
+
+## Tests
+
+- Repeated requests from one authenticated user resolve the same key.
+- Repeated anonymous requests behind the trusted proxy resolve the same key.
+- A new `requestId` does not change the key.
+- Untrusted forwarded headers are ignored.
+- Missing stable identity follows the configured coarse-bucket/reject policy.
+- Limiter infrastructure failure follows the configured fail-open/fail-closed policy.
 
 ## Procedure Factories
 
@@ -72,4 +86,3 @@ export const protectedRateLimitedProcedure = (tier: RateLimitTier) =>
 - `./integration.md`
 - `../../metaframeworks/nextjs/formdata-transport.md`
 - `../../metaframeworks/nextjs/cron-routes.md`
-

@@ -30,12 +30,12 @@ The `availability_change_event` table is a pure event log — never updated, onl
 }
 ```
 
-### Event Service Interface
+### Event Writer Port
 
-A domain event service encapsulates emission:
+A persistence port encapsulates event emission without creating a service-to-service dependency:
 
 ```typescript
-export interface IAvailabilityChangeEventService {
+export interface IAvailabilityChangeEventWriter {
   emitReservationBooked(params: EmitParams): Promise<void>;
   emitReservationReleased(params: EmitParams): Promise<void>;
   emitCourtBlockBooked(params: EmitParams): Promise<void>;
@@ -64,17 +64,17 @@ Use a domain event log when:
 For reliable async delivery of notifications across multiple channels:
 
 ```
-service method → enqueue jobs (inside tx) → after() kick → QStash → dispatch worker → deliver
+use case → enqueue jobs (inside tx) → after() kick → QStash → dispatch worker → deliver
 ```
 
 ### Step 1: Enqueue (inside transaction)
 
 ```typescript
-// Inside ReservationService, within the DB transaction
-await this.notificationDeliveryService.enqueueOwnerReservationCreated(payload, ctx);
+// Inside ReservationUseCase, within the DB transaction
+await this.notificationOutbox.enqueueOwnerReservationCreated(payload, { tx });
 ```
 
-`enqueueXxx` builds `NotificationDeliveryJob[]` records for each enabled channel (EMAIL, SMS, WEB_PUSH, MOBILE_PUSH) and each recipient. Jobs are inserted with an idempotency key: `{event_type}:{entity_id}:{role}:{user_id}:{channel}`.
+The injected outbox port builds `NotificationDeliveryJob[]` records for each enabled channel (EMAIL, SMS, WEB_PUSH, MOBILE_PUSH) and each recipient. Jobs are inserted with an idempotency key: `{event_type}:{entity_id}:{role}:{user_id}:{channel}`. It is a persistence/delivery-intent port, not another domain service.
 
 It also writes an `user_notification` record directly for the in-app inbox (no job needed).
 
@@ -110,12 +110,31 @@ The QStash endpoint (`/api/internal/queue/dispatch-notification-delivery`) verif
 
 `GET /api/cron/dispatch-notification-delivery` runs the same handler on a schedule, catching any jobs where the QStash kick was never published.
 
+## Product Analytics Delivery
+
+Product analytics events use the vendor-neutral `ProductAnalytics` port defined in [Product Analytics](./product-analytics.md). They are not emitted through the operational `AppLogger`.
+
+```text
+Application action
+  -> canonical typed product event
+  -> ProductAnalytics
+       +-- Mixpanel adapter
+       +-- Google Analytics adapter
+```
+
+Choose delivery semantics explicitly:
+
+- Best-effort events may be delivered post-commit when loss and added latency are acceptable.
+- Important state-change events should be written to an outbox in the same transaction as the domain state and delivered asynchronously.
+- Analytics provider failure must not roll back an already-committed domain operation.
+- The outbox stores the canonical event; provider-specific payload mapping belongs in the dispatcher adapters.
+
 ## Side-Effect Procedures (`ops/`)
 
 For best-effort post-commit side effects that don't need transactional guarantees:
 
 ```
-service method (post-commit) → ops/<procedure>.ts → external provider
+use case (post-commit) → ops/<procedure>.ts → external provider
 ```
 
 ### Pattern
@@ -130,14 +149,21 @@ export async function postPlayerCreatedMessage(params: Params): Promise<void> {
 
 ### Calling Convention
 
-Services call ops as best-effort, catching and logging failures:
+Use cases call ops as best-effort after the business transaction commits, catching and logging failures:
 
 ```typescript
-// Inside ReservationService, AFTER transaction commits
+// Inside ReservationUseCase, AFTER transaction commits
 try {
   await postPlayerCreatedMessage({ reservationId, ... });
 } catch (error) {
-  logger.warn({ error }, "Failed to post player created chat message");
+  this.logger.warn(
+    {
+      err: error,
+      "otel.event.name": "chat.player_created_message.failed",
+      "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
+    },
+    "Failed to post player created chat message",
+  );
 }
 ```
 
@@ -154,9 +180,9 @@ try {
 
 The architecture uses a practical command/query separation at multiple levels:
 
-### Router Level
+### Framework Adapter Level
 
-tRPC consistently separates `.query` (reads) from `.mutation` (writes). Reads delegate directly to services; complex writes may use use cases.
+tRPC consistently separates `.query` (reads) from `.mutation` (writes). Every procedure delegates to a capability controller; that controller calls one service for a simple operation or one use case for orchestration.
 
 ### Service Level
 
@@ -165,7 +191,7 @@ Modules with distinct user roles split into separate service classes:
 - `ReservationService` — player perspective (create, cancel, mark payment)
 - `ReservationOwnerService` — owner perspective (confirm, reject, reschedule)
 
-They share repositories but have entirely different DTOs, error types, and business rules.
+They share repositories but have different internal command models, error types, and business rules. Public wire contracts remain centralized under the owning module's `shared/contracts/` directory.
 
 ### Client API Level
 

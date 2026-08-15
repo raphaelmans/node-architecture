@@ -8,6 +8,9 @@
 - Decode the standard server envelope (`ApiResponse<T>` / `ApiErrorResponse>`)
 - Throw typed, inspectable errors (aligned with server error-handling)
 - Integrate cleanly with TanStack Query hooks
+- Import the same Zod input/response contracts used by the Next.js route
+- Own transport logging and response `requestId` correlation through injected `AppLogger`
+- Construct Ky only inside `createClientApi` at the client composition root
 
 ## Standard Response Envelope
 
@@ -16,30 +19,38 @@ Non-tRPC endpoints must follow the server conventions:
 - **Success (2xx)**: `ApiResponse<T>` → `{ data: T }`
 - **Error (non-2xx)**: `ApiErrorResponse` → `{ code, message, requestId, details? }`
 
-Both are defined in your shared response-contract module (commonly `lib/shared/kernel/response.ts`).
+Both are defined in `src/lib/shared/kernel/response.ts`. Capability-specific payload schemas live in `src/lib/modules/<module>/shared/contracts/`.
 
-## Ky instance
+## Ky-backed `clientApi` factory
 
-Use a shared `ky` instance and disable `throwHttpErrors` so you can read error bodies:
+Keep Ky construction inside the factory. Feature code depends on `IClientApi`, never Ky.
 
 ```typescript
 import ky from "ky";
 
-export const api = ky.create({
-  throwHttpErrors: false,
-  timeout: 30_000,
-});
+export function createClientApi(deps: {
+  logger: AppLogger;
+  prefixUrl?: string;
+  timeoutMs?: number;
+}): IClientApi {
+  const transport = ky.create({
+    prefixUrl: deps.prefixUrl,
+    throwHttpErrors: false,
+    timeout: deps.timeoutMs ?? 30_000,
+  });
+
+  return new KyClientApi({ transport, logger: deps.logger });
+}
 ```
+
+The browser composition root calls `createClientApi` once. SSR calls it per request only when the transport closes over request headers/cookies/context.
 
 ## Typed client error
 
 Throw a typed error so UI + hooks can inspect `code` and `requestId`.
 
 ```typescript
-// Import from your shared response-contract module.
-// Example path:
-// "@/path/to/shared/response-contract"
-import type { ApiErrorResponse } from "@/path/to/shared/response-contract";
+import type { ApiErrorResponse } from "@/lib/shared/kernel/response";
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -77,41 +88,54 @@ const isApiErrorResponse = (value: unknown): value is ApiErrorResponse => {
 };
 ```
 
-## Example client function
+## `featureApi` example
 
 ```typescript
-import type { ApiErrorResponse, ApiResponse } from "@/path/to/shared/response-contract";
+import {
+  PreviewGoogleLocationInputSchema,
+  PreviewGoogleLocationResponseSchema,
+  type PreviewGoogleLocationInput,
+  type PreviewGoogleLocationResponse,
+} from "@/lib/modules/location/shared/contracts";
 
-export async function previewGoogleLoc(url: string) {
-  const response = await api.post("api/poc/google-loc", {
-    json: { url },
-  });
+export class GoogleLocApi implements IGoogleLocApi {
+  constructor(private readonly deps: {
+    clientApi: IClientApi;
+    logger: AppLogger;
+    toAppError: (error: unknown) => AppError;
+  }) {}
 
-  const json = (await response.json()) as unknown;
+  async preview(
+    input: PreviewGoogleLocationInput,
+  ): Promise<PreviewGoogleLocationResponse> {
+    const request = PreviewGoogleLocationInputSchema.parse(input);
 
-  if (!response.ok) {
-    if (isApiErrorResponse(json)) {
-      throw new ApiClientError({
-        code: json.code,
-        message: json.message,
-        requestId: json.requestId,
-        httpStatus: response.status,
-        details: json.details,
-      });
+    try {
+      const payload = await this.deps.clientApi.post<unknown>(
+        "/api/poc/google-loc",
+        request,
+      );
+
+      return PreviewGoogleLocationResponseSchema.parse(payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        this.deps.logger.error(
+          {
+            eventName: "location.preview.response.invalid",
+            attributes: { "error.type": "api.invalid_response" },
+            error,
+          },
+          "Location preview response violated contract",
+        );
+      }
+
+      throw this.deps.toAppError(error);
     }
-
-    throw new ApiClientError({
-      code: "INTERNAL_ERROR",
-      message: "Request failed",
-      requestId: "unknown",
-      httpStatus: response.status,
-    });
   }
-
-  const body = json as ApiResponse<{ lat?: number; lng?: number }>;
-  return body.data;
 }
 ```
+
+`KyClientApi` decodes the universal envelope and returns its `data`. It also logs the transport outcome once. `GoogleLocApi` validates the capability payload and logs only a contract failure owned by that boundary.
 
 ## React Query integration
 
@@ -119,11 +143,21 @@ export async function previewGoogleLoc(url: string) {
 import { useMutation } from "@tanstack/react-query";
 
 export function useMutGoogleLocPreview() {
+  const analytics = useProductAnalytics();
+
   return useMutation({
-    mutationFn: ({ url }: { url: string }) => previewGoogleLoc(url),
+    mutationFn: (input: PreviewGoogleLocationInput) => googleLocApi.preview(input),
+    onSuccess: (_location, input) => {
+      analytics.track({
+        name: "location_previewed",
+        properties: { provider: "google" },
+      });
+    },
   });
 }
 ```
+
+The typed product event is optional and belongs here only when this reusable mutation owns the successful user action. It is not an operational log.
 
 ## Feature API Contract (Recommended)
 
@@ -132,17 +166,14 @@ Wrap them behind `I<Feature>Api` + class in `src/features/<feature>/api.ts`.
 
 ```typescript
 export interface IGoogleLocApi {
-  preview(input: { url: string }): Promise<{ lat?: number; lng?: number }>;
+  preview(input: PreviewGoogleLocationInput): Promise<PreviewGoogleLocationResponse>;
 }
 
-export class GoogleLocApi implements IGoogleLocApi {
-  constructor(private readonly deps: { clientApi: typeof api }) {}
-
-  async preview(input: { url: string }) {
-    return previewGoogleLoc(input.url);
-  }
-}
+export const createGoogleLocApi = (deps: GoogleLocApiDeps): IGoogleLocApi =>
+  new GoogleLocApi(deps);
 ```
+
+The corresponding `route.ts` imports `PreviewGoogleLocationInputSchema` and `PreviewGoogleLocationResponseSchema` from the same module. Do not define a second route-local or client-local payload schema.
 
 Testing implication:
 
@@ -158,9 +189,16 @@ Variant A (preferred): hook-owned invalidation
 ```typescript
 export function useMutGoogleLocPreview() {
   const queryClient = useQueryClient();
+  const analytics = useProductAnalytics();
+
   return useMutation({
-    mutationFn: ({ url }: { url: string }) => previewGoogleLoc(url),
+    mutationFn: ({ url }: { url: string }) => googleLocApi.preview({ url }),
     onSuccess: async () => {
+      analytics.track({
+        name: "location_previewed",
+        properties: { provider: "google" },
+      });
+
       await queryClient.invalidateQueries({
         queryKey: googleLocQueryKeys.preview._def,
       });
@@ -209,7 +247,11 @@ Network failure / non-2xx response
 
 Preserve `requestId` when present so support/debug logs can correlate client and server events.
 
+`KyClientApi` records method, sanitized path, duration, status, retry exhaustion, and `requestId` through `AppLogger`. Query hooks and components must not report the same transport failure again. Sentry, when enabled, receives only records selected by the logger adapter.
+
 ## Notes
 
 - Do not leak internal error details in `message`; use `details` for additional context.
 - Always include `requestId` in server responses so clients can show it or log it.
+- Prefer an `x-request-id` response header on success and error; fall back to the error envelope when necessary.
+- Assemble `createClientApi` and `createGoogleLocApi` in the composition root; do not create hidden singletons in feature modules.

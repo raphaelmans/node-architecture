@@ -17,9 +17,17 @@ Depending on implementation, it can act as:
 
 Recommended contract in this repo:
 
+- define public Zod input/response schemas once in `src/lib/modules/<module>/shared/contracts/`
+- import those schemas from both the tRPC procedure and client `featureApi`
 - keep `I<Feature>Api` + `class <Feature>Api` in `src/features/<feature>/api.ts`
 - allow query hooks to call a factory-created API instance (or injected instance in tests)
 - keep direct `trpc.*.useQuery/useMutation` usage as compatibility mode during migration
+- construct the tRPC client inside `createClientApi`/the client composition root
+- instrument transport outcomes and `requestId` once in the tRPC client link/adapter through `AppLogger`
+
+tRPC's inferred router types are useful, but they do not replace the shared runtime contract when the same capability is also consumed by `route.ts`, OpenAPI, mobile, or a non-tRPC client. Do not create a tRPC-only duplicate schema.
+
+The server uses the same success envelope for tRPC and HTTP. A direct tRPC hook therefore receives `ApiResponse<Payload>` and reads the capability payload from `result.data`. A `clientApi`-style tRPC adapter may unwrap that envelope before passing the payload to `featureApi`, matching the non-tRPC client contract.
 
 ## Cache and Query Keys
 
@@ -37,12 +45,18 @@ Variant A (preferred): hook-owned invalidation
 ```typescript
 export function useMutProfileUpdate() {
   const utils = trpc.useUtils();
+  const analytics = useProductAnalytics();
 
   return trpc.profile.update.useMutation({
     onSuccess: async (result) => {
+      analytics.track({
+        name: "profile_updated",
+        properties: { source: "settings" },
+      });
+
       await Promise.all([
         utils.profile.getByCurrentUser.invalidate(),
-        utils.profile.getById.invalidate({ id: result.id }),
+        utils.profile.getById.invalidate({ id: result.data.id }),
       ]);
     },
   });
@@ -68,7 +82,7 @@ export function ProfileForm() {
 
   const onSubmit = async (data: ProfileFormShape) => {
     const result = await updateMut.mutateAsync(data);
-    await onSubmitInvalidateQueries(result.id);
+    await onSubmitInvalidateQueries(result.data.id);
     router.push(appRoutes.dashboard);
   };
 }
@@ -102,8 +116,18 @@ Typical tRPC client setup in React/Next.js:
 - tRPC client provider at app root
 - split link when mixing JSON and non-JSON payloads
 - serializer strategy consistent with server
+- injected `AppLogger` integration/link for transport outcome and error correlation
 
-Keep these as implementation details inside app providers, not inside feature components.
+Create these through a named factory in the client composition root. Browser dependencies are application-scoped. SSR dependencies are request-scoped only when they capture request headers/cookies/context. App providers receive already-created specific dependencies; they do not construct vendors or expose a runtime service locator.
+
+## Logging and Analytics Ownership
+
+- The tRPC client link/adapter owns request duration, procedure/path, final status, retry exhaustion, and server `requestId` logging.
+- `featureApi` logs only response-contract/mapping failures it owns.
+- Direct tRPC compatibility hooks must not re-report transport failures already logged by the link/adapter.
+- Mutation/workflow owners may emit a typed `ProductAnalytics` event after meaningful success.
+- Framework error boundaries own unhandled exceptions and may forward them to the optional Sentry adapter.
+- Product analytics and operational logging remain separate ports.
 
 ## Security and Transport Boundaries
 
@@ -113,6 +137,7 @@ Common examples:
 - origin/cross-site checks at the tRPC route handler
 - rate limiting in tRPC middleware
 - structured server error mapping (code/requestId/details) in server formatter
+- trace/correlation propagation in the tRPC transport link/adapter
 
 Client-side rule:
 
@@ -134,6 +159,7 @@ Testing guidance:
 
 - if hooks call `I<Feature>Api`, mock that interface in hook tests
 - if hooks use direct `trpc.*` compatibility mode, keep those tests localized and treat as transitional
+- use analytics/logger spies rather than live providers when the behavior includes telemetry
 
 Example:
 
@@ -180,3 +206,4 @@ Migration direction (incremental):
 2. Introduce `featureApi` boundaries for endpoint/domain mapping.
 3. Keep cache ownership in query adapters.
 4. Maintain canonical naming and SRP conventions for new/modified hooks.
+5. Move provider construction and singleton lifecycle into the client composition root.

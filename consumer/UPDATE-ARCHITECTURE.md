@@ -93,8 +93,11 @@ Then update:
 - `AGENTS-MD-ALIGNMENT.md` — add a new "If \<Framework\>" include block under Step 2
 
 Must align with:
+- `client/core/composition-root.md` (factories, explicit dependency lifetimes, no service locator)
 - `client/core/client-api-architecture.md` (`components -> query adapter -> featureApi -> clientApi -> network`)
 - `client/core/error-handling.md` (normalize to `AppError`)
+- `client/core/logging.md` (`AppLogger`, boundary-owned reporting, local/remote adapters)
+- `client/core/product-analytics.md` (typed behavioral events, consent-aware delivery)
 - `client/core/server-state-tanstack-query.md` (server-state ownership in query adapter)
 
 ### Add a new server runtime or library (example: Go, Express full impl)
@@ -125,7 +128,7 @@ Then update:
 - `AGENTS-MD-ALIGNMENT.md` — add a new "If \<Runtime/Library\>" include block under Step 2
 
 Must align with:
-- `server/core/conventions.md` (layer boundaries)
+- `server/core/conventions.md` + `server/core/controllers.md` (layer and framework-neutral inbound boundaries)
 - `server/core/error-handling.md` + `server/core/api-response.md` (error and envelope contracts)
 - `server/core/transaction.md` + `server/core/logging.md` (transaction and logging expectations)
 
@@ -139,6 +142,11 @@ Before syncing, confirm the following are still consistent across all changed do
 - [ ] Error normalization boundary (`unknown -> AppError`) unchanged
 - [ ] Expected `4xx` business-rule/client-correctable failures still preserve user-safe messages end-to-end
 - [ ] Logging and correlation ownership at transport boundaries unchanged
+- [ ] Every public framework adapter calls one framework-neutral controller; controllers call one service or one use case
+- [ ] Operational logging and product analytics remain separate application ports
+- [ ] `debug`, Sentry, and analytics vendors remain behind adapters/factories
+- [ ] Browser infrastructure is application-scoped; request-contextual SSR infrastructure is request-scoped
+- [ ] Consumers receive specific dependencies rather than a runtime/service-locator container
 - [ ] Public error payloads are whitelist-based and do not leak `stack` or other raw diagnostics
 - [ ] Query key strategy (direct tRPC generated keys, `buildTrpcQueryKey` wrapper interop, plain keys for non-tRPC adapters) unchanged
 - [ ] Testing standard unchanged: `__tests__` mirror layout, AAA pattern, test doubles policy (`client/core/testing.md` + `server/core/testing-service-layer.md`)
@@ -159,7 +167,7 @@ After changes are verified, run `copy-guides.sh` once for each consumer repo pat
 ./copy-guides.sh /absolute/path/to/consumer-repo-2
 ```
 
-The script replaces `guides/client/`, `guides/server/`, `guides/legacy/`, and the root guide docs wholesale in each consumer repo.
+The script replaces `guides/client/`, `guides/server/`, `guides/legacy/`, `guides/assets/`, and the root guide docs wholesale in each consumer repo.
 No manual merging is needed.
 
 After syncing, confirm with the user that:

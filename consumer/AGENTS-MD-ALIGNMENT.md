@@ -18,6 +18,7 @@ guides/
     core/          ← MANDATORY for all server work
     runtime/       ← Opt-in per tech stack
   legacy/          ← Historical reference only
+  assets/          ← Standalone interactive HTML guides
   README.md
   AGENTS-MD-ALIGNMENT.md   ← this file
   OPENCODE-INTEGRATION.md  ← OpenCode integration guidance
@@ -79,6 +80,7 @@ Mark which technologies are in use. This determines which guides to include.
 - [ ] Async background jobs (outbox pattern)
 - [ ] Webhooks (inbound)
 - [ ] Express
+- [ ] Hono
 - [ ] NestJS
 
 ---
@@ -92,6 +94,7 @@ guides/client/core/README.md
 guides/client/core/architecture.md
 guides/client/core/conventions.md
 guides/client/core/folder-structure.md
+guides/client/core/composition-root.md
 guides/client/core/client-api-architecture.md
 guides/client/core/domain-logic.md
 guides/client/core/error-handling.md
@@ -100,6 +103,7 @@ guides/client/core/server-state-tanstack-query.md
 guides/client/core/query-keys.md
 guides/client/core/state-management.md
 guides/client/core/logging.md
+guides/client/core/product-analytics.md
 guides/client/core/testing.md
 guides/client/core/testing-vitest.md
 guides/client/core/realtime.md
@@ -110,6 +114,7 @@ guides/client/core/realtime.md
 ```
 guides/server/core/README.md
 guides/server/core/conventions.md
+guides/server/core/controllers.md
 guides/server/core/api-contracts-zod-first.md
 guides/server/core/api-response.md
 guides/server/core/error-handling.md
@@ -162,6 +167,18 @@ guides/server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md         ← on
 guides/server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md        ← only if SEO metadata
 ```
 
+### If Express → add
+
+```
+guides/server/runtime/nodejs/metaframeworks/express/README.md
+```
+
+### If Hono → add
+
+```
+guides/server/runtime/nodejs/metaframeworks/hono/README.md
+```
+
 ### If tRPC → add
 
 ```
@@ -211,6 +228,7 @@ unless your project explicitly uses them:
 | Path | Discard when |
 | --- | --- |
 | `guides/server/runtime/nodejs/metaframeworks/express/` | Not using Express |
+| `guides/server/runtime/nodejs/metaframeworks/hono/` | Not using Hono |
 | `guides/server/runtime/nodejs/metaframeworks/nestjs/` | Not using NestJS |
 | `guides/server/core/webhook/` | No inbound webhooks |
 | `guides/server/core/async-jobs-outbox.md` | No background jobs |
@@ -254,6 +272,7 @@ Read and follow all of these for any client-side work:
 - guides/client/core/architecture.md
 - guides/client/core/conventions.md
 - guides/client/core/folder-structure.md
+- guides/client/core/composition-root.md
 - guides/client/core/client-api-architecture.md
 - guides/client/core/domain-logic.md
 - guides/client/core/error-handling.md
@@ -262,6 +281,7 @@ Read and follow all of these for any client-side work:
 - guides/client/core/query-keys.md
 - guides/client/core/state-management.md
 - guides/client/core/logging.md
+- guides/client/core/product-analytics.md
 - guides/client/core/testing.md
 - guides/client/core/testing-vitest.md
 - guides/client/core/realtime.md
@@ -272,6 +292,7 @@ Read and follow all of these for any server-side work:
 
 - guides/server/core/README.md
 - guides/server/core/conventions.md
+- guides/server/core/controllers.md
 - guides/server/core/api-contracts-zod-first.md
 - guides/server/core/api-response.md
 - guides/server/core/error-handling.md

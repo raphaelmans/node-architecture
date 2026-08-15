@@ -41,6 +41,12 @@ import { getContainer } from '@/shared/infra/container';
 import { UserRepository } from '../repositories/user.repository';
 import { UserService } from '../services/user.service';
 import { RegisterUserUseCase } from '../use-cases/register-user.use-case';
+import {
+  GetUserController,
+  ListUsersController,
+  CreateUserController,
+  RegisterUserController,
+} from '../controllers';
 
 let userRepository: UserRepository | null = null;
 let userService: UserService | null = null;
@@ -66,10 +72,22 @@ export function makeRegisterUserUseCase() {
   return new RegisterUserUseCase(
     makeUserService(),
     makeWorkspaceService(),
-    makeEmailService(),
+    makeNotificationOutbox(),
     getContainer().transactionManager,
   );
 }
+
+export const makeGetUserController = () =>
+  new GetUserController(makeUserService());
+
+export const makeListUsersController = () =>
+  new ListUsersController(makeUserService());
+
+export const makeCreateUserController = () =>
+  new CreateUserController(makeUserService());
+
+export const makeRegisterUserController = () =>
+  new RegisterUserController(makeRegisterUserUseCase());
 ```
 
 ## tRPC Setup
@@ -80,18 +98,23 @@ export function makeRegisterUserUseCase() {
 // shared/infra/trpc/trpc.ts
 
 import { initTRPC, TRPCError } from '@trpc/server';
-import { AppError } from '@/shared/kernel/errors';
+import {
+  AppError,
+  AuthenticationError,
+  type AppErrorKind,
+} from '@/shared/kernel/errors';
 import {
   getPublicErrorMessage,
   canExposeErrorDetails,
   GENERIC_PUBLIC_ERROR_MESSAGE,
 } from '@/shared/kernel/public-error';
-import { logger } from '@/shared/infra/logger';
+import { appLogger } from '@/shared/infra/logger';
+import { APP_ATTRIBUTES } from '@/shared/infra/observability/attributes';
 import type { Context } from './context';
 
 /**
  * Keep only `path` and `zodError` from tRPC shape data.
- * Strips `stack`, `code`, `httpStatus`, and any other internal fields.
+ * Keeps only explicitly public fields and strips all other metadata.
  */
 function pickPublicTrpcShapeData(
   shapeData: Record<string, unknown>,
@@ -108,12 +131,11 @@ const t = initTRPC.context<Context>().create({
     const requestId = ctx?.requestId ?? 'unknown';
 
     if (cause instanceof AppError) {
-      logger.warn(
+      appLogger.warn(
         {
           err: cause,
-          code: cause.code,
-          details: cause.details,
-          requestId,
+          'error.type': cause.code,
+          [APP_ATTRIBUTES.errorDetails]: cause.details,
         },
         cause.message,
       );
@@ -126,14 +148,17 @@ const t = initTRPC.context<Context>().create({
           appCode: cause.code,
           requestId,
           ...(canExposeErrorDetails(cause) &&
-            cause.details && { details: cause.details }),
+            cause.publicDetails && { details: cause.publicDetails }),
         },
       };
     }
 
     // Input validation error — preserve tRPC's BAD_REQUEST shape (Zod messages)
     if (error.code === 'BAD_REQUEST') {
-      ctx?.log.warn({ err: error, requestId }, 'Input validation failed');
+      appLogger.warn(
+        { err: error, 'error.type': 'BAD_REQUEST' },
+        'Input validation failed',
+      );
 
       return {
         ...shape,
@@ -145,7 +170,10 @@ const t = initTRPC.context<Context>().create({
     }
 
     // Unknown error — never expose internals
-    logger.error({ err: error, requestId }, 'Unexpected error');
+    appLogger.error(
+      { err: error, 'error.type': error.constructor.name },
+      'Unexpected error',
+    );
 
     return {
       ...shape,
@@ -166,7 +194,7 @@ export const middleware = t.middleware;
 Transport note:
 
 - Keep the tRPC transport code on the error envelope itself.
-- Do not expose `httpStatus` or duplicate transport `code` inside `shape.data`.
+- Do not duplicate transport status/code metadata inside `shape.data`.
 - Use `shape.data.appCode` for application-specific error codes.
 
 ### Context Creation
@@ -179,13 +207,21 @@ Transport note:
 import { randomUUID } from 'crypto';
 import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import type { Session } from '@/shared/kernel/auth';
-import { createRequestLogger, type Logger } from '@/shared/infra/logger';
+import type { AppLogger } from '@/shared/kernel/logger';
+import { appLogger } from '@/shared/infra/logger';
+import {
+  getObservabilityContext,
+  getTrustedClientIdentifier,
+  getTrustedRequestId,
+} from '@/shared/infra/observability';
 
 export interface Context {
   requestId: string;
   session: Session | null;
   userId: string | null;
-  log: Logger;
+  clientIdentifier: string | null;
+  clientIdentifierSource: "authenticated_user" | "trusted_network" | null;
+  log: AppLogger;
   // For Supabase Auth, also include:
   // cookies: CookieMethodsServer;
   // origin: string;
@@ -195,37 +231,40 @@ export async function createContext(
   opts: FetchCreateContextFnOptions,
 ): Promise<Context> {
   const { req } = opts;
-  
-  const requestId = req.headers.get('x-request-id') ?? randomUUID();
-  
+
+  const requestId =
+    getObservabilityContext()?.requestId ??
+    getTrustedRequestId(req.headers) ??
+    randomUUID();
+
   // Session extraction varies by auth provider:
   // - JWT: parse cookie, verify token
   // - Supabase: use createClient with cookies, call getUser()
   const session = null; // Extract from auth provider
-  
-  const log = createRequestLogger({
-    requestId,
-    userId: session?.userId,
-  });
+  const client = getTrustedClientIdentifier(req.headers);
 
   return {
     requestId,
     session,
     userId: session?.userId ?? null,
-    log,
+    clientIdentifier: session?.userId ?? client?.value ?? null,
+    clientIdentifierSource: session
+      ? 'authenticated_user'
+      : client?.source ?? null,
+    log: appLogger,
   };
 }
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
-  
+
   for (const cookie of cookieHeader.split(';')) {
     const [name, ...rest] = cookie.trim().split('=');
     if (name) {
       cookies[name] = rest.join('=');
     }
   }
-  
+
   return cookies;
 }
 ```
@@ -263,27 +302,84 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 export const router = t.router;
 export const middleware = t.middleware;
 
+const TRPC_CODE_BY_KIND = {
+  validation: 'BAD_REQUEST',
+  authentication: 'UNAUTHORIZED',
+  authorization: 'FORBIDDEN',
+  not_found: 'NOT_FOUND',
+  conflict: 'CONFLICT',
+  business_rule: 'UNPROCESSABLE_CONTENT',
+  rate_limit: 'TOO_MANY_REQUESTS',
+  internal: 'INTERNAL_SERVER_ERROR',
+  bad_gateway: 'BAD_GATEWAY',
+  unavailable: 'SERVICE_UNAVAILABLE',
+  timeout: 'GATEWAY_TIMEOUT',
+} as const satisfies Record<AppErrorKind, string>;
+
+const appErrorMiddleware = t.middleware(async ({ ctx, next }) => {
+  try {
+    return await next({ ctx });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new TRPCError({
+        code: TRPC_CODE_BY_KIND[error.kind],
+        message: error.message,
+        cause: error,
+      });
+    }
+    throw error;
+  }
+});
+
 /**
  * Logger middleware - request lifecycle tracing.
  * Defined inline to avoid circular dependency with middleware exports.
  */
-const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+const loggerMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
   const start = Date.now();
-  
-  ctx.log.info({ type }, 'Request started');
+
+  ctx.log.info(
+    {
+      'otel.event.name': 'rpc.request.started',
+      'rpc.system': 'trpc',
+      'rpc.method': path,
+      [APP_ATTRIBUTES.operationType]: type,
+    },
+    'Request started',
+  );
 
   try {
     const result = await next({ ctx });
     const duration = Date.now() - start;
-    
-    ctx.log.info({ duration, status: 'success', type }, 'Request completed');
-    
+
+    ctx.log.info(
+      {
+        'otel.event.name': 'rpc.request.completed',
+        'rpc.system': 'trpc',
+        'rpc.method': path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: 'success',
+      },
+      'Request completed',
+    );
+
     return result;
   } catch (error) {
     const duration = Date.now() - start;
-    
-    ctx.log.info({ duration, status: 'error', type }, 'Request failed');
-    
+
+    ctx.log.info(
+      {
+        'otel.event.name': 'rpc.request.failed',
+        'rpc.system': 'trpc',
+        'rpc.method': path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: duration,
+        [APP_ATTRIBUTES.operationOutcome]: 'error',
+      },
+      'Request failed',
+    );
+
     throw error;
   }
 });
@@ -305,7 +401,10 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
   });
 });
 
-const baseProcedure = t.procedure.use(loggerMiddleware);
+// Error mapping is outermost so it also handles errors from later middleware.
+const baseProcedure = t.procedure
+  .use(appErrorMiddleware)
+  .use(loggerMiddleware);
 
 export const publicProcedure = baseProcedure;
 
@@ -336,51 +435,67 @@ In Next.js implementations, canonical transport guidance lives at:
 
 ## Router Structure
 
-tRPC routers map to modules. Procedures call factories directly.
+tRPC routers map to modules. Public procedures call controller factories only.
 
 ```typescript
 // modules/user/user.router.ts
 
 import { router, publicProcedure, protectedProcedure } from '@/shared/infra/trpc';
 import { z } from 'zod';
-import { CreateUserSchema } from './dtos/create-user.dto';
-import { RegisterUserSchema } from './dtos/register-user.dto';
-import { makeUserService, makeRegisterUserUseCase } from './factories/user.factory';
+import {
+  CreateUserInputSchema,
+  CreateUserResponseSchema,
+  GetUserResponseSchema,
+  ListUsersInputSchema,
+  ListUsersResponseSchema,
+  RegisterUserInputSchema,
+  RegisterUserResponseSchema,
+} from './shared/contracts';
+import {
+  makeGetUserController,
+  makeListUsersController,
+  makeCreateUserController,
+  makeRegisterUserController,
+} from './factories/user.factory';
 import { wrapResponse } from '@/shared/utils/response';
-import { UserNotFoundError } from './errors/user.errors';
 
 export const userRouter = router({
-  // Read → Service directly
+  // Framework adapter → Controller → Service
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
-      const user = await makeUserService().findById(input.id);
-      if (!user) {
-        throw new UserNotFoundError(input.id);
-      }
-      return wrapResponse(omitSensitive(user));
+    .query(async ({ input, ctx }) => {
+      const result = await makeGetUserController().execute(input, toActor(ctx.session));
+      const response = GetUserResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
-  // List/filter → Service directly
+  // Framework adapter → Controller → Service
   list: protectedProcedure
     .input(ListUsersInputSchema)
-    .query(async ({ input }) => {
-      return makeUserService().list(input);
+    .query(async ({ input, ctx }) => {
+      const page = await makeListUsersController().execute(input, toActor(ctx.session));
+      return {
+        ...page,
+        data: ListUsersResponseSchema.parse(page.data),
+      };
     }),
 
-  // Simple write → Service (owns transaction)
+  // Framework adapter → Controller → Service (service owns transaction)
   create: protectedProcedure
-    .input(CreateUserSchema)
-    .mutation(async ({ input }) => {
-      const user = await makeUserService().create(input);
-      return wrapResponse(omitSensitive(user));
+    .input(CreateUserInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeCreateUserController().execute(input, toActor(ctx.session));
+      const response = CreateUserResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
-  // Multi-service orchestration → Use Case
+  // Framework adapter → Controller → Use Case
   register: publicProcedure
-    .input(RegisterUserSchema)
+    .input(RegisterUserInputSchema)
     .mutation(async ({ input }) => {
-      return makeRegisterUserUseCase().execute(input);
+      const result = await makeRegisterUserController().execute(input);
+      const response = RegisterUserResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 });
 ```
@@ -412,14 +527,17 @@ export type AppRouter = typeof appRouter;
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { appRouter } from '@/shared/infra/trpc/root';
 import { createContext } from '@/shared/infra/trpc/context';
+import { withRequestObservability } from '@/shared/infra/observability';
 
 const handler = (req: Request) =>
-  fetchRequestHandler({
-    endpoint: '/api/trpc',
-    req,
-    router: appRouter,
-    createContext,
-  });
+  withRequestObservability(req, () =>
+    fetchRequestHandler({
+      endpoint: '/api/trpc',
+      req,
+      router: appRouter,
+      createContext,
+    }),
+  );
 
 export { handler as GET, handler as POST };
 ```
@@ -549,7 +667,10 @@ src/
 ├─ modules/
 │  └─ user/
 │     ├─ user.router.ts      # tRPC router
-│     ├─ dtos/
+│     ├─ controllers/        # Framework-neutral capability boundary
+│     ├─ shared/
+│     │  └─ contracts/       # Browser-safe public input/response schemas
+│     ├─ dtos/               # Server-only commands (optional)
 │     ├─ use-cases/
 │     ├─ factories/
 │     ├─ services/
@@ -566,16 +687,17 @@ src/
 
 | Aspect | Generic | Next.js + tRPC |
 |--------|---------|----------------|
-| HTTP Layer | Controllers + Routes | tRPC Routers + Procedures |
-| Request Validation | Manual Zod in controller | Built into tRPC `.input()` |
-| Error Mapping | `handleError` function | tRPC `errorFormatter` |
+| Framework adapter | Next.js/OpenAPI route handler | tRPC router + procedure |
+| Portable boundary | Capability controller | Same capability controller |
+| Request validation | Zod in route adapter | Built into tRPC `.input()` |
+| Error Mapping | `handleError` function | Shared error middleware + `errorFormatter` |
 | DB Client | Created in container | Global singleton for serverless |
 
 ## tRPC vs OpenAPI (Important)
 
 - tRPC procedures are RPC-style and type-coupled to TypeScript clients.
 - OpenAPI endpoints are HTTP resource operations with explicit status/verb/path contracts.
-- Both must call the same domain path (`usecase/service/repository`) and share Zod contracts.
+- Both must call the same capability controller and share Zod input/response contracts.
 - During coexistence, run parity tests before shifting traffic between transports.
 
 ## Checklist
@@ -586,8 +708,10 @@ src/
 - [ ] tRPC context includes `requestId`, `session`, `log`
 - [ ] Logger middleware logs request lifecycle
 - [ ] Auth middleware narrows context to `AuthenticatedContext`
-- [ ] Error formatter maps `AppError` to tRPC errors
+- [ ] Shared middleware maps `AppError.kind` to a tRPC code once
+- [ ] Error formatter sanitizes messages/details and adds `appCode` + `requestId`
 - [ ] Input validation uses Zod schemas in `.input()`
-- [ ] Routers follow: reads → services, writes → services or use cases
+- [ ] Every public procedure calls one framework-neutral controller factory
+- [ ] Controllers follow: simple operations → one service; orchestration → one use case
 - [ ] Root router aggregates all module routers
 - [ ] If OpenAPI also exposes the capability, parity tests are present

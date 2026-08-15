@@ -60,19 +60,21 @@ Create profile requires user identity enrichment via another service, so it uses
 Create Profile (complex orchestration)
 
 transport adapter (tRPC or OpenAPI)
-  -> CreateProfileUseCase
+  -> CreateProfileController
+    -> CreateProfileUseCase
       -> UserService (resolve/validate user.userId)
       -> ProfileService
           -> ProfileRepository
 ```
 
-Update profile is a single-service write, so it can call service directly.
+Update profile is a single-service write, so its controller can call the service directly.
 
 ```text
 Update Profile (single-service write)
 
 transport adapter (tRPC or OpenAPI)
-  -> ProfileService
+  -> UpdateProfileController
+    -> ProfileService
       -> ProfileRepository
 ```
 

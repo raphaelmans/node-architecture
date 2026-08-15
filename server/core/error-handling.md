@@ -5,7 +5,7 @@
 ## Principles
 
 - Errors are explicit and typed
-- HTTP status codes follow REST semantics
+- Kernel errors express semantic kinds; transport adapters map them to protocol codes
 - Client receives structured, safe responses
 - Internal details are logged, never exposed
 - Domain-specific errors for clear API contracts
@@ -16,9 +16,10 @@ Use a hybrid policy so clients get actionable messages for expected failures, wh
 
 - 5xx errors **MUST** return `GENERIC_PUBLIC_ERROR_MESSAGE` — never the original message
 - 4xx errors **MAY** return the domain error message (e.g., "User not found")
-- `details` **MUST** be stripped from 5xx responses (no stack traces, SQL, constraint names)
+- Internal `details` are server-only; only explicitly allowlisted `publicDetails` may serialize on eligible 4xx responses
+- `details` **MUST** be absent from 5xx responses (no stack traces, SQL, constraint names)
 - Never serialize raw SQL/provider/stack messages in response bodies
-- Always log full error context server-side with `requestId`
+- Always log full error context server-side; contextual `AppLogger` adds the namespaced request ID and active trace fields
 
 ### `public-error.ts` — Kernel Utility
 
@@ -31,15 +32,15 @@ import { AppError } from "./errors";
 
 export const GENERIC_PUBLIC_ERROR_MESSAGE = "An unexpected error occurred";
 
-const INTERNAL_CODES = new Set([
-  "INTERNAL_ERROR",
-  "BAD_GATEWAY",
-  "SERVICE_UNAVAILABLE",
-  "GATEWAY_TIMEOUT",
+const INTERNAL_KINDS = new Set<AppError["kind"]>([
+  "internal",
+  "bad_gateway",
+  "unavailable",
+  "timeout",
 ]);
 
 export function isInternalAppError(error: AppError): boolean {
-  return error.httpStatus >= 500 || INTERNAL_CODES.has(error.code);
+  return INTERNAL_KINDS.has(error.kind);
 }
 
 export function getPublicErrorMessage(error: AppError): string {
@@ -50,7 +51,7 @@ export function getPublicErrorMessage(error: AppError): string {
 }
 
 export function canExposeErrorDetails(error: AppError): boolean {
-  return !isInternalAppError(error);
+  return !isInternalAppError(error) && error.publicDetails !== undefined;
 }
 ```
 
@@ -61,16 +62,34 @@ export function canExposeErrorDetails(error: AppError): boolean {
 
 export abstract class AppError extends Error {
   abstract readonly code: string;
-  abstract readonly httpStatus: number;
+  abstract readonly kind: AppErrorKind;
   readonly details?: Record<string, unknown>;
+  readonly publicDetails?: Record<string, unknown>;
 
-  constructor(message: string, details?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    details?: Record<string, unknown>,
+    publicDetails?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = this.constructor.name;
     this.details = details;
-    Error.captureStackTrace(this, this.constructor);
+    this.publicDetails = publicDetails;
   }
 }
+
+export type AppErrorKind =
+  | "validation"
+  | "authentication"
+  | "authorization"
+  | "not_found"
+  | "conflict"
+  | "business_rule"
+  | "rate_limit"
+  | "internal"
+  | "bad_gateway"
+  | "unavailable"
+  | "timeout";
 ```
 
 ## Core Error Classes
@@ -78,70 +97,59 @@ export abstract class AppError extends Error {
 ```typescript
 // shared/kernel/errors.ts
 
-// 400 - Bad Request
 export class ValidationError extends AppError {
   readonly code = "VALIDATION_ERROR";
-  readonly httpStatus = 400;
+  readonly kind = "validation" as const;
 }
 
-// 401 - Unauthorized
 export class AuthenticationError extends AppError {
   readonly code = "AUTHENTICATION_ERROR";
-  readonly httpStatus = 401;
+  readonly kind = "authentication" as const;
 }
 
-// 403 - Forbidden
 export class AuthorizationError extends AppError {
   readonly code = "AUTHORIZATION_ERROR";
-  readonly httpStatus = 403;
+  readonly kind = "authorization" as const;
 }
 
-// 404 - Not Found
 export class NotFoundError extends AppError {
   readonly code = "NOT_FOUND";
-  readonly httpStatus = 404;
+  readonly kind = "not_found" as const;
 }
 
-// 409 - Conflict
 export class ConflictError extends AppError {
   readonly code = "CONFLICT";
-  readonly httpStatus = 409;
+  readonly kind = "conflict" as const;
 }
 
-// 422 - Unprocessable Entity (business rule violations)
 export class BusinessRuleError extends AppError {
   readonly code = "BUSINESS_RULE_VIOLATION";
-  readonly httpStatus = 422;
+  readonly kind = "business_rule" as const;
 }
 
-// 429 - Too Many Requests
 export class RateLimitError extends AppError {
   readonly code = "RATE_LIMIT_EXCEEDED";
-  readonly httpStatus = 429;
+  readonly kind = "rate_limit" as const;
 }
 
-// 500 - Internal Server Error
 export class InternalError extends AppError {
   readonly code = "INTERNAL_ERROR";
-  readonly httpStatus = 500;
+  readonly kind = "internal" as const;
 }
 
-// 502 - Bad Gateway
 export class BadGatewayError extends AppError {
   readonly code = "BAD_GATEWAY";
-  readonly httpStatus = 502;
+  readonly kind = "bad_gateway" as const;
 }
 
-// 503 - Service Unavailable
 export class ServiceUnavailableError extends AppError {
   readonly code = "SERVICE_UNAVAILABLE";
-  readonly httpStatus = 503;
+  readonly kind = "unavailable" as const;
 }
 
-// 504 - Gateway Timeout
 export class GatewayTimeoutError extends AppError {
   readonly code = "GATEWAY_TIMEOUT";
-  readonly httpStatus = 504;
+  readonly kind = "timeout" as const;
 }
 ```
 
@@ -248,12 +256,17 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
 
   if (!result.success) {
-    throw new ValidationError("Validation failed", {
+    const publicDetails = {
       issues: result.error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,
       })),
-    });
+    };
+    throw new ValidationError(
+      "Validation failed",
+      { issueCount: result.error.issues.length },
+      publicDetails,
+    );
   }
 
   return result.data;
@@ -264,10 +277,12 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
 
 ```typescript
 import { validate } from "@/shared/utils/validation";
-import { CreateUserSchema } from "./dtos/create-user.dto";
+import { CreateUserInputSchema } from "@/modules/user/shared/contracts";
 
-const input = validate(CreateUserSchema, req.body);
+const input = validate(CreateUserInputSchema, req.body);
 ```
+
+Runtime HTTP adapters must also translate malformed request encoding/JSON into `ValidationError`. Keep that parser in transport infrastructure; do not make the kernel depend on `Request` or framework types. Response-schema failures remain internal errors because they indicate server contract drift, not invalid client input.
 
 ## Error Response Structure
 
@@ -281,7 +296,7 @@ export interface ApiErrorResponse {
   code: string; // Error code (e.g., "USER_NOT_FOUND")
   message: string; // Public-safe user-facing message
   requestId: string; // For support/debugging
-  details?: Record<string, unknown>; // Optional additional context
+  details?: Record<string, unknown>; // Explicitly allowlisted public context only
 }
 ```
 
@@ -292,10 +307,7 @@ export interface ApiErrorResponse {
 {
   "code": "USER_NOT_FOUND",
   "message": "User not found",
-  "requestId": "req-abc-123",
-  "details": {
-    "userId": "usr-456"
-  }
+  "requestId": "req-abc-123"
 }
 
 // 400 - Validation Error
@@ -323,6 +335,32 @@ export interface ApiErrorResponse {
 
 For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../runtime/nodejs/metaframeworks/nextjs/route-handlers.md`](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
 
+HTTP status is transport mapping, not a property of the kernel error:
+
+```typescript
+// shared/infra/http/error-mapping.ts
+
+import type { AppErrorKind } from "@/shared/kernel/errors";
+
+const HTTP_STATUS_BY_KIND: Record<AppErrorKind, number> = {
+  validation: 400,
+  authentication: 401,
+  authorization: 403,
+  not_found: 404,
+  conflict: 409,
+  business_rule: 422,
+  rate_limit: 429,
+  internal: 500,
+  bad_gateway: 502,
+  unavailable: 503,
+  timeout: 504,
+};
+
+export function toHttpStatus(kind: AppErrorKind): number {
+  return HTTP_STATUS_BY_KIND[kind];
+}
+```
+
 ```typescript
 // shared/infra/http/error-handler.ts
 
@@ -332,7 +370,9 @@ import {
   canExposeErrorDetails,
   GENERIC_PUBLIC_ERROR_MESSAGE,
 } from "@/shared/kernel/public-error";
-import { logger } from "@/shared/infra/logger";
+import { appLogger } from "@/shared/infra/logger";
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+import { toHttpStatus } from "./error-mapping";
 import type { ApiErrorResponse } from "@/shared/kernel/response";
 
 export function handleError(
@@ -341,33 +381,33 @@ export function handleError(
 ): { status: number; body: ApiErrorResponse } {
   // Known application error
   if (error instanceof AppError) {
-    logger.warn(
+    appLogger.warn(
       {
         err: error,
-        code: error.code,
-        details: error.details,
-        requestId,
+        "error.type": error.code,
+        [APP_ATTRIBUTES.errorDetails]: error.details,
       },
       error.message,
     );
 
     return {
-      status: error.httpStatus,
+      status: toHttpStatus(error.kind),
       body: {
         code: error.code,
         message: getPublicErrorMessage(error),
         requestId,
         ...(canExposeErrorDetails(error) &&
-          error.details && { details: error.details }),
+          error.publicDetails && { details: error.publicDetails }),
       },
     };
   }
 
   // Unknown error - log full details, return generic response
-  logger.error(
+  appLogger.error(
     {
       err: error,
-      requestId,
+      "error.type":
+        error instanceof Error ? error.constructor.name : "UnknownError",
     },
     "Unexpected error",
   );
@@ -395,19 +435,20 @@ The formatter has two critical security responsibilities:
 ```typescript
 // shared/infra/trpc/trpc.ts
 
-import { initTRPC } from "@trpc/server";
-import { AppError } from "@/shared/kernel/errors";
+import { initTRPC, TRPCError } from "@trpc/server";
+import { AppError, type AppErrorKind } from "@/shared/kernel/errors";
 import {
   getPublicErrorMessage,
   canExposeErrorDetails,
   GENERIC_PUBLIC_ERROR_MESSAGE,
 } from "@/shared/kernel/public-error";
-import { logger } from "@/shared/infra/logger";
+import { appLogger } from "@/shared/infra/logger";
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
 import type { Context } from "./context";
 
 /**
  * Keep only `path` and `zodError` from tRPC shape data.
- * Strips `stack`, `code`, `httpStatus`, and any other internal fields.
+ * Keeps only explicitly public fields and strips all other transport/internal metadata.
  */
 function pickPublicTrpcShapeData(
   shapeData: Record<string, unknown>,
@@ -425,12 +466,11 @@ const t = initTRPC.context<Context>().create({
 
     // Known application error
     if (cause instanceof AppError) {
-      logger.warn(
+      appLogger.warn(
         {
           err: cause,
-          code: cause.code,
-          details: cause.details,
-          requestId,
+          "error.type": cause.code,
+          [APP_ATTRIBUTES.errorDetails]: cause.details,
         },
         cause.message,
       );
@@ -443,14 +483,17 @@ const t = initTRPC.context<Context>().create({
           appCode: cause.code,
           requestId,
           ...(canExposeErrorDetails(cause) &&
-            cause.details && { details: cause.details }),
+            cause.publicDetails && { details: cause.publicDetails }),
         },
       };
     }
 
     // Input validation error — preserve tRPC's BAD_REQUEST shape (Zod messages)
     if (error.code === "BAD_REQUEST") {
-      ctx?.log.warn({ err: error, requestId }, "Input validation failed");
+      ctx?.log.warn(
+        { err: error, "error.type": "BAD_REQUEST" },
+        "Input validation failed",
+      );
 
       return {
         ...shape,
@@ -462,7 +505,10 @@ const t = initTRPC.context<Context>().create({
     }
 
     // Unknown error — never expose internals
-    logger.error({ err: error, requestId }, "Unexpected error");
+    appLogger.error(
+      { err: error, "error.type": error.constructor.name },
+      "Unexpected error",
+    );
 
     return {
       ...shape,
@@ -475,9 +521,41 @@ const t = initTRPC.context<Context>().create({
     };
   },
 });
+
+const TRPC_CODE_BY_KIND = {
+  validation: "BAD_REQUEST",
+  authentication: "UNAUTHORIZED",
+  authorization: "FORBIDDEN",
+  not_found: "NOT_FOUND",
+  conflict: "CONFLICT",
+  business_rule: "UNPROCESSABLE_CONTENT",
+  rate_limit: "TOO_MANY_REQUESTS",
+  internal: "INTERNAL_SERVER_ERROR",
+  bad_gateway: "BAD_GATEWAY",
+  unavailable: "SERVICE_UNAVAILABLE",
+  timeout: "GATEWAY_TIMEOUT",
+} as const satisfies Record<AppErrorKind, string>;
+
+const appErrorMiddleware = t.middleware(async ({ ctx, next }) => {
+  try {
+    return await next({ ctx });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new TRPCError({
+        code: TRPC_CODE_BY_KIND[error.kind],
+        message: error.message,
+        cause: error,
+      });
+    }
+    throw error;
+  }
+});
+
+// Every procedure starts from this base before auth/rate-limit middleware.
+const baseProcedure = t.procedure.use(appErrorMiddleware);
 ```
 
-The transport-level tRPC code remains on the error envelope itself (`error.code`). Do not mirror transport `code` or `httpStatus` into `shape.data`. Put application-specific error codes in `shape.data.appCode`.
+The transport-level tRPC code remains on the error envelope itself (`error.code`) and is derived centrally from `AppError.kind`. Put the application-specific error code in `shape.data.appCode`. Routers do not repeat error-kind mapping.
 
 ## Error Flow by Layer
 
@@ -486,14 +564,15 @@ The transport-level tRPC code remains on the error envelope itself (`error.code`
 | Repository        | Domain errors (from caught DB constraints)               | Known Postgres constraint violations (e.g., `23505`)   |
 | Service           | Domain-specific errors, `BusinessRuleError`              | Nothing (let bubble)                                   |
 | Use Case          | Domain-specific errors                                   | Nothing (let bubble)                                   |
-| Router/Controller | `NotFoundError` for null results                         | Optional module-specific mapping; otherwise let bubble |
+| Controller        | Capability-level `NotFoundError` for null results       | Nothing; let shared transport mapping handle it        |
+| Framework Adapter | Transport parsing errors                                 | Nothing per route; shared transport mapping handles it |
 
 **Example flow:**
 
 ```typescript
 // Repository - returns null, doesn't throw
-async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-  const client = this.getClient(ctx);
+async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+  const client = this.getClient(options);
   const result = await client
     .select()
     .from(users)
@@ -504,9 +583,9 @@ async findById(id: string, ctx?: RequestContext): Promise<User | null> {
 }
 
 // Service - business logic errors
-async delete(id: string, ctx?: RequestContext): Promise<void> {
-  const exec = async (ctx: RequestContext) => {
-    const user = await this.userRepository.findById(id, ctx);
+async delete(id: string, options?: TransactionOptions): Promise<void> {
+  const exec = async (transactionOptions: TransactionOptions) => {
+    const user = await this.userRepository.findById(id, transactionOptions);
     if (!user) {
       throw new UserNotFoundError(id);
     }
@@ -515,32 +594,34 @@ async delete(id: string, ctx?: RequestContext): Promise<void> {
       throw new UserCannotDeleteOwnerError(id);
     }
 
-    await this.userRepository.delete(id, ctx);
+    await this.userRepository.delete(id, transactionOptions);
   };
 
-  if (ctx?.tx) {
-    return exec(ctx);
+  if (options?.tx) {
+    return exec(options);
   }
   return this.transactionManager.run((tx) => exec({ tx }));
 }
 
-// Router - handles null from findById
-getById: protectedProcedure
-  .input(z.object({ id: z.string() }))
-  .query(async ({ input }) => {
-    const user = await makeUserService().findById(input.id);
+// Framework-neutral controller - handles capability-level null
+class GetUserController {
+  constructor(private readonly users: IUserService) {}
+
+  async execute(input: GetUserInput): Promise<GetUserResponse> {
+    const user = await this.users.findById(input.id);
     if (!user) {
       throw new UserNotFoundError(input.id);
     }
-    return wrapResponse(omitSensitive(user));
-  }),
+    return toUserResponse(user);
+  }
+}
 
-// Router - errors from service bubble up to formatter
+// Framework adapter - errors from the controller bubble to shared mapping
 delete: protectedProcedure
   .input(z.object({ id: z.string() }))
   .mutation(async ({ input }) => {
-    await makeUserService().delete(input.id);
-    return { success: true };
+    const result = await makeDeleteUserController().execute(input);
+    return DeleteUserResponseSchema.parse(result);
   }),
 ```
 
@@ -589,9 +670,9 @@ import { OrganizationSlugConflictError } from "../errors/organization.errors";
 export class OrganizationRepository implements IOrganizationRepository {
   async create(
     data: OrganizationInsert,
-    ctx?: RequestContext,
+    options?: TransactionOptions,
   ): Promise<Organization> {
-    const client = this.getClient(ctx);
+    const client = this.getClient(options);
 
     try {
       const result = await client
@@ -625,8 +706,8 @@ Every error passes through a chain of layers before reaching the client. Each la
 |-------|---------------|---------|
 | **Repository** | Catch known DB constraints → throw domain error; re-throw unknown | `23505` → `OrganizationSlugConflictError` |
 | **Service** | Throw domain errors only; never catch-and-wrap unknown errors | `throw new UserNotFoundError(id)` |
-| **Router error handler** | Re-throw as `TRPCError({ cause: appError })` so formatter controls exposure | `throw new TRPCError({ code: "NOT_FOUND", cause: error })` |
-| **Formatter** | Always call `getPublicErrorMessage()` and `canExposeErrorDetails()` | 5xx → generic message; 4xx → domain message |
+| **Transport error middleware** | Map `AppError.kind` once and preserve the error as `cause` | `not_found` -> tRPC `NOT_FOUND` or HTTP `404` |
+| **Formatter** | Always call `getPublicErrorMessage()` and expose only explicit `publicDetails` | 5xx → generic message; 4xx → domain message |
 
 **Safety invariant:** At no point in this chain should a raw library or database error message appear in a client response.
 
@@ -640,7 +721,9 @@ If an error is NOT an `AppError` (e.g., a raw Postgres error that wasn't caught 
 
 This is the **last line of defense**. Catching DB errors in the repository is the first.
 
-## HTTP Status Code Reference
+## HTTP Status Mapping Reference
+
+These are adapter mappings. The kernel classes expose `kind`, not an HTTP status.
 
 | Status | Class                     | When to Use                                     |
 | ------ | ------------------------- | ----------------------------------------------- |
@@ -685,7 +768,7 @@ Clients can determine retry behavior from status code:
 
 ### Base Infrastructure
 - [ ] Base `AppError` class in `shared/kernel/errors.ts`
-- [ ] Core error classes for common HTTP statuses (400, 401, 403, 404, 409, 422, 429, 500, 502, 503, 504)
+- [ ] Core error classes expose semantic `kind` values with no HTTP/tRPC dependency
 - [ ] `public-error.ts` in kernel with `getPublicErrorMessage`, `canExposeErrorDetails`, `isInternalAppError`
 - [ ] `GENERIC_PUBLIC_ERROR_MESSAGE` constant used (never hardcoded strings)
 - [ ] Validation helper wraps Zod errors into `ValidationError`
@@ -697,7 +780,7 @@ Every domain error class MUST have:
 ```typescript
 export class <Entity><ErrorType>Error extends <BaseError> {
   readonly code = '<MODULE>_<ERROR_TYPE>';  // REQUIRED - unique code
-  
+
   constructor(<params>) {
     super('<message>', { <details> });
   }
@@ -707,8 +790,10 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 **Checklist for each domain error:**
 - [ ] Extends appropriate base class (`NotFoundError`, `ConflictError`, `AuthenticationError`, etc.)
 - [ ] Has `readonly code` property with unique value
+- [ ] Inherits the correct transport-neutral `kind` from its base class
 - [ ] Code format: `<MODULE>_<ERROR_TYPE>` in SCREAMING_SNAKE_CASE
 - [ ] Constructor passes relevant IDs to `details` object
+- [ ] Client-visible metadata is separately allowlisted in `publicDetails`; internal `details` never serialize implicitly
 - [ ] Message is user-safe (no internal details)
 
 **Common error codes by module:**
@@ -725,9 +810,9 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 
 ### Error Handler / tRPC Error Formatter
 - [ ] Error handler attaches `requestId` to all responses
-- [ ] Error logs include `requestId` field
-- [ ] Known errors (`AppError`) logged at `warn` level with `code`, `details`, `requestId`
-- [ ] Unknown errors logged at `error` level with full stack and `requestId`
+- [ ] Request-scoped error logs include the namespaced request ID through contextual `AppLogger`
+- [ ] Known errors (`AppError`) logged at `warn` level with `error.type` and safe details
+- [ ] Unknown errors logged at `error` level with full stack and `error.type`
 - [ ] Client response includes `code`, `message`, `requestId`, optional `details`
 - [ ] Client never receives stack traces or internal details
 - [ ] Formatter calls `getPublicErrorMessage()` — never passes raw `shape.message` through
@@ -736,15 +821,21 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Application error codes use `appCode` field (not `code`, which is tRPC's)
 
 ```typescript
-// CORRECT - requestId included in logs
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
+// CORRECT - correlation is supplied by contextual AppLogger
 ctx?.log.warn(
-  { err: cause, code: cause.code, details: cause.details, requestId },
+  {
+    err: cause,
+    "error.type": cause.code,
+    [APP_ATTRIBUTES.errorDetails]: cause.details,
+  },
   cause.message,
 );
 
-// WRONG - missing requestId
+// WRONG - caller manually serializes correlation fields
 ctx?.log.warn(
-  { err: cause, code: cause.code, details: cause.details },
+  { err: cause, requestId, traceId, spanId },
   cause.message,
 );
 ```
@@ -768,5 +859,5 @@ if (!result.user) {
 ### Router Layer
 - [ ] Router handles null returns from service
 - [ ] Router throws appropriate domain error for null
-- [ ] Add per-router error handler only when module-specific tRPC code mapping is needed (see `server/core/conventions.md`)
+- [ ] Let domain errors bubble to the shared transport mapping
 - [ ] Unknown errors re-thrown to the global formatter

@@ -51,9 +51,9 @@ Since the database generates IDs, repositories don't need to provide them:
 export class UserRepository {
   async create(
     data: Omit<UserInsert, "id">,
-    ctx?: RequestContext,
+    options?: TransactionOptions,
   ): Promise<User> {
-    const client = ctx?.tx ?? this.db;
+    const client = options?.tx ?? this.db;
 
     const result = await client
       .insert(users)
@@ -88,7 +88,7 @@ export type UserInsert = z.infer<typeof UserInsertSchema>;
 For endpoints that receive IDs as input:
 
 ```typescript
-// modules/user/dtos/get-user.dto.ts
+// modules/user/shared/contracts/user.contract.ts
 
 import { z } from "zod";
 
@@ -156,8 +156,8 @@ function isPrimaryKeyViolation(error: unknown): boolean {
 import { withRetryOnCollision } from "@/shared/utils/db";
 
 export class UserRepository {
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    const client = ctx?.tx ?? this.db;
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    const client = options?.tx ?? this.db;
 
     return withRetryOnCollision(async () => {
       const result = await client.insert(users).values(data).returning();
@@ -193,18 +193,18 @@ export function generateId(): string {
 - Idempotency keys
 
 ```typescript
-// Example: Need ID before insert
+// Example: use case needs the ID for two transactional records
 const userId = generateId();
-await Promise.all([
-  userRepository.createWithId(userId, userData),
-  auditService.log("user.created", { userId }), // Need ID immediately
-]);
+await transactionManager.run(async (tx) => {
+  await userService.createWithId(userId, userData, { tx });
+  await auditRecordWriter.append({ action: "user.created", userId }, { tx });
+});
 ```
 
 ## Checklist
 
 - [ ] All tables use `uuid('id').primaryKey().defaultRandom()`
 - [ ] Insert types omit `id` field
-- [ ] DTOs validate IDs with `z.string().uuid()`
+- [ ] Shared API contracts validate IDs with `z.string().uuid()`
 - [ ] `withRetryOnCollision()` utility in `shared/utils/db.ts`
 - [ ] `generateId()` utility available for edge cases

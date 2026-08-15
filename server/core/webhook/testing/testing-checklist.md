@@ -49,7 +49,9 @@
 
 - [ ] Success response matches envelope schema (`received: true`, `eventId`, `processed`)
 - [ ] Errors use standard error envelope and codes
-- [ ] Logs include `provider`, `eventType`, `eventId`, `requestId`
+- [ ] Logs use `APP_ATTRIBUTES` for provider/event metadata and contextual request ID
+- [ ] Operational event names use `otel.event.name`
+- [ ] Trace correlation uses `trace_id`, `span_id`, and `trace_flags`
 - [ ] Logs emit: `webhook.received`, `webhook.processed`, `webhook.skipped`, `webhook.failed`
 
 ---

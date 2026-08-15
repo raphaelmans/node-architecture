@@ -88,37 +88,54 @@ import { randomUUID } from 'crypto';
 import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import type { Session } from '@/shared/kernel/auth';
 import { verifySessionToken } from '@/shared/infra/auth/session';
-import { createRequestLogger, type Logger } from '@/shared/infra/logger';
+import {
+  createSessionCookieWriter,
+  type SessionCookieWriter,
+} from '@/shared/infra/auth/session-cookies';
+import type { AppLogger } from '@/shared/kernel/logger';
+import { appLogger } from '@/shared/infra/logger';
+import {
+  getObservabilityContext,
+  getTrustedClientIdentifier,
+  getTrustedRequestId,
+} from '@/shared/infra/observability';
 
 export interface Context {
   requestId: string;
   session: Session | null;
   userId: string | null;
-  log: Logger;
+  clientIdentifier: string | null;
+  clientIdentifierSource: "authenticated_user" | "trusted_network" | null;
+  log: AppLogger;
+  responseCookies: SessionCookieWriter;
 }
 
 export async function createContext(
   opts: FetchCreateContextFnOptions,
 ): Promise<Context> {
   const { req } = opts;
-  
-  const requestId = req.headers.get('x-request-id') ?? randomUUID();
-  
+
+  const requestId =
+    getObservabilityContext()?.requestId ??
+    getTrustedRequestId(req.headers) ??
+    randomUUID();
+
   const cookies = parseCookies(req.headers.get('cookie') ?? '');
   const token = cookies['session_token'];
-  
+
   const session = token ? await verifySessionToken(token) : null;
-  
-  const log = createRequestLogger({
-    requestId,
-    userId: session?.userId,
-  });
+  const client = getTrustedClientIdentifier(req.headers);
 
   return {
     requestId,
     session,
     userId: session?.userId ?? null,
-    log,
+    clientIdentifier: session?.userId ?? client?.value ?? null,
+    clientIdentifierSource: session
+      ? 'authenticated_user'
+      : client?.source ?? null,
+    log: appLogger,
+    responseCookies: createSessionCookieWriter(),
   };
 }
 ```
@@ -172,17 +189,47 @@ export const authMiddleware = middleware(async ({ ctx, next }) => {
 ```typescript
 // shared/infra/trpc/trpc.ts
 
+import { APP_ATTRIBUTES } from '@/shared/infra/observability/attributes';
+
 // Middleware defined inline to avoid circular dependencies
-const loggerMiddleware = t.middleware(async ({ ctx, next, type }) => {
+const loggerMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
   const start = Date.now();
-  ctx.log.info({ type }, 'Request started');
-  
+  ctx.log.info(
+    {
+      'otel.event.name': 'rpc.request.started',
+      'rpc.system': 'trpc',
+      'rpc.method': path,
+      [APP_ATTRIBUTES.operationType]: type,
+    },
+    'Request started',
+  );
+
   try {
     const result = await next({ ctx });
-    ctx.log.info({ duration: Date.now() - start, status: 'success', type }, 'Request completed');
+    ctx.log.info(
+      {
+        'otel.event.name': 'rpc.request.completed',
+        'rpc.system': 'trpc',
+        'rpc.method': path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: Date.now() - start,
+        [APP_ATTRIBUTES.operationOutcome]: 'success',
+      },
+      'Request completed',
+    );
     return result;
   } catch (error) {
-    ctx.log.info({ duration: Date.now() - start, status: 'error', type }, 'Request failed');
+    ctx.log.info(
+      {
+        'otel.event.name': 'rpc.request.failed',
+        'rpc.system': 'trpc',
+        'rpc.method': path,
+        [APP_ATTRIBUTES.operationType]: type,
+        [APP_ATTRIBUTES.durationMs]: Date.now() - start,
+        [APP_ATTRIBUTES.operationOutcome]: 'error',
+      },
+      'Request failed',
+    );
     throw error;
   }
 });
@@ -198,7 +245,8 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
   return next({ ctx: ctx as AuthenticatedContext });
 });
 
-const baseProcedure = t.procedure.use(loggerMiddleware);
+// `baseProcedure` is defined in the shared tRPC setup and already applies
+// central `AppError.kind` mapping before `loggerMiddleware`.
 
 /**
  * Public procedure - no authentication required.
@@ -235,7 +283,7 @@ interface SessionPayload extends JWTPayload {
 
 export async function createSessionToken(session: Session): Promise<string> {
   const secret = new TextEncoder().encode(config.auth.jwtSecret);
-  
+
   const token = await new SignJWT({
     userId: session.userId,
     email: session.email,
@@ -253,7 +301,7 @@ export async function createSessionToken(session: Session): Promise<string> {
 export async function verifySessionToken(token: string): Promise<Session | null> {
   try {
     const secret = new TextEncoder().encode(config.auth.jwtSecret);
-    
+
     const { payload } = await jwtVerify(token, secret);
     const data = payload as SessionPayload;
 
@@ -324,9 +372,9 @@ export function createCookie(
   options: CookieOptions = {},
 ): string {
   const opts = { ...SESSION_COOKIE_OPTIONS, ...options };
-  
+
   let cookie = `${name}=${value}`;
-  
+
   if (opts.maxAge !== undefined) cookie += `; Max-Age=${opts.maxAge}`;
   if (opts.expires) cookie += `; Expires=${opts.expires.toUTCString()}`;
   if (opts.path) cookie += `; Path=${opts.path}`;
@@ -350,61 +398,54 @@ export const SESSION_COOKIE_NAME = 'session_token';
 ```typescript
 // modules/auth/auth.router.ts
 
-import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from '@/shared/infra/trpc';
-import { makeAuthUseCase } from './factories/auth.factory';
-import { createCookie, createExpiredCookie, SESSION_COOKIE_NAME } from '@/shared/infra/auth/cookies';
-
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-  password: z.string().min(8).max(100),
-});
+import {
+  makeLoginController,
+  makeRegisterController,
+} from './factories/auth.factory';
+import { wrapResponse } from '@/shared/utils/response';
+import {
+  AuthResponseSchema,
+  CurrentSessionResponseSchema,
+  LoginInputSchema,
+  LogoutResponseSchema,
+  RegisterUserInputSchema,
+} from './shared/contracts';
 
 export const authRouter = router({
   login: publicProcedure
-    .input(LoginSchema)
-    .mutation(async ({ input }) => {
-      const result = await makeAuthUseCase().login(input);
-
-      return {
-        user: result.user,
-        cookie: createCookie(SESSION_COOKIE_NAME, result.token),
-      };
+    .input(LoginInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeLoginController().execute(input);
+      ctx.responseCookies.setSession(result.sessionToken);
+      return wrapResponse(AuthResponseSchema.parse(result.response));
     }),
 
   register: publicProcedure
-    .input(RegisterSchema)
-    .mutation(async ({ input }) => {
-      const result = await makeAuthUseCase().register(input);
-
-      return {
-        user: result.user,
-        cookie: createCookie(SESSION_COOKIE_NAME, result.token),
-      };
+    .input(RegisterUserInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeRegisterController().execute(input);
+      ctx.responseCookies.setSession(result.sessionToken);
+      return wrapResponse(AuthResponseSchema.parse(result.response));
     }),
 
-  logout: protectedProcedure.mutation(async () => {
-    return {
-      success: true,
-      cookie: createExpiredCookie(SESSION_COOKIE_NAME),
-    };
+  logout: protectedProcedure.mutation(async ({ ctx }) => {
+    ctx.responseCookies.clearSession();
+    return wrapResponse(LogoutResponseSchema.parse({ success: true }));
   }),
 
   me: protectedProcedure.query(async ({ ctx }) => {
-    return {
+    const response = CurrentSessionResponseSchema.parse({
       id: ctx.session.userId,
       email: ctx.session.email,
       role: ctx.session.role,
-    };
+    });
+    return wrapResponse(response);
   }),
 });
 ```
+
+`responseCookies` is transport infrastructure. It writes an HTTP-only, secure, same-site cookie through the framework response mechanism. Session tokens/cookie strings never appear in the shared response payload, logs, or product analytics.
 
 ## Authorization Patterns
 
@@ -462,21 +503,30 @@ export function requirePermission(permission: Permission) {
 // modules/user/user.router.ts
 
 import { requirePermission } from '@/shared/infra/trpc/middleware/authorize.middleware';
+import { wrapResponse } from '@/shared/utils/response';
+import {
+  DeleteUserResponseSchema,
+  ListUsersResponseSchema,
+} from './shared/contracts';
 
 export const userRouter = router({
   // Any authenticated user can read
   list: protectedProcedure
-    .query(async () => {
-      return makeUserService().list();
+    .query(async ({ ctx }) => {
+      const page = await makeListUsersController().execute({}, toActor(ctx.session));
+      return {
+        ...page,
+        data: ListUsersResponseSchema.parse(page.data),
+      };
     }),
 
   // Only admins can delete users
   delete: protectedProcedure
     .use(requirePermission('manage_users'))
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      await makeUserService().delete(input.id);
-      return { success: true };
+    .mutation(async ({ input, ctx }) => {
+      const result = await makeDeleteUserController().execute(input, toActor(ctx.session));
+      return wrapResponse(DeleteUserResponseSchema.parse(result));
     }),
 });
 ```
@@ -504,12 +554,12 @@ export class WorkspaceService {
 
   async getById(workspaceId: string, userId: string): Promise<Workspace> {
     await this.assertAccess(workspaceId, userId);
-    
+
     const workspace = await this.workspaceRepository.findById(workspaceId);
     if (!workspace) {
       throw new WorkspaceNotFoundError(workspaceId);
     }
-    
+
     return workspace;
   }
 }
@@ -522,8 +572,12 @@ export const workspaceRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
-      // Service handles authorization
-      return makeWorkspaceService().getById(input.id, ctx.userId);
+      // Controller delegates resource authorization to the service policy.
+      const result = await makeGetWorkspaceController().execute(
+        input,
+        toActor(ctx.session),
+      );
+      return wrapResponse(GetWorkspaceResponseSchema.parse(result));
     }),
 });
 ```

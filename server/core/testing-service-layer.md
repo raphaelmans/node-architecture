@@ -1,6 +1,6 @@
-# Service Layer Testability Standard
+# Server Layer Testability Standard
 
-> Canonical testing standard for controller/usecase/service/repository layers.
+> Canonical testing standard for framework-adapter/controller/usecase/service/repository layers.
 
 ## Folder Structure: `__tests__` Mirror Layout
 
@@ -10,14 +10,25 @@ Never colocate test files next to source files.
 ```text
 src/
   __tests__/
+    app/
+      api/
+        <resource>/
+          route.test.ts                  # Next.js adapter behavior
     lib/
       modules/
         <module>/
-          <module>.controller.test.ts   # input validation, error mapping
-          <module>.service.test.ts      # domain rules, SRP behavior
-          <module>.repository.test.ts   # persistence contract, query semantics
-          <module>.usecase.test.ts      # orchestration (if usecase layer present)
+          <module>.router.test.ts       # tRPC adapter behavior
+          controllers/
+            <capability>.controller.test.ts # mapping + delegation
+          services/
+            <module>.service.test.ts    # domain rules, SRP behavior
+          repositories/
+            <module>.repository.test.ts # persistence contract, query semantics
+          use-cases/
+            <capability>.use-case.test.ts # orchestration (when present)
           shared/
+            contracts/
+              <capability>.contract.test.ts # canonical wire schema tests
             domain.test.ts              # shared pure domain rules
       shared/
         infra/
@@ -25,17 +36,22 @@ src/
             error-handler.test.ts
 ```
 
-Navigation rule: `src/lib/modules/<module>/<module>.service.ts` → `src/__tests__/lib/modules/<module>/<module>.service.test.ts`.
+Navigation rule: `src/lib/modules/<module>/services/<module>.service.ts` → `src/__tests__/lib/modules/<module>/services/<module>.service.test.ts`.
 
 ## Architecture Flow (Canonical)
 
 The server flow is:
 
-`controller -> usecase (optional) -> service -> repository`
+```text
+framework adapter -> controller
+                         ├─> service -> repository/provider
+                         └─> usecase -> service(s) -> repository/provider(s)
+```
 
 Where:
 
-- `controller` handles transport concerns
+- `framework adapter` handles transport/framework concerns
+- `controller` is framework-neutral and maps the public capability boundary
 - `usecase` is optional and only used for complex orchestration/side effects
 - `service` owns SRP domain logic
 - `repository` owns persistence logic
@@ -44,8 +60,8 @@ Where:
 
 These are mandatory for new and modified modules.
 
-- Dependencies across service/usecase/repository boundaries MUST be interface-based.
-- Constructors in service and usecase classes MUST accept interface types, not concrete classes.
+- Dependencies across controller/usecase/service/repository boundaries MUST be interface-based.
+- Constructors in controller, service, and usecase classes MUST accept interface types, not concrete classes.
 - Each module MUST have layer-appropriate tests for all implemented layers.
 - Test doubles MUST be used at boundaries to keep layer tests isolated and deterministic.
 - External/provider boundaries MUST include contract/regression tests with fixtures where applicable.
@@ -72,10 +88,13 @@ Execution rules:
 
 | Layer | Required tests | Typical doubles |
 | --- | --- | --- |
-| Controller/Router | input validation, envelope/error mapping, boundary auth/rate-limit behavior | stubs/fakes for downstream calls |
+| Shared API contract | representative valid/invalid wire payloads, sensitive-field exclusion, serialization boundaries | no doubles; table-driven Zod parsing |
+| Framework adapter | malformed-body/input validation, envelope/error mapping, boundary auth/rate-limit/observability behavior | controller stub returned by a mocked controller factory |
+| Controller | input-to-command and actor mapping, null-to-domain-error decisions, exactly one downstream call, public response mapping | use-case or service interface stub/spy |
 | Use Case (if present) | orchestration sequence, transaction boundaries, side effects order | spies/mocks for service interfaces |
 | Service | domain rules, SRP behavior, null/not-found semantics, transaction participation decisions | fakes/stubs for repositories + tx manager |
 | Repository | query/persistence contract, transaction context handling, null behavior | integration harness or DB test doubles |
+| Observability/analytics adapters | context isolation, structured fields, vendor mapping, partial destination failure | logger/analytics spies and fixture-backed adapter tests |
 
 ## Test Doubles Policy (Global)
 
@@ -104,6 +123,8 @@ Bugfix rule:
 
 - each bug fix MUST add/adjust a fixture or test case that would have caught the bug.
 
+The shared Zod payload contract is tested once in `src/__tests__/lib/modules/<module>/shared/contracts/`. Client and server transport tests verify envelope + payload integration with that schema but do not maintain competing copies of its validation cases.
+
 ## Contract Testing Scope
 
 Contract/regression tests are REQUIRED when modules cross unstable boundaries, including:
@@ -131,8 +152,9 @@ Create profile is orchestration-heavy and should be tested through a use case bo
 ```text
 create profile path
 
-controller/router (tRPC or OpenAPI)
-  -> CreateProfileUseCase
+framework adapter (tRPC, Next.js, Express, Hono, or OpenAPI)
+  -> CreateProfileController
+    -> CreateProfileUseCase
       -> UserService (resolve/validate user.userId)
       -> ProfileService
           -> ProfileRepository
@@ -143,24 +165,27 @@ Update profile is single-service and should be tested as controller->service pat
 ```text
 update profile path
 
-controller/router (tRPC or OpenAPI)
-  -> ProfileService
+framework adapter (tRPC, Next.js, Express, Hono, or OpenAPI)
+  -> UpdateProfileController
+    -> ProfileService
       -> ProfileRepository
 ```
 
 Recommended test split:
 
 - `CreateProfileUseCase` unit tests: orchestration order, tx boundary, user dependency behavior
+- `CreateProfileController` unit tests: public input/actor mapping and public response mapping
 - `ProfileService` unit tests: update rules and repository interaction
 - transport adapter tests: input/error mapping for each endpoint/procedure
 
 ## Layer-Specific Guidance
 
-### Controller/Router
+### Framework Adapter
 
 - Test request parsing and schema validation paths.
 - Test known domain errors and unknown errors map to correct response contracts.
-- Do not test business rules here; stub downstream service/usecase.
+- Test response-schema drift is sanitized as an internal error, not reported as client validation failure.
+- Do not test command mapping or business rules here; stub the controller.
 
 **Concrete Pattern: `createCaller` + Factory Mock**
 
@@ -168,8 +193,7 @@ Router tests use `vi.mock` at the module level to replace factory functions, the
 
 ```typescript
 vi.mock("@/modules/reservation/factories/reservation.factory", () => ({
-  makeReservationService: vi.fn(),
-  makeProfileService: vi.fn(),
+  makeGetReservationController: vi.fn(),
 }));
 
 describe("reservationRouter", () => {
@@ -177,38 +201,51 @@ describe("reservationRouter", () => {
     // Arrange
     const fakeContext = createFakeContext({ userId: "user-1" });
     const caller = reservationRouter.createCaller(fakeContext);
-    const reservationServiceStub = {
-      findById: vi.fn().mockResolvedValue(mockReservation),
-    } as Pick<IReservationService, "findById">;
-    vi.mocked(makeReservationService).mockReturnValue(
-      reservationServiceStub as IReservationService,
+    const controllerStub = {
+      execute: vi.fn().mockResolvedValue(mockReservationResponse),
+    } as IGetReservationController;
+    vi.mocked(makeGetReservationController).mockReturnValue(
+      controllerStub,
     );
 
     // Act
     const result = await caller.getById({ id: "res-1" });
 
     // Assert
-    expect(result).toEqual(expect.objectContaining({ id: "res-1" }));
+    expect(GetReservationResponseSchema.parse(result)).toEqual(
+      expect.objectContaining({ id: "res-1" }),
+    );
   });
 });
 ```
 
 Rules:
-- Mock factory functions, not service constructors
+- Mock controller factory functions, not controller/service/use-case constructors
 - Use `createCaller(fakeContext)` to invoke procedures without HTTP
-- Assert both success responses and error handler mapping
+- Assert the shared response contract and central error mapping integration
+
+### Controller
+
+- Test with plain contract/application values; do not construct framework requests or tRPC context.
+- Stub the one service or use-case interface selected by the controller.
+- Verify public input and actor values map to the expected internal command.
+- Verify capability-level `null` becomes the correct typed domain error.
+- Verify internal entities/results map to the shared response shape, including serialization such as `Date` to ISO strings.
+- Keep transaction, orchestration, and domain-rule assertions in the owning use-case/service tests.
 
 ### Use Case
 
 - Verify orchestration decisions, call ordering, and side-effect timing.
 - Verify transaction scope boundaries (inside vs outside tx work).
 - Use service interface doubles; no DB/network dependencies in usecase unit tests.
+- Inject `AppLogger` and `ProductAnalytics` spies when the use case emits operational logs or product events.
+- Assert structured fields and typed events; do not depend on Pino, Mixpanel, or Google Analytics in unit tests.
 
 ### Service
 
 - Test pure domain rules and branching.
 - Test behavior with repository returning null/conflict/existing states.
-- Test transaction participation (`ctx.tx` path) vs self-owned transactions.
+- Test transaction participation (`options.tx` path) vs self-owned transactions.
 
 **Concrete Pattern: Harness Factory**
 
@@ -241,13 +278,54 @@ This provides typed partial stubs for all repository dependencies without touchi
 ### Repository
 
 - Validate persistence semantics and query filters.
-- Validate `ctx.tx` vs base client usage.
+- Validate `options.tx` vs base client usage.
 - Keep domain rule assertions out of repository tests.
+
+### Logging and Product Analytics
+
+Keep the ports independent in tests:
+
+```typescript
+const logger = createLoggerSpy();
+const analytics = createProductAnalyticsSpy();
+
+const useCase = new CreateUserUseCase(
+  userService,
+  logger,
+  analytics,
+);
+
+await useCase.execute(input);
+
+expect(logger.info).toHaveBeenCalledWith(
+  {
+    "otel.event.name": "user.created",
+    "code.function.name": "CreateUserUseCase.execute",
+    "user.id": "user-1",
+  },
+  "User created",
+);
+expect(analytics.track).toHaveBeenCalledWith({
+  name: "user_created",
+  userId: "user-1",
+  properties: { signupMethod: "email" },
+});
+```
+
+Required boundaries:
+
+- A logger failure must not change business behavior.
+- A direct analytics delivery failure must not fail a committed business operation.
+- Composite analytics tests verify that one rejected destination does not prevent the others.
+- Outbox tests verify the domain write and analytics delivery intent commit or roll back together.
+- Async observability integration tests verify concurrent requests do not share `requestId`, `traceId`, or `spanId`.
 
 ## Anti-Patterns
 
 - Over-mocking internals instead of asserting behavior
 - Testing service logic through controller tests only
+- Testing controller mapping through framework-adapter tests only
+- Mocking service/use-case factories in framework-adapter tests instead of the controller factory
 - Skipping fixtures for unstable boundary contracts
 - Using concrete class dependencies that block isolated unit tests
 - Asserting fragile log message strings instead of structured fields
@@ -256,8 +334,11 @@ This provides typed partial stubs for all repository dependencies without touchi
 ## Related Docs
 
 - `./conventions.md`
+- `./controllers.md`
 - `./transaction.md`
 - `./error-handling.md`
+- `./observability.md`
+- `./product-analytics.md`
 - `./rate-limiting.md`
 - `./webhook/testing/README.md` (specialized extension for webhook domain)
 - `client/core/testing.md` (shared concepts: AAA pattern, test doubles policy, anti-patterns, naming convention)

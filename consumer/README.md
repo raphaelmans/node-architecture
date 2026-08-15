@@ -12,6 +12,7 @@ guides/
   client/                  canonical frontend docs
   server/                  canonical backend docs
   legacy/                  historical reference docs
+  assets/                  standalone interactive HTML guides
   README.md                this file
   AGENTS-MD-ALIGNMENT.md   agent include/template guidance
   UPDATE-ARCHITECTURE.md   source-repo update workflow
@@ -31,6 +32,9 @@ guides/
 ## What To Read First
 
 - `guides/client/` and `guides/server/` are canonical.
+- `guides/assets/client-architecture-guide.html` is the standalone interactive client companion.
+- `guides/assets/server-architecture-guide.html` is the standalone interactive server companion.
+- `guides/assets/architecture-guide.html` is the standalone interactive full-stack companion.
 - `guides/legacy/` is reference-only and not source of truth.
 - `guides/AGENTS-MD-ALIGNMENT.md` explains how to wire the guides into `AGENTS.md` / `CLAUDE.md`.
 - `guides/OPENCODE-INTEGRATION.md` explains a thinner OpenCode-specific integration model.

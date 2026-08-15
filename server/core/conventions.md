@@ -8,7 +8,7 @@
 
 - Contract source of truth is `Zod` schemas (see `./api-contracts-zod-first.md`).
 - Current primary transport is `tRPC`; OpenAPI is supported as migration/coexistence transport.
-- Transport adapters (tRPC routers, OpenAPI route handlers/controllers) must call the same usecase/service boundaries.
+- Transport adapters (tRPC routers, Next.js/OpenAPI route handlers, Express/Hono/Nest handlers) must call framework-neutral controllers.
 - Business/domain layers MUST NOT import transport-specific types.
 - Capability naming and transport mapping rules are defined in `./endpoint-naming.md`.
 
@@ -16,7 +16,13 @@
 
 All backend modules follow this chain:
 
-`controller -> usecase (optional, for complex orchestration) -> service (SRP domain logic) -> repository`
+```text
+framework adapter -> controller
+                         ├─> service -> repository/provider
+                         └─> use case -> service(s) -> repository/provider(s)
+```
+
+When a controller selects a use case, that use case coordinates one or more services. When it selects a service, the capability is a single-domain read or write.
 
 Dependency and testing boundaries must align to this flow.
 
@@ -24,87 +30,90 @@ Canonical testing rules are defined in:
 
 - [Testing Service Layer](./testing-service-layer.md)
 
-### Routers/Controllers
+Cross-cutting runtime standards are defined in:
+
+- [Observability](./observability.md) — correlation, trace/span/event naming, and custom attribute namespace
+- [Logging](./logging.md) — `AppLogger`, redaction requirements, and log ownership
+- [Product Analytics](./product-analytics.md) — typed behavioral events and analytics adapters
+
+### Framework Adapters
+
+tRPC procedures, Next.js route handlers, Express/Hono/Nest handlers, and OpenAPI route registrations are framework-specific adapters. They are intentionally thin and replaceable.
 
 **Responsibilities:**
 
-- Handle HTTP/tRPC/OpenAPI concerns only
-- Parse requests into DTOs
-- Call **one** use case or **one** service per operation
-- Map results/errors to HTTP responses
+- Extract framework request/context values
+- Establish observability scope and apply transport middleware
+- Authenticate credentials and produce a plain application `Actor`
+- Parse untrusted input with the shared Zod contract
+- Call one framework-neutral controller factory
+- Validate the shared response contract and construct the transport envelope/status
+- Let central transport error mapping handle failures
 
 **Rules:**
 
-- No business logic
-- No repository access
-- No service-to-service orchestration (exception: pre-fetch guards — see below)
-- Router handles null check for `findById` (throws `NotFoundError` if null)
-- Cross-cutting controls (auth, rate limiting) belong in transport middleware/procedures
+- No command/result mapping that would need to be repeated in another transport
+- No service, use-case, repository, database, or vendor construction/calls
+- No module-specific error-to-HTTP/tRPC translation
+- Cross-cutting controls (auth and rate limiting) stay in transport middleware/procedures
 
-**Pre-Fetch Guard Exception:**
+### Framework-Neutral Controllers
 
-Routers may call a second service for pre-fetch guards that are cross-cutting (e.g., resolving a user profile before delegating to the feature service). This is allowed when:
+Every externally exposed HTTP/RPC capability has a plain TypeScript controller under `modules/<module>/controllers/`. See [Framework-Neutral Controllers](./controllers.md) for the complete standard.
 
-- The pre-fetch is stateless and read-only
-- It serves as a guard or context enrichment, not orchestration
-- It is systematic across all procedures in the router (not ad-hoc)
+**Responsibilities:**
 
-```typescript
-// Allowed: systematic pre-fetch guard
-const profile = await makeProfileService().getOrCreateProfile(ctx.userId);
-const result = await makeReservationService().create(input, profile);
-```
+- Accept shared contract types and plain application types only
+- Map public input and actor data to an internal command when needed
+- Call **one** use case or **one** service per operation
+- Convert capability-level null outcomes into typed domain errors
+- Map internal results/entities to the shared response shape
 
-If the pre-fetch involves writes or side effects, use a use case instead.
+**Rules:**
+
+- No imports from Next.js, tRPC, Express, Hono, NestJS, or framework request/response packages
+- No HTTP status, header, cookie, envelope, or transport error decisions
+- No repository access or service-to-service orchestration
+- No generic request/transaction/telemetry context object
+
+**Guard placement:**
+
+- Cross-cutting authentication/authorization context enrichment belongs in reusable transport middleware.
+- A capability-specific lookup or invariant belongs in the selected service/use case.
+- If a capability needs two services, create a use case and inject it into the controller; do not add an ad-hoc pre-fetch in the framework adapter.
 
 ```typescript
 // modules/user/user.router.ts
 
 import { z } from "zod";
 import { S } from "@/shared/kernel/schemas";
+import { GetUserResponseSchema } from "./shared/contracts";
 
 export const userRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: S.ids.generic }))
-    .query(async ({ input }) => {
-      const user = await makeUserService().findById(input.id);
-      if (!user) {
-        throw new UserNotFoundError(input.id);
-      }
-      return wrapResponse(omitSensitive(user));
+    .query(async ({ input, ctx }) => {
+      const result = await makeGetUserController().execute(
+        input,
+        toActor(ctx.session),
+      );
+      return GetUserResponseSchema.parse(result);
     }),
 });
 ```
 
-**Per-Router Error Handler Pattern:**
+**Central Error Mapping:**
 
-When a module has many domain-specific errors that must map to distinct tRPC error codes (e.g., `NOT_FOUND`, `FORBIDDEN`, `BAD_REQUEST`), routers use a per-module error handler:
+Domain errors carry a transport-neutral `AppError.kind`. Each transport maps that kind once:
 
-```typescript
-function handleReservationError(error: unknown): never {
-  if (error instanceof SlotNotAvailableError) {
-    throw new TRPCError({ code: "BAD_REQUEST", cause: error });
-  }
-  if (error instanceof ReservationNotFoundError) {
-    throw new TRPCError({ code: "NOT_FOUND", cause: error });
-  }
-  if (error instanceof ReservationAccessDeniedError) {
-    throw new TRPCError({ code: "FORBIDDEN", cause: error });
-  }
-  // Unknown errors re-throw to the global formatter
-  throw error;
-}
+```text
+AppError.kind
+  -> HTTP adapter: status code
+  -> tRPC middleware: TRPCError code
+  -> formatter: safe message + appCode + requestId
 ```
 
-Use this pattern when module-level domain errors need explicit tRPC code mapping (`NOT_FOUND`, `FORBIDDEN`, `BAD_REQUEST`) at the router boundary. For cross-module mapping rules, prefer a shared transport middleware/helper instead of repeating router-level `try/catch` in every procedure.
-
-Rules for per-router error handlers:
-
-- One `handle<Module>Error` function per router file
-- Map only domain errors from that module's `errors/` folder
-- Let the global formatter control the public message by passing `cause`
-- Re-throw unknown errors (let the global formatter handle them)
-- Apply `try/catch` only to procedures that need module-specific transport mapping
+Routers do not repeat `try/catch` blocks or module-specific tRPC mappings. Unknown errors continue to the global formatter and become sanitized internal errors. See [Error Handling](./error-handling.md).
 
 ### Multiple Routers Per Module
 
@@ -138,7 +147,7 @@ Admin routers are composed under `appRouter.admin.*` in root.ts and use `adminPr
 
 ### Use Cases (Application Layer)
 
-**What is a Use Case?**  
+**What is a Use Case?**
 A use case represents a **business action or workflow**, not an HTTP endpoint.
 
 **Responsibilities:**
@@ -165,8 +174,8 @@ For background delivery side effects, prefer transactional enqueue using the out
 
 **When NOT to create a use case:**
 
-- Simple read-only queries (call service directly)
-- Single-service writes (service owns the transaction)
+- Simple read-only queries (controller calls one service)
+- Single-service writes (controller calls one service; service owns the transaction)
 
 ```typescript
 // modules/user/use-cases/register-user.use-case.ts
@@ -175,27 +184,26 @@ export class RegisterUserUseCase {
   constructor(
     private userService: IUserService,
     private workspaceService: IWorkspaceService,
-    private emailService: IEmailService,
+    private notificationOutbox: INotificationOutbox,
     private transactionManager: TransactionManager,
   ) {}
 
-  async execute(input: RegisterUserDTO): Promise<UserPublic> {
+  async execute(command: RegisterUserCommand): Promise<User> {
     const user = await this.transactionManager.run(async (tx) => {
-      const user = await this.userService.create(input.userData, { tx });
+      const user = await this.userService.create(command.userData, { tx });
 
-      if (input.workspaceId) {
-        await this.workspaceService.addMember(input.workspaceId, user.id, {
+      if (command.workspaceId) {
+        await this.workspaceService.addMember(command.workspaceId, user.id, {
           tx,
         });
       }
 
+      await this.notificationOutbox.enqueueWelcomeEmail(user, { tx });
+
       return user;
     });
 
-    // Side effects outside transaction
-    await this.emailService.sendWelcomeEmail(user.email, user.name);
-
-    return omitSensitive(user);
+    return user;
   }
 }
 ```
@@ -211,27 +219,19 @@ export class RegisterUserUseCase {
 
 **Rules:**
 
-- A service should not call another service (see exception below)
+- A service does not call another service
 - No orchestration logic
 - No infrastructure knowledge
-- Accept optional `RequestContext` for external transaction participation
+- Accept optional `TransactionOptions` for external transaction participation
+- Receive `AppLogger` only through interface-typed constructor injection when operational business logs are needed
 - Constructor dependencies MUST be interface types (not concrete classes)
 
-**Service-to-Service Dependency Exception:**
-
-In practice, some services accept other services as injected dependencies for **fire-and-forget side effects** that are tightly coupled to the domain operation (e.g., a notification delivery service, an audit/event service). This is allowed when:
-
-- The dependency is injected via the constructor (not imported directly)
-- The dependency is interface-typed
-- The side effect does not affect the return value of the calling method
-- The side effect is idempotent or eventually consistent
-
-For multi-service orchestration that affects the primary return value, use a use case instead.
+External side effects (including product analytics), cross-service coordination, and delivery policies belong in a use case. If delivery must survive process failure, the use case records outbox intent inside its transaction. A truly best-effort post-commit effect must be caught and logged so it cannot turn a committed operation into an apparent failure.
 
 **Method patterns:**
 
 - `create(data)` — owns its own transaction
-- `create(data, ctx?)` — participates in external transaction if ctx provided, otherwise owns
+- `create(data, options?)` — participates when `options.tx` is provided, otherwise owns
 
 ```typescript
 // modules/user/services/user.service.ts
@@ -242,14 +242,14 @@ export class UserService implements IUserService {
     private transactionManager: TransactionManager,
   ) {}
 
-  async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-    return this.userRepository.findById(id, ctx);
+  async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+    return this.userRepository.findById(id, options);
   }
 
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    // If ctx has transaction, participate in it
-    if (ctx?.tx) {
-      return this.createInternal(data, ctx);
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    // If options has a transaction, participate in it
+    if (options?.tx) {
+      return this.createInternal(data, options);
     }
 
     // Otherwise, own the transaction
@@ -260,13 +260,13 @@ export class UserService implements IUserService {
 
   private async createInternal(
     data: UserInsert,
-    ctx: RequestContext,
+    options: TransactionOptions,
   ): Promise<User> {
-    const existing = await this.userRepository.findByEmail(data.email, ctx);
+    const existing = await this.userRepository.findByEmail(data.email, options);
     if (existing) {
       throw new UserEmailConflictError(data.email);
     }
-    return this.userRepository.create(data, ctx);
+    return this.userRepository.create(data, options);
   }
 }
 ```
@@ -282,7 +282,7 @@ export class UserService implements IUserService {
 
 - Repositories return entities, not DTOs
 - ORM/database code lives here
-- Accept transaction context via `RequestContext`
+- Accept transaction context via `TransactionOptions`
 - Never create transactions
 - Repository interfaces MUST be defined and implemented explicitly
 
@@ -292,12 +292,12 @@ export class UserService implements IUserService {
 export class UserRepository implements IUserRepository {
   constructor(private db: DbClient) {}
 
-  private getClient(ctx?: RequestContext): DbClient | DrizzleTransaction {
-    return (ctx?.tx as DrizzleTransaction) ?? this.db;
+  private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
+    return (options?.tx as DrizzleTransaction) ?? this.db;
   }
 
-  async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-    const client = this.getClient(ctx);
+  async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+    const client = this.getClient(options);
     const result = await client
       .select()
       .from(users)
@@ -307,8 +307,8 @@ export class UserRepository implements IUserRepository {
     return result[0] ?? null;
   }
 
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    const client = this.getClient(ctx);
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    const client = this.getClient(options);
     const result = await client.insert(users).values(data).returning();
 
     return result[0];
@@ -321,8 +321,8 @@ export class UserRepository implements IUserRepository {
 For contended-state entities (reservations, availability slots), repositories expose `findByIdForUpdate` variants:
 
 ```typescript
-async findByIdForUpdate(id: string, ctx: RequestContext): Promise<Entity | null> {
-  const tx = ctx.tx as DrizzleTransaction;
+async findByIdForUpdate(id: string, options: TransactionOptions): Promise<Entity | null> {
+  const tx = options.tx as DrizzleTransaction;
   const result = await tx
     .select()
     .from(entities)
@@ -336,8 +336,8 @@ async findByIdForUpdate(id: string, ctx: RequestContext): Promise<Entity | null>
 
 Rules for `FOR UPDATE`:
 
-- Only used within an active transaction (`ctx.tx` is required, not optional)
-- Execute on the transaction client (`ctx.tx`) so row locks are held until transaction end
+- Only used within an active transaction (`options.tx` is required, not optional)
+- Execute on the transaction client (`options.tx`) so row locks are held until transaction end
 - Name methods `findByIdForUpdate`, `findByIdsForUpdate` to make locking intent explicit
 - Use only for entities where concurrent writes could cause data corruption
 
@@ -348,8 +348,8 @@ Repositories may import pure functions from `modules/<module>/shared/domain.ts` 
 ```typescript
 import { filterBlockingOverlaps } from "../shared/domain";
 
-async findConflicting(slotId: string, ctx?: RequestContext) {
-  const rows = await this.getClient(ctx).select().from(slots).where(...);
+async findConflicting(slotId: string, options?: TransactionOptions) {
+  const rows = await this.getClient(options).select().from(slots).where(...);
   return filterBlockingOverlaps(rows); // pure domain filter
 }
 ```
@@ -368,7 +368,7 @@ We use **manual DI with factories**.
 
 **Rules:**
 
-- No `new` across layers
+- Do not construct cross-layer dependencies outside factories/composition roots
 - Factories own all object creation
 - Factories MUST wire interfaces to implementations in one place for isolated testing
 
@@ -396,11 +396,17 @@ src/lib/
 
 import { db } from "./db/drizzle";
 import { DrizzleTransactionManager } from "./db/transaction";
+import { appLogger } from "./logger";
+import { productAnalytics } from "./analytics";
 import type { TransactionManager } from "@/shared/kernel/transaction";
+import type { AppLogger } from "@/shared/kernel/logger";
+import type { ProductAnalytics } from "@/shared/kernel/product-analytics";
 
 export interface Container {
   db: typeof db;
   transactionManager: TransactionManager;
+  appLogger: AppLogger;
+  productAnalytics: ProductAnalytics;
 }
 
 let container: Container | null = null;
@@ -410,6 +416,8 @@ export function getContainer(): Container {
     container = {
       db,
       transactionManager: new DrizzleTransactionManager(db),
+      appLogger,
+      productAnalytics,
     };
   }
   return container;
@@ -425,6 +433,7 @@ import { getContainer } from "@/shared/infra/container";
 import { UserRepository } from "../repositories/user.repository";
 import { UserService } from "../services/user.service";
 import { RegisterUserUseCase } from "../use-cases/register-user.use-case";
+import { RegisterUserController } from "../controllers/register-user.controller";
 
 let userRepository: UserRepository | null = null;
 let userService: UserService | null = null;
@@ -451,18 +460,26 @@ export function makeRegisterUserUseCase() {
   return new RegisterUserUseCase(
     makeUserService(),
     makeWorkspaceService(),
-    makeEmailService(),
+    makeNotificationOutbox(),
     getContainer().transactionManager,
+  );
+}
+
+// Framework adapters resolve controllers, never inner layers directly.
+export function makeRegisterUserController() {
+  return new RegisterUserController(
+    makeRegisterUserUseCase(),
   );
 }
 ```
 
 **Key principles:**
 
-- Container owns shared infrastructure (database, transaction manager, logger)
+- Container owns shared infrastructure (database, transaction manager, logger, analytics adapters)
 - Module factories own module-specific wiring
 - Repositories and services are lazy singletons (stateless)
-- Use cases are new instances per invocation by default. When a use case is injected as a dependency of a service (rather than called directly from a router), it may be cached as a lazy singleton alongside the service.
+- Use cases and controllers are new instances per factory call by default. Services do not depend on use cases; controllers select the appropriate use case or service.
+- Framework adapters invoke controller factories only.
 - Factories are the _only_ place dependencies are instantiated
 
 ## Kernel (Shared Core)
@@ -489,8 +506,8 @@ Kernel code:
 
 Kernel may import:
 
-- TypeScript / Node built-ins
-- Approved libraries (see below)
+- TypeScript types and runtime-neutral language features
+- Approved isomorphic libraries (see below)
 
 Kernel must NOT import:
 
@@ -500,17 +517,19 @@ Kernel must NOT import:
 ### Approved Kernel Dependencies
 
 - **zod** — Schema validation and type inference
-  - Used for: DTO validation, config parsing, runtime type checks
+  - Used for: shared contracts and runtime type checks
+
+Kernel modules that are imported by the client must remain browser-safe. Node built-ins, environment access, and `server-only` markers belong in infrastructure/runtime modules, not the kernel.
 
 ### Kernel Contents
 
 ```
 shared/kernel/
-├─ dtos/              # Cross-module DTOs
-│  ├─ common.ts       # Shared schemas (file upload, etc.)
+├─ contracts/         # Universal transport primitives only
 │  └─ index.ts
-├─ transaction.ts     # TransactionManager + TransactionContext
-├─ context.ts         # RequestContext
+├─ transaction.ts     # TransactionManager + TransactionContext + TransactionOptions
+├─ logger.ts          # AppLogger interface
+├─ product-analytics.ts # ProductAnalytics interface + event contracts
 ├─ errors.ts          # Base AppError definitions
 ├─ public-error.ts    # Public message policy helpers (getPublicErrorMessage, isInternalAppError)
 ├─ pagination.ts      # Pagination types and schemas
@@ -524,7 +543,7 @@ shared/kernel/
 - They are depended on by many layers
 - They must remain stable over time
 
-## DTOs vs Entities
+## Contracts, Commands, and Entities
 
 ### Entities
 
@@ -554,89 +573,63 @@ export const UserSchema = createSelectSchema(users);
 export type User = z.infer<typeof UserSchema>;
 ```
 
-### DTOs (Data Transfer Objects)
+### Shared API Contracts
 
 - Represent data crossing boundaries
-- Used by controllers and use cases
+- Used by clients, framework adapters, and framework-neutral controllers
 - Shaped for API consumers
-- Safe to change independently
+- Validated at both sides of the network boundary
 
-**Zod-based DTO pattern:**
+For a Next.js repository containing both client and server code, module-owned wire contracts have one canonical location:
 
-```typescript
-// modules/user/dtos/create-user.dto.ts
-
-import { z } from "zod";
-import { S } from "@/shared/kernel/schemas";
-
-export const CreateUserSchema = z.object({
-  email: S.common.email,
-  name: S.common.requiredText,
-  role: z.enum(["admin", "member"]).default("member"),
-});
-
-export type CreateUserDTO = z.infer<typeof CreateUserSchema>;
+```text
+src/lib/modules/<module>/shared/contracts/
 ```
 
-### Cross-Module DTOs
-
-DTOs that are shared across multiple modules live in `shared/kernel/dtos/`.
-
-**When to use shared DTOs (`shared/kernel/dtos/`):**
-
-- Schemas used by multiple modules (e.g., file upload, image asset)
-- Common input patterns (pagination is already in `shared/kernel/pagination.ts`)
-- DTOs consumed by the frontend
-
-**When to use module DTOs (`lib/modules/<module>/dtos/`):**
-
-- Input/output specific to one module
-- DTOs that may change independently of other modules
-
-**Example - shared DTO:**
+**Zod-based contract pattern:**
 
 ```typescript
-// shared/kernel/dtos/common.ts
+// src/lib/modules/user/shared/contracts/create-user.contract.ts
 
 import { z } from "zod";
 
-export const ImageAssetSchema = z.object({
-  file: z.custom<File>().optional(),
-  url: z.string(),
+export const CreateUserInputSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
 });
 
-export type ImageAsset = z.infer<typeof ImageAssetSchema>;
-
-export const FileUploadSchema = z.object({
-  imageAsset: ImageAssetSchema,
+export const CreateUserResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string(),
+  createdAt: z.string().datetime(),
 });
+
+export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
+export type CreateUserResponse = z.infer<typeof CreateUserResponseSchema>;
 ```
 
-**Example - module DTO using shared schema:**
+Naming and ownership rules:
 
-```typescript
-// modules/user/dtos/update-user.dto.ts
+- Shared wire schemas use `<Capability>InputSchema` and `<Capability>ResponseSchema`.
+- Shared wire types are inferred and use `<Capability>Input` and `<Capability>Response`.
+- Application-wide primitives such as pagination and response envelopes stay in `shared/kernel/`.
+- Module-owned contracts do not move to the kernel merely because the frontend imports them.
+- Server-only commands/internal DTOs may remain in `lib/modules/<module>/dtos/` or beside their use case.
+- Client-only form schemas and view models remain in `src/features/<feature>/`.
+- Database/ORM entities are never imported into shared contracts or client code.
 
-import { z } from "zod";
-import { ImageAssetSchema } from "@/shared/kernel/dtos/common";
-
-export const UpdateUserSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  avatar: ImageAssetSchema.optional(),
-});
-
-export type UpdateUserDTO = z.infer<typeof UpdateUserSchema>;
-```
+See [API Contracts: Zod-First](./api-contracts-zod-first.md) for the complete dependency and mapping rules.
 
 ## Extended Module Sub-Folders
 
-Beyond the canonical structure (`dtos/`, `errors/`, `factories/`, `repositories/`, `services/`, `use-cases/`, `shared/`), modules may contain these additional sub-folders when the domain requires them:
+Beyond the canonical structure (`controllers/`, `dtos/`, `errors/`, `factories/`, `repositories/`, `services/`, `use-cases/`, `shared/`), modules may contain these additional sub-folders when the domain requires them:
 
 | Sub-Folder | Purpose | When to Use |
 | --- | --- | --- |
 | `lib/` | Stateless utility/parsing functions internal to the module | Module needs non-domain parsers, formatters, or adapters (e.g., CSV/XLSX/ICS parsing, AI mapping) |
 | `ops/` | One-off operational side-effect triggers | Module has domain-aware side effects triggered by other modules (e.g., posting a chat message when a reservation status changes) |
-| `http/` | Non-tRPC inbound HTTP handlers | Module receives HTTP requests outside tRPC (e.g., queue-triggered dispatch endpoints, webhook handlers) |
+| `http/` | Non-tRPC framework-adapter helpers | Module receives HTTP requests outside tRPC (for example queue dispatch or webhook entrypoints); helpers contain transport mechanics and delegate to a controller/specialized handler |
 | `queues/` | Queue interface + provider implementation | Module uses async job dispatch with an interface boundary (e.g., `INotificationDispatchQueue` + `QStashNotificationDispatchQueue`) |
 | `providers/` | Vendor-specific adapter implementations | Module abstracts an external service with a swappable provider interface (e.g., `IChatProvider` with Stream Chat and Supabase backends) |
 | `admin/` | Admin-gated router and related procedures | Module exposes admin-specific procedures using `adminProcedure` |
@@ -647,7 +640,7 @@ Rules:
 - These sub-folders are opt-in. Only create them when the module's complexity justifies them.
 - `providers/` co-locate the interface and implementations together inside the module, not in `shared/infra/`. This keeps vendor-specific code contained.
 - `queues/` follow the same interface + implementation pattern as `providers/`.
-- `ops/` functions are typically called from services or use cases in other modules, not from routers directly.
+- `ops/` functions are called from use cases after commit, not from routers or services directly.
 
 ## Module Shared Code (`lib/modules/<module>/shared/`)
 
@@ -660,7 +653,7 @@ Convention:
 
 Typical contents:
 
-- Zod schemas + inferred types that represent module concepts
+- `contracts/` containing Zod request/response schemas and inferred wire types
 - deterministic calculations and invariants (pure functions)
 - domain-specific error types that do not depend on server infrastructure
 
@@ -669,78 +662,57 @@ Rules:
 - Must not import `shared/infra/*` (DB, logger, auth, tRPC init).
 - Must not depend on framework-only code.
 - Keep it pure and portable so it can be extracted to a workspace package later.
+- Cross-runtime API contracts specifically belong in `shared/contracts/`; do not duplicate them in client feature folders or server `dtos/`.
 
-Example (pattern reference):
+Example:
 
-- `modules/webhooks/shared/webhook.schemas.ts`
-- `modules/webhooks/shared/webhook.errors.ts`
+- `modules/user/shared/contracts/create-user.contract.ts`
+- `modules/user/shared/domain.ts`
 
 ### Mapping Rules
 
-- Controllers never receive entities directly (omit sensitive fields first)
+- Controllers map entities/internal results to shared response shapes; framework adapters validate and serialize those shapes
 - Repositories never return DTOs
-- Mapping happens in routers, use cases, or mappers
+- Public input-to-command and result-to-response mapping happens in controllers or dedicated pure mappers called by controllers
 
 ## Complete Dependency Graph
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                           Factory                               │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ makeUserRepository() ──► UserRepository(db)             │   │
-│  │         │                                               │   │
-│  │         ▼                                               │   │
-│  │ makeUserService() ──► UserService(                      │   │
-│  │         │               userRepository,                 │   │
-│  │         │               transactionManager)             │   │
-│  │         │                                               │   │
-│  │         ▼                                               │   │
-│  │ makeRegisterUserUseCase() ──► RegisterUserUseCase(      │   │
-│  │                                userService,             │   │
-│  │                                workspaceService,        │   │
-│  │                                emailService,            │   │
-│  │                                transactionManager)      │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Router/Controller                         │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                                                         │   │
-│  │ Simple read:                                            │   │
-│  │   userRouter.getById ──► UserService.findById()         │   │
-│  │                                                         │   │
-│  │ Simple write (single service):                          │   │
-│  │   userRouter.create ──► UserService.create()            │   │
-│  │                              │                          │   │
-│  │                              ▼                          │   │
-│  │                     UserRepository.create()             │   │
-│  │                                                         │   │
-│  │ Multi-service orchestration:                            │   │
-│  │   userRouter.register ──► RegisterUserUseCase.execute() │   │
-│  │                              │                          │   │
-│  │                    ┌─────────┴─────────┐                │   │
-│  │                    ▼                   ▼                │   │
-│  │           UserService        WorkspaceService           │   │
-│  │                    │                   │                │   │
-│  │                    ▼                   ▼                │   │
-│  │           UserRepository     WorkspaceRepository        │   │
-│  │                                                         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+Next.js / tRPC / OpenAPI adapter
+  -> make<Capability>Controller()
+       -> <Capability>Controller
+            ├─ simple read/write -> <Module>Service
+            │                         -> <Module>Repository
+            │
+            └─ orchestration     -> <Capability>UseCase
+                                      -> Service A -> Repository A
+                                      -> Service B -> Repository B
+                                      -> Outbox/provider port
+
+Factory/composition root constructs the complete graph:
+
+makeRegisterUserController()
+  -> RegisterUserController(
+       RegisterUserUseCase(
+         UserService(UserRepository(db), transactionManager),
+         WorkspaceService(WorkspaceRepository(db), transactionManager),
+         notificationOutbox,
+         transactionManager,
+       ),
+     )
 ```
 
 ## Return Type Summary
 
-| Layer             | Returns       | Type Source                      |
-| ----------------- | ------------- | -------------------------------- |
-| Repository        | Entity        | drizzle-zod `createSelectSchema` |
-| Service           | Entity        | Same as Repository               |
-| Use Case          | Entity or DTO | DTO when transforming/omitting   |
-| Router/Controller | Entity or DTO | What API consumers see           |
+| Layer | Returns | Type source |
+| --- | --- | --- |
+| Repository | Entity/record | Drizzle/ORM schema |
+| Service | Entity or internal domain result | Repository/domain model |
+| Use case | Internal application result | Use-case contract |
+| Controller | Shared response shape | `modules/<module>/shared/contracts/` |
+| Framework adapter | Kernel envelope + validated shared response payload | `shared/kernel/` + `modules/<module>/shared/contracts/` |
 
-**Rule:** Return entities by default. Introduce DTOs when you need to transform, omit sensitive fields, or combine data.
+**Rule:** Entities may flow internally, but every public transport maps and validates output through a shared response contract before serialization.
 
 ## Implemented Event-Driven Patterns
 
@@ -749,7 +721,7 @@ See [Event Patterns](./event-patterns.md) for production-complete patterns:
 - Domain event log (append-only event tables for real-time broadcasting)
 - Notification outbox (transactional enqueue + async dispatch)
 - Side-effect procedures (`ops/` for best-effort post-commit work)
-- Command/query separation (router-level, service-level, client API-level)
+- Command/query separation (framework-adapter-level, service-level, client API-level)
 
 See [Async Jobs + Outbox](./async-jobs-outbox.md) for the conceptual outbox pattern.
 
@@ -790,8 +762,8 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Interface `I<Entity>Repository` defined with all method signatures
 - [ ] Class implements interface: `implements I<Entity>Repository`
 - [ ] Constructor accepts `DbClient`
-- [ ] `getClient(ctx)` helper: `return (ctx?.tx as DrizzleTransaction) ?? this.db`
-- [ ] All methods accept `ctx?: RequestContext`
+- [ ] `getClient(options)` helper: `return (options?.tx as DrizzleTransaction) ?? this.db`
+- [ ] Methods that may participate in a transaction accept `options?: TransactionOptions`
 - [ ] Returns `null` for not found (never throws)
 - [ ] Known database constraint violations caught and translated to domain errors
 - [ ] Raw database error messages never propagated as-is
@@ -804,23 +776,25 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Class implements interface: `implements I<Entity>Service`
 - [ ] Constructor accepts **interface** types: `I<Entity>Repository` (not concrete)
 - [ ] Constructor accepts `TransactionManager`
-- [ ] Read methods: pass `ctx` through to repository
-- [ ] Write methods: check `ctx?.tx` - participate if exists, else create transaction
-- [ ] Business events logged: `logger.info({ event: '<entity>.<action>', ... }, 'Message')`
+- [ ] Read methods: pass transaction `options` through when provided
+- [ ] Write methods: check `options?.tx` - participate if present, otherwise create transaction
+- [ ] Operational business events use injected `AppLogger`
+- [ ] Does not emit product analytics or call external providers; those belong in a use case
 - [ ] Event names: `<entity>.<past_tense_action>` format
-- [ ] Returns `null` for not found (router handles throwing)
-- [ ] No service-to-service calls (exception: injected fire-and-forget side-effect services)
+- [ ] Returns `null` for not found when absence is an internal result (controller decides the public capability error)
+- [ ] No service-to-service calls; cross-service work belongs in a use case
 
 ### Use Case Layer (`use-cases/<name>.use-case.ts`)
 
 - [ ] Only created for multi-service orchestration or side effects
 - [ ] Constructor accepts **interface** types (not concrete classes)
 - [ ] Constructor accepts `TransactionManager`
+- [ ] Constructor accepts interface-typed `AppLogger`/`ProductAnalytics` only when used
 - [ ] Throws **domain errors** (NOT generic `Error`)
-- [ ] External service calls OUTSIDE transaction
-- [ ] DB operations INSIDE transaction
-- [ ] Side effects AFTER transaction commits
-- [ ] No logging (services log the events)
+- [ ] Required external delivery intent is enqueued INSIDE the transaction through an outbox port
+- [ ] Direct external calls occur only AFTER commit and are caught/logged as best-effort
+- [ ] DB operations occur INSIDE the transaction
+- [ ] Operational logs use injected `AppLogger`; product events use injected `ProductAnalytics`
 
 ```typescript
 // CORRECT - domain error
@@ -834,66 +808,95 @@ if (!result) throw new Error('Entity not found');
 
 - [ ] Lazy singleton for DB-backed modules (repository, service)
 - [ ] Request-scoped for request-dependent modules (auth with cookies)
+- [ ] Exposes one controller factory per public capability
+- [ ] Framework adapters use controller factories only
 - [ ] Returns interface type in JSDoc/type hints
 - [ ] Uses `getContainer()` for shared dependencies
 
-### DTO Layer (`dtos/`)
+### Shared API Contract (`shared/contracts/`)
 
-- [ ] Zod schemas for all inputs
-- [ ] Type exported: `export type <Name>DTO = z.infer<typeof <Name>Schema>`
-- [ ] Index file exports all schemas and types
-- [ ] Validation rules match business requirements
-- [ ] Sensitive fields excluded from output DTOs
+- [ ] One Zod schema source for each public input and response
+- [ ] Types are inferred as `<Capability>Input` and `<Capability>Response`
+- [ ] Both client `featureApi` and server transport import the same contract
+- [ ] Contract models the serialized wire shape, including ISO datetime strings
+- [ ] No imports from DB, server infrastructure, framework code, environment, or client UI
+- [ ] Sensitive/internal entity fields are absent from response schemas
 
-### Router Layer (`<module>.router.ts`)
+### Server-Only Command DTO (`dtos/`, Optional)
+
+- [ ] Exists only when internal orchestration differs from the public input contract
+- [ ] Is mapped explicitly from the shared input contract
+- [ ] Is never imported by client code
+
+### Controller Layer (`controllers/<capability>.controller.ts`)
+
+- [ ] Plain TypeScript with no Next.js, tRPC, Express, Hono, NestJS, or transport imports
+- [ ] Accepts shared input types and plain application types such as `Actor`
+- [ ] Constructor accepts one service or use-case interface
+- [ ] Maps shared input to an internal command when shapes differ
+- [ ] Calls exactly one use case or service
+- [ ] Converts capability-level null outcomes into typed domain errors
+- [ ] Maps internal result/entity values to the shared response shape
+- [ ] Accepts no request, observability, transaction, or service-locator context object
+
+### Framework Adapter Layer (`<module>.router.ts`, `app/api/**/route.ts`)
 
 - [ ] Uses appropriate procedure base (`publicProcedure`, `protectedProcedure`, `adminProcedure`, or rate-limited variant)
 - [ ] Input validated with `.input(ZodSchema)`
-- [ ] Calls factory: `make<Entity>Service()` or `make<UseCase>()`
-- [ ] Handles null: `if (!entity) throw new EntityNotFoundError(id)`
-- [ ] One service OR one use case per endpoint (pre-fetch guard exception allowed)
+- [ ] Calls one controller factory: `make<Capability>Controller()`
+- [ ] Never calls or constructs a service, use case, repository, or provider directly
 - [ ] No business logic
 - [ ] No direct logging (handled by middleware)
-- [ ] Sensitive fields omitted before returning
-- [ ] If module-specific transport mapping is needed, add a per-router error handler (`handle<Module>Error`)
-- [ ] Apply `try/catch` only to procedures that need that custom mapping; let other errors bubble to formatter
-- [ ] Per-router error handler passes `cause` field so global formatter controls exposure
+- [ ] Shared response schema validates the controller result before serialization
+- [ ] Domain errors bubble to the shared transport error middleware/handler
+- [ ] No repeated `try/catch` solely for status/code translation
+- [ ] Central mapping derives transport codes from `AppError.kind`
 - [ ] No raw error messages from libraries/DB in `TRPCError` message field
 
-### Transport Infrastructure (`shared/infra/trpc/`, OpenAPI handlers/controllers)
+### Transport Infrastructure (`shared/infra/trpc/`, OpenAPI/HTTP route adapters)
 
 Common:
 
 - [ ] Zod schema contracts reused from canonical contract definitions
 - [ ] No business logic in transport adapter
+- [ ] Framework adapter calls a framework-neutral controller only
 - [ ] Request-scoped metadata (`requestId`) present in error mapping
 - [ ] Auth/rate-limit enforcement applied at transport boundary
+- [ ] Async observability scope established before application code runs
 
 tRPC-specific:
 
 - [ ] Logger middleware applied to ALL procedures
-- [ ] `publicProcedure = loggedProcedure`
-- [ ] `protectedProcedure = loggedProcedure.use(authMiddleware)`
+- [ ] Every procedure inherits central application-error mapping and request logging
+- [ ] `publicProcedure = baseProcedure`
+- [ ] `protectedProcedure = baseProcedure.use(authMiddleware)`
 - [ ] `adminProcedure = protectedProcedure.use(adminMiddleware)` (requires `session.role === "admin"`)
 - [ ] `rateLimitedProcedure(tier)` — factory returning rate-limited public procedure
 - [ ] `protectedRateLimitedProcedure(tier)` — factory returning rate-limited protected procedure
 - [ ] `adminRateLimitedProcedure(tier)` — factory returning rate-limited admin procedure
-- [ ] Error formatter logs include `requestId`
+- [ ] Error formatter uses contextual `AppLogger`; correlation is added by the logger adapter
 - [ ] Known errors (`AppError`) logged at `warn` level
 - [ ] Unknown errors logged at `error` level
-- [ ] Context includes `log` (child logger with requestId), `clientIdentifier`, `clientIdentifierSource`, `cookies`, `origin`
+- [ ] Context includes contextual `log`, `requestId`, `clientIdentifier`, `clientIdentifierSource`, `cookies`, `origin`
 - [ ] Context creation enriches session with role from `user_roles` table when authenticated
+- [ ] Application services receive the contextual `AppLogger` through factories, not transport context parameters
 
 OpenAPI-specific:
 
-- [ ] Route handlers/controllers validate inputs with shared Zod schemas
+- [ ] Route handlers validate inputs with shared Zod schemas and call the same controller as other transports
 - [ ] Error mapping returns shared error contract (`code`, `message`, `requestId`, `details?`)
 - [ ] Response payload shape follows shared API contract guidance
 
 ```typescript
-// Error formatter MUST include requestId
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
+// Error response includes requestId; contextual logger adds its namespaced form.
 ctx?.log.warn(
-  { err: cause, code: cause.code, details: cause.details, requestId },
+  {
+    err: cause,
+    "error.type": cause.code,
+    [APP_ATTRIBUTES.errorDetails]: cause.details,
+  },
   cause.message,
 );
 ```
@@ -901,12 +904,13 @@ ctx?.log.warn(
 ### Root Router Registration
 
 - [ ] tRPC router imported in `shared/infra/trpc/root.ts` (if tRPC is enabled)
-- [ ] OpenAPI route/controller wired in runtime router tree (if OpenAPI is enabled)
+- [ ] OpenAPI framework adapter wired in runtime router tree (if OpenAPI is enabled)
 
 ### Testability Standard (MUST)
 
 - [ ] Layer tests exist for all implemented layers in the module:
-  - controller/router tests
+  - framework-adapter tests
+  - controller tests
   - use case tests (if use case exists)
   - service tests
   - repository tests
@@ -921,7 +925,8 @@ ctx?.log.warn(
 - [ ] All interfaces have implementations
 - [ ] Layer test suites pass for implemented layers
 - [ ] All error classes have unique codes
-- [ ] Business events logged in service layer
+- [ ] Operational business events logged through injected `AppLogger`
+- [ ] Product events emitted through `ProductAnalytics`, not `AppLogger`
 - [ ] No logging in repository layer
 - [ ] No generic `Error` throws in use cases
-- [ ] `requestId` included in all error logs
+- [ ] Request-scoped logs receive the namespaced request ID and trace context from `AppLogger`

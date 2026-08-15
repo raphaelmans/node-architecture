@@ -16,33 +16,24 @@ Instead:
 We use a discriminated union. Preserve only user-safe messages; use generic fallbacks for internal failures.
 
 ```ts
+export interface AppErrorMeta {
+  message: string;
+  status?: number;
+  code?: string;
+  requestId?: string;
+  cause?: unknown;
+}
+
 export type AppError =
-  | {
-      kind: "network";
-      message: string;
-      cause?: unknown;
-    }
-  | {
+  | ({ kind: "network" } & AppErrorMeta)
+  | ({
       kind: "unauthorized" | "forbidden" | "not_found" | "rate_limited";
-      message: string;
-      status?: number;
-      code?: string;
-      requestId?: string;
-      cause?: unknown;
-    }
-  | {
+    } & AppErrorMeta)
+  | ({
       kind: "validation";
-      message: string;
       fieldErrors?: Record<string, string>;
-      code?: string;
-      requestId?: string;
-      cause?: unknown;
-    }
-  | {
-      kind: "unknown";
-      message: string;
-      cause?: unknown;
-    };
+    } & AppErrorMeta)
+  | ({ kind: "unknown" } & AppErrorMeta);
 ```
 
 ## Adapter Pattern (Required)
@@ -107,6 +98,8 @@ This adapter is used by `toAppError` to extract `code`, `httpStatus`, `requestId
 - For internal/unexpected/server failures (`5xx` / `INTERNAL_*`), render a generic message (for example: `Something went wrong`).
 - Normalize once at adapter boundary, then branch only on `AppError.kind`.
 - Inject `toAppError` into `featureApi` classes so normalization behavior is testable and consistent.
+- Assign one operational reporting owner: `clientApi` for transport failures, `featureApi` for contract/mapping failures, and the framework error boundary for unhandled exceptions.
+- Do not report the same handled error again from QueryClient defaults, hooks, forms, and components.
 
 ## Transport Metadata Pass-Through
 
@@ -118,6 +111,18 @@ When provider-specific errors include useful metadata, adapters should preserve 
 - `requestId`: preserve request correlation identifier when present
 
 This keeps UI handling consistent while still allowing support/debugging workflows.
+
+## Reporting Handoff
+
+Normalization and reporting are separate operations:
+
+```text
+transport error -> ApiClientError -> AppError -> safe UI handling
+                     |
+                     +-> one boundary-owned AppLogger record
+```
+
+Sentry, when enabled, is an `AppLogger`/error-boundary adapter. Feature code never imports it directly. Product analytics must not receive operational errors.
 
 ## Notifications (Toast) Are a Facade Concern
 

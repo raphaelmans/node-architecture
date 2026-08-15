@@ -14,9 +14,9 @@
 
 | Component                   | Location                             | Responsibility                         |
 | --------------------------- | ------------------------------------ | -------------------------------------- |
-| `TransactionContext`        | `shared/kernel/transaction.ts`   | Type alias for transaction client      |
-| `TransactionManager`        | `shared/kernel/transaction.ts`   | Abstract interface                     |
-| `RequestContext`            | `shared/kernel/context.ts`       | Carries transaction through call stack |
+| `TransactionContext`        | `shared/kernel/transaction.ts`   | Opaque active transaction client       |
+| `TransactionOptions`        | `shared/kernel/transaction.ts`   | Optional transaction-only method input |
+| `TransactionManager`        | `shared/kernel/transaction.ts`   | Abstract transaction runner            |
 | `DrizzleTransactionManager` | `shared/infra/db/transaction.ts` | Drizzle implementation                 |
 
 ## Kernel Abstractions
@@ -42,43 +42,32 @@ export interface TransactionManager {
    *
    * - If the function completes successfully, the transaction is committed
    * - If the function throws, the transaction is rolled back
-   * - The transaction context (tx) should be passed to repositories via RequestContext
+   * - The transaction context (tx) is passed explicitly via TransactionOptions
    */
   run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T>;
 }
 ```
 
-## Request Context
+## Transaction Options
 
-The `RequestContext` carries the transaction context through the call stack.
+`TransactionOptions` carries only the active database transaction through application and repository calls.
 
 ```typescript
-// shared/kernel/context.ts
-
-import type { TransactionContext } from "./transaction";
+// shared/kernel/transaction.ts
 
 /**
- * RequestContext is passed through layers to provide:
- * - Transaction context for database operations
- * - Future: tracing context, user context, etc.
+ * Optional transaction participation for a service or repository method.
  */
-export interface RequestContext {
+export interface TransactionOptions {
   /**
    * Active transaction context, if within a transaction.
    * Repositories use this to participate in the transaction.
    */
   tx?: TransactionContext;
-
-  /**
-   * Request ID for correlation in logs and error responses.
-   */
-  requestId?: string;
-
-  // Future extensions:
-  // traceId?: string;
-  // spanId?: string;
 }
 ```
+
+Do not add request, tracing, authentication, or logger fields here. Observability context is propagated independently as described in [Observability](./observability.md).
 
 ## Drizzle Implementation
 
@@ -221,25 +210,25 @@ export function getContainer(): Container {
 
 ### Repository: Receiving Transaction Context
 
-Repositories accept optional `RequestContext` and use the transaction if provided.
+Repositories accept optional `TransactionOptions` and use the transaction if provided.
 
 ```typescript
 // modules/user/repositories/user.repository.ts
 
 import { eq } from "drizzle-orm";
 import { users, User, UserInsert } from "@/shared/infra/db/schema";
-import type { RequestContext } from "@/shared/kernel/context";
+import type { TransactionOptions } from "@/shared/kernel/transaction";
 import type { DbClient, DrizzleTransaction } from "@/shared/infra/db/types";
 
 export class UserRepository {
   constructor(private db: DbClient) {}
 
-  private getClient(ctx?: RequestContext): DbClient | DrizzleTransaction {
-    return (ctx?.tx as DrizzleTransaction) ?? this.db;
+  private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
+    return (options?.tx as DrizzleTransaction) ?? this.db;
   }
 
-  async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-    const client = this.getClient(ctx);
+  async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+    const client = this.getClient(options);
     const result = await client
       .select()
       .from(users)
@@ -249,8 +238,8 @@ export class UserRepository {
     return result[0] ?? null;
   }
 
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    const client = this.getClient(ctx);
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    const client = this.getClient(options);
     const result = await client.insert(users).values(data).returning();
 
     return result[0];
@@ -258,15 +247,15 @@ export class UserRepository {
 }
 ```
 
-### Service: Optional Context Pattern
+### Service: Optional Transaction Pattern
 
-Services accept optional `RequestContext`. If provided with a transaction, they participate in it. Otherwise, they own their own transaction.
+Services accept optional `TransactionOptions`. If provided with a transaction, they participate in it. Otherwise, they own their own transaction.
 
 ```typescript
 // modules/user/services/user.service.ts
 
 import type { TransactionManager } from "@/shared/kernel/transaction";
-import type { RequestContext } from "@/shared/kernel/context";
+import type { TransactionOptions } from "@/shared/kernel/transaction";
 import { ConflictError } from "@/shared/kernel/errors";
 import { User, UserInsert } from "@/shared/infra/db/schema";
 import type { IUserRepository } from "../repositories/user.repository.interface";
@@ -280,18 +269,18 @@ export class UserService {
   /**
    * Read operation - no transaction needed.
    */
-  async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-    return this.userRepository.findById(id, ctx);
+  async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+    return this.userRepository.findById(id, options);
   }
 
   /**
-   * Write operation with optional context.
-   * - If ctx.tx provided: participates in external transaction
-   * - If no ctx.tx: owns its own transaction
+   * Write operation with optional transaction participation.
+   * - If options.tx provided: participates in external transaction
+   * - If no options.tx: owns its own transaction
    */
-  async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-    if (ctx?.tx) {
-      return this.createInternal(data, ctx);
+  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+    if (options?.tx) {
+      return this.createInternal(data, options);
     }
 
     return this.transactionManager.run(async (tx) => {
@@ -301,13 +290,13 @@ export class UserService {
 
   private async createInternal(
     data: UserInsert,
-    ctx: RequestContext,
+    options: TransactionOptions,
   ): Promise<User> {
-    const existing = await this.userRepository.findByEmail(data.email, ctx);
+    const existing = await this.userRepository.findByEmail(data.email, options);
     if (existing) {
       throw new ConflictError("Email already in use", { email: data.email });
     }
-    return this.userRepository.create(data, ctx);
+    return this.userRepository.create(data, options);
   }
 
   /**
@@ -316,22 +305,22 @@ export class UserService {
   async update(
     id: string,
     data: Partial<UserInsert>,
-    ctx?: RequestContext,
+    options?: TransactionOptions,
   ): Promise<User> {
-    const exec = async (ctx: RequestContext): Promise<User> => {
+    const exec = async (options: TransactionOptions): Promise<User> => {
       if (data.email) {
-        const existing = await this.userRepository.findByEmail(data.email, ctx);
+        const existing = await this.userRepository.findByEmail(data.email, options);
         if (existing && existing.id !== id) {
           throw new ConflictError("Email already in use", {
             email: data.email,
           });
         }
       }
-      return this.userRepository.update(id, data, ctx);
+      return this.userRepository.update(id, data, options);
     };
 
-    if (ctx?.tx) {
-      return exec(ctx);
+    if (options?.tx) {
+      return exec(options);
     }
     return this.transactionManager.run((tx) => exec({ tx }));
   }
@@ -348,46 +337,47 @@ Use cases create transactions when orchestrating multiple services.
 import type { TransactionManager } from "@/shared/kernel/transaction";
 import type { IUserService } from "../services/user.service.interface";
 import type { IWorkspaceService } from "@/modules/workspace/services/workspace.service.interface";
-import type { IEmailService } from "@/shared/infra/email/email.service.interface";
-import { RegisterUserDTO } from "../dtos/register-user.dto";
+import type { INotificationOutbox } from "@/modules/notification/outbox/notification-outbox.interface";
+import type { RegisterUserCommand } from "../dtos/register-user.command";
+import type { User } from "../entities/user";
 
 export class RegisterUserUseCase {
   constructor(
     private userService: IUserService,
     private workspaceService: IWorkspaceService,
-    private emailService: IEmailService,
+    private notificationOutbox: INotificationOutbox,
     private transactionManager: TransactionManager,
   ) {}
 
-  async execute(input: RegisterUserDTO): Promise<UserPublic> {
+  async execute(command: RegisterUserCommand): Promise<User> {
     // Use case owns the transaction for multi-service orchestration
     const user = await this.transactionManager.run(async (tx) => {
-      const passwordHash = await hashPassword(input.password);
+      const passwordHash = await hashPassword(command.password);
 
       // Create user within transaction
       const user = await this.userService.create(
         {
-          email: input.email,
-          name: input.name,
+          email: command.email,
+          name: command.name,
           passwordHash,
         },
         { tx },
       );
 
       // Add to workspace within same transaction
-      if (input.workspaceId) {
-        await this.workspaceService.addMember(input.workspaceId, user.id, {
+      if (command.workspaceId) {
+        await this.workspaceService.addMember(command.workspaceId, user.id, {
           tx,
         });
       }
 
+      // Required delivery intent commits atomically with the business write.
+      await this.notificationOutbox.enqueueWelcomeEmail(user, { tx });
+
       return user;
     });
 
-    // Side effects happen OUTSIDE the transaction
-    await this.emailService.sendWelcomeEmail(user.email, user.name);
-
-    return omitSensitive(user);
+    return user;
   }
 }
 ```
@@ -400,36 +390,45 @@ export class RegisterUserUseCase {
 
 ```typescript
 // Service
-async findById(id: string, ctx?: RequestContext): Promise<User | null> {
-  return this.userRepository.findById(id, ctx);
+async findById(id: string, options?: TransactionOptions): Promise<User | null> {
+  return this.userRepository.findById(id, options);
 }
 
-// Router
+// Framework-neutral controller
+async execute(input: GetUserInput): Promise<GetUserResponse> {
+  const user = await this.userService.findById(input.id);
+  if (!user) throw new UserNotFoundError(input.id);
+  return toUserResponse(user);
+}
+
+// Framework adapter
 getById: protectedProcedure
   .input(z.object({ id: z.string() }))
   .query(async ({ input }) => {
-    return makeUserService().findById(input.id);
+    const result = await makeGetUserController().execute(input);
+    return wrapResponse(GetUserResponseSchema.parse(result));
   }),
 ```
 
 ### Single-Service Writes
 
-**Service owns the transaction** (or participates if ctx.tx provided).
+**Service owns the transaction** (or participates if `options.tx` is provided).
 
 ```typescript
 // Service
-async create(data: UserInsert, ctx?: RequestContext): Promise<User> {
-  if (ctx?.tx) {
-    return this.createInternal(data, ctx);
+async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
+  if (options?.tx) {
+    return this.createInternal(data, options);
   }
   return this.transactionManager.run((tx) => this.createInternal(data, { tx }));
 }
 
-// Router - calls service directly
+// Framework adapter -> controller -> service
 create: protectedProcedure
-  .input(CreateUserSchema)
+  .input(CreateUserInputSchema)
   .mutation(async ({ input }) => {
-    return makeUserService().create(input);
+    const result = await makeCreateUserController().execute(input);
+    return wrapResponse(CreateUserResponseSchema.parse(result));
   }),
 ```
 
@@ -439,42 +438,65 @@ create: protectedProcedure
 
 ```typescript
 // Use Case
-async execute(input: TransferFundsDTO): Promise<void> {
+async execute(command: TransferFundsCommand): Promise<void> {
   await this.transactionManager.run(async (tx) => {
-    await this.accountService.debit(input.fromId, input.amount, { tx });
-    await this.accountService.credit(input.toId, input.amount, { tx });
-    await this.auditService.logTransfer(input, { tx });
+    await this.accountService.debit(command.fromId, command.amount, { tx });
+    await this.accountService.credit(command.toId, command.amount, { tx });
+    await this.auditService.logTransfer(command, { tx });
   });
 }
 
-// Router - calls use case
+// Framework adapter -> controller -> use case
 transfer: protectedProcedure
   .input(TransferFundsSchema)
   .mutation(async ({ input }) => {
-    return makeTransferFundsUseCase().execute(input);
+    const result = await makeTransferFundsController().execute(input);
+    return wrapResponse(TransferFundsResponseSchema.parse(result));
   }),
 ```
 
+The route schema is the shared wire contract. The framework-neutral controller maps it to the optional server-only `TransferFundsCommand` before calling the use case.
+
 ### Transaction + Side Effects
 
-**Side effects happen outside the transaction.**
+**External IO happens outside the database transaction. Required delivery intent is persisted inside it through an outbox.**
 
 ```typescript
-async execute(input: RegisterUserDTO): Promise<UserPublic> {
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
+async execute(command: RegisterUserCommand): Promise<User> {
   // Transaction: database operations
   const user = await this.transactionManager.run(async (tx) => {
-    const user = await this.userService.create(userData, { tx });
-    await this.workspaceService.addMember(wsId, user.id, { tx });
+    const user = await this.userService.create(command.userData, { tx });
+    await this.workspaceService.addMember(command.workspaceId, user.id, { tx });
+    await this.notificationOutbox.enqueueWelcomeEmail(user, { tx });
     return user;
   });
 
-  // Side effects: after transaction commits
-  await this.emailService.sendWelcomeEmail(user.email, user.name);
-  await this.analyticsService.trackRegistration(user.id);
+  // Best-effort effect after commit; failure cannot change business success.
+  try {
+    await this.productAnalytics.track({
+      name: "user_created",
+      userId: user.id,
+      properties: { signupMethod: "email" },
+    });
+  } catch (error) {
+    this.logger.warn(
+      {
+        err: error,
+        "otel.event.name": "product_analytics.delivery_failed",
+        "user.id": user.id,
+        [APP_ATTRIBUTES.productEventName]: "user_created",
+      },
+      "Product analytics delivery failed",
+    );
+  }
 
   return user;
 }
 ```
+
+The worker sends the welcome email after commit from the outbox record. The direct analytics call is best-effort. If analytics delivery must be guaranteed too, enqueue its canonical payload in the same transaction. See [Async Jobs + Outbox](./async-jobs-outbox.md) and [Product Analytics](./product-analytics.md).
 
 ## Error Handling in Transactions
 
@@ -567,8 +589,7 @@ describe("UserService", () => {
 src/lib/
 ├─ shared/
 │  ├─ kernel/
-│  │  ├─ transaction.ts      # TransactionManager interface, TransactionContext type
-│  │  ├─ context.ts          # RequestContext interface
+│  │  ├─ transaction.ts      # TransactionManager, TransactionContext, TransactionOptions
 │  │  └─ errors.ts           # Base error classes
 │  └─ infra/
 │     ├─ db/
@@ -581,9 +602,9 @@ src/lib/
 ├─ modules/
 │  └─ user/
 │     ├─ repositories/
-│     │  └─ user.repository.ts   # Receives ctx?.tx
+│     │  └─ user.repository.ts   # Receives options?.tx
 │     ├─ services/
-│     │  └─ user.service.ts      # Accepts optional ctx, owns or participates
+│     │  └─ user.service.ts      # Accepts transaction options, owns or participates
 │     └─ use-cases/
 │        └─ register-user.use-case.ts  # Owns multi-service transactions
 ```
@@ -593,13 +614,14 @@ src/lib/
 - [ ] `TransactionManager` interface defined in `shared/kernel/transaction.ts`
 - [ ] `TransactionContext` type alias in kernel (framework-agnostic)
 - [ ] `DrizzleTransactionManager` implementation in `shared/infra/db/transaction.ts`
-- [ ] `RequestContext` includes optional `tx` field
-- [ ] Repositories accept `ctx?: RequestContext` parameter
-- [ ] Repositories use `ctx?.tx ?? this.db` pattern
+- [ ] `TransactionOptions` contains only an optional `tx` field
+- [ ] Repositories accept `options?: TransactionOptions` parameter
+- [ ] Repositories use `options?.tx ?? this.db` pattern
 - [ ] Services receive `TransactionManager` via constructor
-- [ ] Services accept optional `ctx?: RequestContext` for all write methods
-- [ ] Services own transactions when no ctx.tx provided
-- [ ] Services participate in external transactions when ctx.tx provided
+- [ ] Services accept optional `options?: TransactionOptions` for all write methods
+- [ ] Services own transactions when no options.tx provided
+- [ ] Services participate in external transactions when options.tx provided
 - [ ] Use cases own transactions for multi-service orchestration
-- [ ] Side effects happen outside transactions
+- [ ] External IO happens after commit; required delivery intent is enqueued transactionally
 - [ ] Container provides `transactionManager` as shared dependency
+- [ ] Request/trace/logger fields are propagated separately from transaction options

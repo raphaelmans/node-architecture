@@ -13,14 +13,17 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | [legacy/README.md](./legacy/README.md) | Historical, non-canonical reference material |
 | [consumer/README.md](./consumer/README.md) | Downstream `guides/` bundle docs and agent-integration templates |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Source-repo maintenance rules |
-| [copy-guides.sh](./copy-guides.sh) | Copies the consumer bundle into another repo's `guides/` directory |
+| [copy-guides.sh](./copy-guides.sh) | Copies the docs and standalone HTML artifacts into another repo's `guides/` directory |
+| [assets/server-architecture-guide.html](./assets/server-architecture-guide.html) | Standalone interactive server architecture guide |
+| [assets/client-architecture-guide.html](./assets/client-architecture-guide.html) | Standalone interactive client architecture guide |
+| [assets/architecture-guide.html](./assets/architecture-guide.html) | Standalone interactive full-stack architecture guide |
 
 ## Technology Stack
 
 | Layer | Technologies |
 | ----- | ------------ |
 | Server | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino |
-| Client | Next.js/React, TanStack Query, Zod, Tailwind, adapter-based API layer |
+| Client | Next.js/React, TanStack Query, Zod, adapter-based API/telemetry ports, `debug`, optional Sentry |
 | Testing | Vitest (unit), Playwright (E2E) |
 | Auth | Supabase Auth or custom auth |
 | Storage | Supabase Storage or custom storage |
@@ -63,7 +66,9 @@ src/
   features/<feature>/          client feature modules
   components/                  shared UI components
   common/                      cross-feature client contracts/utilities
-  lib/modules/<module>/shared/ shared domain transforms/contracts
+  lib/modules/<module>/shared/contracts/ canonical client/server Zod wire contracts
+  lib/modules/<module>/shared/ shared pure domain transforms
+  lib/modules/<module>/controllers/ framework-neutral server capability boundaries
 ```
 
 ## Principles

@@ -10,7 +10,7 @@
 - Idempotency via domain logic (no dedicated webhook table)
 - Standard API response envelope
 - Comprehensive logging for debugging
-- Handlers always delegate to Use Cases for better maintainability
+- Provider handlers are specialized framework-neutral controllers and always delegate to one use case
 
 ## Testing Guides
 
@@ -34,7 +34,7 @@ src/
 │     │  ├─ stripe.route.ts           # POST /api/webhooks/stripe
 │     │  ├─ stripe.validator.ts       # Signature verification
 │     │  ├─ stripe.schemas.ts         # Zod schemas per event type
-│     │  └─ handlers/
+│     │  └─ handlers/                  # Specialized inbound controllers
 │     │     ├─ index.ts               # Handler registry
 │     │     ├─ invoice-paid.handler.ts
 │     │     └─ subscription-updated.handler.ts
@@ -59,8 +59,10 @@ Webhook Route (HTTP endpoint)
   → Verify signature (provider SDK)
   → Parse base event (Zod)
   → Route by event.type
-  → Validate specific payload (Zod)
-  → Call Use Case
+  → Framework-neutral provider handler/controller
+      → Validate specific payload (Zod)
+      → Map provider event to command
+      → Call one Use Case
   → Return envelope response
 ```
 
@@ -162,30 +164,29 @@ export class WebhookHandlerNotFoundError extends ValidationError {
 }
 ```
 
-### Webhook Logger
+### Webhook Log Fields
 
 ```typescript
-// modules/webhooks/shared/webhook.logger.ts
+// modules/webhooks/shared/webhook-log-fields.ts
 
-import { logger } from '@/shared/infra/logger';
+import { APP_ATTRIBUTES } from '@/shared/infra/observability/attributes';
 
 export interface WebhookLogContext {
   provider: string;
   eventType: string;
   eventId: string;
-  requestId: string;
 }
 
-export function createWebhookLogger(ctx: WebhookLogContext) {
-  return logger.child({
-    webhook: true,
-    provider: ctx.provider,
-    eventType: ctx.eventType,
-    eventId: ctx.eventId,
-    requestId: ctx.requestId,
-  });
+export function webhookLogFields(ctx: WebhookLogContext) {
+  return {
+    [APP_ATTRIBUTES.webhookProvider]: ctx.provider,
+    [APP_ATTRIBUTES.webhookEventType]: ctx.eventType,
+    [APP_ATTRIBUTES.webhookEventId]: ctx.eventId,
+  };
 }
 ```
+
+This helper builds custom fields only. The injected/contextual `AppLogger` supplies request and trace correlation.
 
 ## Logging Standards
 
@@ -204,12 +205,14 @@ export function createWebhookLogger(ctx: WebhookLogContext) {
 
 | Field | Description |
 |-------|-------------|
-| `provider` | Provider name (stripe, clerk) |
-| `eventType` | Event type (invoice.paid) |
-| `eventId` | Provider's event ID |
-| `requestId` | Our request ID |
-| `duration` | Processing time in ms |
-| `reason` | Skip reason (for idempotency) |
+| `com.example.api.webhook.provider` | Provider name (Stripe, Clerk) |
+| `com.example.api.webhook.event.type` | Provider event type (`invoice.paid`) |
+| `com.example.api.webhook.event.id` | Provider event ID |
+| `com.example.api.request.id` | Request ID; added by contextual `AppLogger` |
+| `com.example.api.duration_ms` | Processing time in milliseconds |
+| `com.example.api.skip.reason` | Skip reason (for idempotency) |
+
+Use the `APP_ATTRIBUTES` constants rather than repeating these strings. Operational event names go in `otel.event.name`; trace correlation uses `trace_id`, `span_id`, and `trace_flags`. See [Observability](../observability.md).
 
 ## Provider Implementation: Stripe
 
@@ -284,28 +287,24 @@ export function verifyStripeSignature(
 ```typescript
 // modules/webhooks/stripe/handlers/handler.interface.ts
 
-import type { Logger } from '@/shared/infra/logger';
-
 export interface WebhookHandlerResult {
   skipped: boolean;
   reason?: string;
 }
 
 export interface IWebhookHandler {
-  handle(rawEvent: unknown, log: Logger): Promise<WebhookHandlerResult>;
+  handle(rawEvent: unknown): Promise<WebhookHandlerResult>;
 }
 ```
 
 ### Handler Implementation
 
-Handlers always delegate to Use Cases:
+Webhook handlers are specialized framework-neutral controllers: they map one provider event to one use case and contain no persistence or transport code.
 
 ```typescript
 // modules/webhooks/stripe/handlers/invoice-paid.handler.ts
 
-import type { Logger } from '@/shared/infra/logger';
 import type { IProcessPaymentUseCase } from '@/modules/payment/use-cases/process-payment.use-case.interface';
-import type { IPaymentRepository } from '@/modules/payment/repositories/payment.repository.interface';
 import { StripeInvoicePaidSchema } from '../stripe.schemas';
 import { WebhookPayloadError } from '../../shared/webhook.errors';
 import type { IWebhookHandler, WebhookHandlerResult } from './handler.interface';
@@ -313,10 +312,9 @@ import type { IWebhookHandler, WebhookHandlerResult } from './handler.interface'
 export class InvoicePaidHandler implements IWebhookHandler {
   constructor(
     private processPaymentUseCase: IProcessPaymentUseCase,
-    private paymentRepository: IPaymentRepository,
   ) {}
 
-  async handle(rawEvent: unknown, log: Logger): Promise<WebhookHandlerResult> {
+  async handle(rawEvent: unknown): Promise<WebhookHandlerResult> {
     // Validate payload
     const result = StripeInvoicePaidSchema.safeParse(rawEvent);
     if (!result.success) {
@@ -329,30 +327,15 @@ export class InvoicePaidHandler implements IWebhookHandler {
     const event = result.data;
     const invoiceId = event.data.object.id;
 
-    // Idempotency check via domain
-    const existing = await this.paymentRepository.findByStripeInvoiceId(invoiceId);
-    if (existing) {
-      return { skipped: true, reason: 'Payment already processed' };
-    }
-
-    log.info(
-      {
-        invoiceId,
-        amount: event.data.object.amount_paid,
-        currency: event.data.object.currency,
-      },
-      'Processing payment',
-    );
-
-    // Delegate to use case
-    await this.processPaymentUseCase.execute({
+    // The use case owns idempotency, transaction, and operational logging.
+    const outcome = await this.processPaymentUseCase.execute({
       stripeInvoiceId: invoiceId,
       amount: event.data.object.amount_paid,
       currency: event.data.object.currency,
       customerId: event.data.object.customer,
     });
 
-    return { skipped: false };
+    return outcome;
   }
 }
 ```
@@ -398,107 +381,166 @@ export function isHandledEventType(eventType: string): boolean {
 
 import { NextResponse } from 'next/server';
 import { GENERIC_PUBLIC_ERROR_MESSAGE } from '@/shared/kernel/public-error';
-import { logger } from '@/shared/infra/logger';
+import { appLogger } from '@/shared/infra/logger';
+import {
+  APP_ATTRIBUTES,
+  withRequestObservability,
+} from '@/shared/infra/observability';
 import { wrapResponse } from '@/shared/utils/response';
 import { verifyStripeSignature } from '@/modules/webhooks/stripe/stripe.validator';
 import { StripeEventSchema } from '@/modules/webhooks/stripe/stripe.schemas';
 import { getStripeHandler, isHandledEventType } from '@/modules/webhooks/stripe/handlers';
-import { createWebhookLogger } from '@/modules/webhooks/shared/webhook.logger';
 import {
   WebhookVerificationError,
   WebhookPayloadError,
 } from '@/modules/webhooks/shared/webhook.errors';
 
 export async function POST(req: Request) {
-  const requestId = crypto.randomUUID();
-  let log = logger.child({ requestId, provider: 'stripe' });
+  return withRequestObservability(req, async ({ requestId }) => {
+    let webhookFields: Record<string, unknown> = {
+      [APP_ATTRIBUTES.webhookProvider]: 'stripe',
+    };
 
-  try {
-    const rawBody = await req.text();
-    const signature = req.headers.get('stripe-signature');
+    try {
+      const rawBody = await req.text();
+      const signature = req.headers.get('stripe-signature');
 
-    const stripeEvent = verifyStripeSignature(rawBody, signature);
+      const stripeEvent = verifyStripeSignature(rawBody, signature);
+      const parseResult = StripeEventSchema.safeParse(stripeEvent);
 
-    const parseResult = StripeEventSchema.safeParse(stripeEvent);
-    if (!parseResult.success) {
-      throw new WebhookPayloadError('stripe', {
-        issues: parseResult.error.issues,
-      });
-    }
+      if (!parseResult.success) {
+        throw new WebhookPayloadError('stripe', {
+          issues: parseResult.error.issues,
+        });
+      }
 
-    const event = parseResult.data;
+      const event = parseResult.data;
 
-    log = createWebhookLogger({
-      provider: 'stripe',
-      eventType: event.type,
-      eventId: event.id,
-      requestId,
-    });
+      webhookFields = {
+        ...webhookFields,
+        [APP_ATTRIBUTES.webhookEventType]: event.type,
+        [APP_ATTRIBUTES.webhookEventId]: event.id,
+      };
 
-    log.info({ event: 'webhook.received' }, 'Webhook received');
+      appLogger.info(
+        { ...webhookFields, 'otel.event.name': 'webhook.received' },
+        'Webhook received',
+      );
 
-    if (!isHandledEventType(event.type)) {
-      log.info({ event: 'webhook.skipped', reason: 'Unhandled event type' }, 'Webhook skipped');
+      if (!isHandledEventType(event.type)) {
+        appLogger.info(
+          {
+            ...webhookFields,
+            'otel.event.name': 'webhook.skipped',
+            [APP_ATTRIBUTES.skipReason]: 'unhandled_event_type',
+          },
+          'Webhook skipped',
+        );
+        return NextResponse.json(
+          wrapResponse({
+            received: true,
+            eventId: event.id,
+            processed: false,
+          }),
+          { status: 200 },
+        );
+      }
+
+      const handler = getStripeHandler(event.type);
+      if (!handler) {
+        return NextResponse.json(
+          wrapResponse({ received: true, eventId: event.id, processed: false }),
+          { status: 200 },
+        );
+      }
+
+      const start = Date.now();
+      const result = await handler.handle(stripeEvent);
+      const duration = Date.now() - start;
+
+      if (result.skipped) {
+        appLogger.info(
+          {
+            ...webhookFields,
+            'otel.event.name': 'webhook.skipped',
+            [APP_ATTRIBUTES.skipReason]: result.reason,
+            [APP_ATTRIBUTES.durationMs]: duration,
+          },
+          'Webhook skipped',
+        );
+      } else {
+        appLogger.info(
+          {
+            ...webhookFields,
+            'otel.event.name': 'webhook.processed',
+            [APP_ATTRIBUTES.durationMs]: duration,
+          },
+          'Webhook processed',
+        );
+      }
+
       return NextResponse.json(
         wrapResponse({
           received: true,
           eventId: event.id,
-          processed: false,
+          processed: !result.skipped,
         }),
         { status: 200 },
       );
-    }
 
-    const handler = getStripeHandler(event.type);
-    if (!handler) {
+    } catch (error) {
+      if (error instanceof WebhookVerificationError) {
+        appLogger.warn(
+          {
+            ...webhookFields,
+            'otel.event.name': 'webhook.verification_failed',
+            'error.type': error.code,
+            err: error,
+          },
+          'Verification failed',
+        );
+        return NextResponse.json(
+          { code: error.code, message: error.message, requestId },
+          { status: 401 },
+        );
+      }
+
+      if (error instanceof WebhookPayloadError) {
+        appLogger.warn(
+          {
+            ...webhookFields,
+            'otel.event.name': 'webhook.validation_failed',
+            'error.type': error.code,
+            err: error,
+          },
+          'Validation failed',
+        );
+        return NextResponse.json(
+          {
+            code: error.code,
+            message: error.message,
+            requestId,
+            ...(error.publicDetails && { details: error.publicDetails }),
+          },
+          { status: 400 },
+        );
+      }
+
+      appLogger.error(
+        {
+          ...webhookFields,
+          'otel.event.name': 'webhook.failed',
+          'error.type': error instanceof Error ? error.constructor.name : 'UnknownError',
+          err: error,
+        },
+        'Webhook processing failed',
+      );
       return NextResponse.json(
-        wrapResponse({ received: true, eventId: event.id, processed: false }),
-        { status: 200 },
+        { code: 'INTERNAL_ERROR', message: GENERIC_PUBLIC_ERROR_MESSAGE, requestId },
+        { status: 500 },
       );
     }
-
-    const start = Date.now();
-    const result = await handler.handle(stripeEvent, log);
-    const duration = Date.now() - start;
-
-    if (result.skipped) {
-      log.info({ event: 'webhook.skipped', reason: result.reason, duration }, 'Webhook skipped');
-    } else {
-      log.info({ event: 'webhook.processed', duration }, 'Webhook processed');
-    }
-
-    return NextResponse.json(
-      wrapResponse({
-        received: true,
-        eventId: event.id,
-        processed: !result.skipped,
-      }),
-      { status: 200 },
-    );
-
-  } catch (error) {
-    if (error instanceof WebhookVerificationError) {
-      log.warn({ event: 'webhook.verification_failed', err: error }, 'Verification failed');
-      return NextResponse.json(
-        { code: error.code, message: error.message, requestId },
-        { status: 401 },
-      );
-    }
-
-    if (error instanceof WebhookPayloadError) {
-      log.warn({ event: 'webhook.validation_failed', err: error }, 'Validation failed');
-      return NextResponse.json(
-        { code: error.code, message: error.message, requestId, details: error.details },
-        { status: 400 },
-      );
-    }
-
-    log.error({ event: 'webhook.failed', err: error }, 'Webhook processing failed');
-    return NextResponse.json(
-      { code: 'INTERNAL_ERROR', message: GENERIC_PUBLIC_ERROR_MESSAGE, requestId },
-      { status: 500 },
-    );
-  }
+  });
 }
 ```
 
@@ -575,7 +617,8 @@ if (existing) {
 - [ ] Handler registry maps event types to handlers
 - [ ] Handlers implement `IWebhookHandler` interface
 - [ ] Handlers validate payloads with Zod
-- [ ] Handlers check idempotency via domain queries
+- [ ] Handlers import no framework, repository, database, or provider SDK types
+- [ ] Use cases/services own idempotency checks
 - [ ] Handlers delegate to Use Cases (not Services directly)
 - [ ] Routes verify signatures before processing
 - [ ] Routes return standard envelope response

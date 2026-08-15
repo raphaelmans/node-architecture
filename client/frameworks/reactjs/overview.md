@@ -9,6 +9,8 @@ ReactJS concerns include:
 - Form state patterns (`react-hook-form` + StandardForm)
 - UI primitives and composition (`shadcn/ui`, Radix/Base UI)
 - Client coordination state patterns (Zustand)
+- Mutation/workflow telemetry ownership through core `AppLogger` and `ProductAnalytics` ports
+- Browser dependency composition and provider lifetimes
 
 See `client/frameworks/reactjs/server-state-patterns-react.md` for the server-state cookbook.
 

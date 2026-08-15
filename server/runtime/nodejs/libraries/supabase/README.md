@@ -19,8 +19,8 @@ This folder contains patterns for integrating Supabase services while maintainin
 
 | Supabase Service | Architecture Layer | Pattern |
 |------------------|-------------------|---------|
-| Auth | Repository → Service → Use Case | Request-scoped factories |
-| Storage | Adapter → Service | Interface abstraction |
+| Auth | Controller → Service/Use Case → Repository | Request-scoped controller factories |
+| Storage | Controller → Use Case → Provider adapter | Interface abstraction + compensating workflow |
 | Database | Repository (Drizzle) | Not using Supabase client |
 
 ### Key Files
@@ -40,12 +40,15 @@ shared/infra/
 
 modules/
 ├── auth/
+│   ├── controllers/
+│   │   └── <capability>.controller.ts # Framework-neutral public boundary
 │   ├── repositories/
 │   │   └── auth.repository.ts # Supabase Auth wrapper
 │   ├── services/
 │   │   └── auth.service.ts    # Auth business logic
 │   ├── use-cases/
-│   │   └── register-user.use-case.ts # Multi-service orchestration
+│   │   ├── complete-signup.use-case.ts # Verified, idempotent local provisioning
+│   │   └── provision-managed-user.use-case.ts # Trusted flow with compensation
 │   ├── factories/
 │   │   └── auth.factory.ts    # Request-scoped factories
 │   └── auth.router.ts         # tRPC endpoints
@@ -59,21 +62,19 @@ modules/
 // In tRPC router
 const authRouter = router({
   login: publicProcedure
-    .input(LoginSchema)
+    .input(LoginInputSchema)
     .mutation(async ({ input, ctx }) => {
-      // Request-scoped factory with cookies
-      const authService = makeAuthService(ctx.cookies);
-      return authService.signIn(input.email, input.password);
+      // Request-scoped outer factory; controller owns public mapping.
+      const result = await makeLoginController(ctx.cookies).execute(input);
+      return wrapResponse(LoginResponseSchema.parse(result));
     }),
 
   me: protectedProcedure
     .query(async ({ ctx }) => {
-      // Session already extracted in context
-      return {
-        id: ctx.session.userId,
-        email: ctx.session.email,
-        role: ctx.session.role,
-      };
+      const result = await makeCurrentSessionController(ctx.cookies)
+        .execute(toActor(ctx.session));
+      const response = CurrentSessionResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 });
 ```
@@ -81,7 +82,7 @@ const authRouter = router({
 ## Core Principles Applied
 
 1. **Auth Repository** - Wraps Supabase Auth, maps errors to domain errors
-2. **Request-Scoped Factories** - Auth factories accept cookies for SSR
+2. **Request-Scoped Controller Factories** - Framework adapters resolve controllers whose inward graph contains cookie-bound Supabase adapters
 3. **User Roles in DB** - Application roles separate from Supabase auth
 4. **Session in Context** - tRPC context extracts and enriches session
 5. **Storage Adapter** - Implements `ObjectStorage` interface, vendor-replaceable

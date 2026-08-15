@@ -93,7 +93,7 @@ Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse`
   code: string,
   message: string,
   requestId: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown> // explicitly allowlisted public context only
 }
 ```
 
@@ -190,7 +190,7 @@ export interface ApiErrorResponse {
   code: string;
   message: string; // Public-safe user-facing message
   requestId: string;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown>; // never implicit internal diagnostics
 }
 
 /**
@@ -261,7 +261,7 @@ export function wrapResponse<T>(data: T): ApiResponse<T> {
 Extend `PaginationInputSchema` for endpoint-specific filters:
 
 ```typescript
-// modules/user/dtos/list-users.dto.ts
+// modules/user/shared/contracts/list-users.contract.ts
 
 import { z } from "zod";
 import { PaginationInputSchema } from "@/shared/kernel/pagination";
@@ -283,31 +283,47 @@ export type ListUsersInput = z.infer<typeof ListUsersInputSchema>;
 
 import { router, protectedProcedure } from "@/shared/infra/trpc";
 import { z } from "zod";
-import { ListUsersInputSchema } from "./dtos/list-users.dto";
-import { makeUserService } from "./factories/user.factory";
+import {
+  GetUserResponseSchema,
+  ListUsersInputSchema,
+  ListUsersResponseSchema,
+} from "./shared/contracts";
+import {
+  makeGetUserController,
+  makeListUsersController,
+} from "./factories/user.factory";
 import { wrapResponse } from "@/shared/utils/response";
-import { UserNotFoundError } from "./errors/user.errors";
 
 export const userRouter = router({
   // Single resource - wrapped in envelope
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
-      const user = await makeUserService().findById(input.id);
-      if (!user) {
-        throw new UserNotFoundError(input.id);
-      }
-      return wrapResponse(omitSensitive(user));
+    .query(async ({ input, ctx }) => {
+      const result = await makeGetUserController().execute(
+        input,
+        toActor(ctx.session),
+      );
+      const response = GetUserResponseSchema.parse(result);
+      return wrapResponse(response);
     }),
 
   // List - returns paginated response
   list: protectedProcedure
     .input(ListUsersInputSchema)
-    .query(async ({ input }) => {
-      return makeUserService().list(input);
+    .query(async ({ input, ctx }) => {
+      const page = await makeListUsersController().execute(
+        input,
+        toActor(ctx.session),
+      );
+      return {
+        ...page,
+        data: ListUsersResponseSchema.parse(page.data),
+      };
     }),
 });
 ```
+
+Here, `GetUserResponseSchema` validates the single-resource payload and `ListUsersResponseSchema` validates the list payload. The kernel envelope/pagination types supply `{ data }` and `{ data, meta }`.
 
 ### Shared Service Example
 
@@ -317,7 +333,7 @@ export const userRouter = router({
 import { users } from "@/shared/infra/db/schema";
 import { buildPaginatedResponse } from "@/shared/utils/pagination";
 import type { PaginatedResponse } from "@/shared/kernel/pagination";
-import type { ListUsersInput } from "../dtos/list-users.dto";
+import type { ListUsersInput } from "../shared/contracts";
 import type { User } from "@/shared/infra/db/schema";
 
 export class UserService {
@@ -410,21 +426,26 @@ function UserList() {
 // app/api/profiles/route.ts
 
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import type { ApiResponse, ApiErrorResponse } from "@/shared/kernel/response";
 import { wrapResponse } from "@/shared/utils/response";
 import { handleError } from "@/shared/infra/http/error-handler";
+import { withRequestObservability } from "@/shared/infra/observability";
 
 export async function GET(req: Request) {
-  const requestId = req.headers.get("x-request-id") ?? randomUUID();
-
-  try {
-    const result = await makeProfileService().list(/* parsed query */);
-    return NextResponse.json<ApiResponse<typeof result>>(wrapResponse(result));
-  } catch (error) {
-    const { status, body } = handleError(error, requestId);
-    return NextResponse.json<ApiErrorResponse>(body, { status });
-  }
+  return withRequestObservability(req, async ({ requestId }) => {
+    try {
+      const input = ListProfilesInputSchema.parse(/* parsed query */);
+      const actor = await authenticateNextRequest(req);
+      const result = await makeListProfilesController().execute(input, actor);
+      const response = ListProfilesResponseSchema.parse(result);
+      return NextResponse.json<ApiResponse<typeof response>>(
+        wrapResponse(response),
+      );
+    } catch (error) {
+      const { status, body } = handleError(error, requestId);
+      return NextResponse.json<ApiErrorResponse>(body, { status });
+    }
+  });
 }
 ```
 
@@ -465,8 +486,9 @@ src/lib/
 │
 ├─ modules/
 │  └─ user/
-│     └─ dtos/
-│        └─ list-users.dto.ts  # Extends PaginationInputSchema
+│     └─ shared/
+│        └─ contracts/
+│           └─ list-users.contract.ts  # Shared input + response schemas
 ```
 
 ## Checklist
@@ -477,7 +499,8 @@ src/lib/
 - [ ] `createResponseSchema` helper for single resource
 - [ ] `buildPaginatedResponse` utility in `shared/utils/pagination.ts`
 - [ ] `wrapResponse` utility in `shared/utils/response.ts`
-- [ ] Endpoint DTOs extend `PaginationInputSchema` with custom filters
+- [ ] Endpoint input contracts extend `PaginationInputSchema` with custom filters
+- [ ] Endpoint response contracts compose the shared pagination/response schemas
 - [ ] Services implement search on relevant fields
 - [ ] Routers return consistent envelope structure
 
@@ -487,15 +510,16 @@ For externally consumed HTTP endpoints (for example mobile/public APIs), route a
 
 - Do not use `ApiResponse<unknown>` or `ApiResponse<any>`.
 - Do not hide payload types inside wrappers such as `{ data: { method: unknown } }`.
-- Prefer method-level aliases derived from service interfaces:
+- Prefer response types inferred from the shared capability contract:
 
 ```typescript
-type GetThingResponse = Awaited<ReturnType<IThingService["getThing"]>>;
-return NextResponse.json<ApiResponse<GetThingResponse>>(wrapResponse(result));
+type GetThingResponse = z.infer<typeof GetThingResponseSchema>;
+const response = GetThingResponseSchema.parse(result);
+return NextResponse.json<ApiResponse<GetThingResponse>>(wrapResponse(response));
 ```
 
-- Migration fallback (temporary): `ApiResponse<typeof result>` is acceptable when service interface aliasing is not yet wired.
-- Keep route handlers thin and derive contracts from service/use-case boundaries, not route-local ad-hoc types.
+- Migration fallback (temporary): `ApiResponse<typeof result>` is acceptable while a shared response schema is being introduced.
+- Keep framework adapters thin: derive wire types from shared contracts and call a controller factory, never a service/use-case factory.
 
 Recommended CI gates:
 

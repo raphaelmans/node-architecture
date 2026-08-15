@@ -11,12 +11,17 @@ src/
     errors/            # AppError contract + adapters/facades
     query-keys/        # Server-state cache keys (cross-feature)
     toast/             # Toast facade + provider adapters
-    logging/           # Client logging facade + adapters + wrappers
+    logging/           # AppLogger + context/redaction/sampling + debug/Sentry adapters
+    analytics/         # Typed ProductAnalytics + consent/identity + vendor adapters
+    runtime/           # Browser/request composition roots; owns infrastructure lifecycle
     clients/           # Non-tRPC API client wrappers (HTTP + realtime)
   components/          # Shared UI components
   features/            # Feature modules (primary unit of organization)
   hooks/               # Global framework hooks (React only)
-  lib/                 # Core logic & integrations
+  lib/
+    modules/<module>/shared/
+      contracts/       # Canonical client/server Zod wire contracts
+      domain.ts        # Optional cross-runtime pure domain logic
 ```
 
 Metaframework-specific routing conventions:
@@ -31,11 +36,11 @@ src/features/<feature>/
     <feature>-view.tsx          # business component (composition + wiring)
     <feature>-fields.tsx        # presentation components (render-only)
   api.ts                        # I<Feature>Api + <Feature>Api class + factory
-  api.runtime.ts                # re-exports singleton factory (stable mock target)
+  api.runtime.ts                # re-exports composition-root-owned API accessor (stable mock target)
   hooks.ts                      # query adapter (framework-specific)
-  schemas.ts                    # Zod schemas + derived types + mapping helpers
+  schemas.ts                    # UI/form schemas composed from shared contracts
   types.ts                      # non-DTO types
-  helpers.ts                    # small pure helpers
+  helpers.ts                    # DTO mapping + small pure helpers
 ```
 
 ## Feature Starter Contract
@@ -45,9 +50,9 @@ Required files for a new feature:
 - `components/<feature>-view.tsx` (business wiring/composition)
 - `components/<feature>-fields.tsx` (presentation-only UI, if form/field heavy)
 - `api.ts` (`I<Feature>Api` + `<Feature>Api` + factory)
-- `api.runtime.ts` (singleton re-export for testability)
+- `api.runtime.ts` (composition-root-owned API accessor for testability)
 - `hooks.ts` (query adapter)
-- `schemas.ts` (zod schemas + derived types)
+- `schemas.ts` (UI/form schemas composed from shared input contracts)
 
 Recommended files:
 
@@ -65,6 +70,7 @@ Optional (add when the feature's complexity justifies them):
 
 Domain transform precedence:
 
+- import public API schemas/types from `lib/modules/<module>/shared/contracts/`
 - prefer `lib/modules/<module>/shared/domain.ts` for cross-runtime reusable logic
 - keep `src/features/<feature>/domain.ts` or `helpers.ts` for feature-local pure logic
 
@@ -74,7 +80,10 @@ See Testing Layout below and `client/core/testing.md`.
 ## Ownership Boundaries by Path
 
 - `src/features/<feature>/api.ts`: endpoint-scoped data access for one feature via `I<Feature>Api` + class implementation.
-- `src/features/<feature>/api.runtime.ts`: singleton re-export for test mocking.
+- `src/lib/modules/<module>/shared/contracts/*`: single source for serialized API request/response schemas and inferred types.
+- `src/features/<feature>/schemas.ts`: client-only form/UI schemas; may compose shared input contracts but must not redefine wire responses.
+- `src/features/<feature>/types.ts`: client models/view models; never ORM entities.
+- `src/features/<feature>/api.runtime.ts`: stable re-export of a composition-root-owned API accessor for test mocking; it does not construct the instance.
 - `src/features/<feature>/hooks.ts`: query/mutation/cache behavior.
 - `src/features/<feature>/sync.ts`: multi-query cache invalidation orchestration.
 - `src/features/<feature>/components/*`: composition + rendering only.
@@ -83,7 +92,9 @@ See Testing Layout below and `client/core/testing.md`.
 - `src/common/query-keys/*`: cross-feature cache key contracts (plain keys for non-tRPC adapters; `buildTrpcQueryKey` only for tRPC-wrapper interop).
 - `src/common/errors/*`: `AppError` contract + normalization adapters/facades (including `adapters/trpc.ts`).
 - `src/common/toast/*`: toast abstraction with typed methods (`success`, `error`, `info`, `warning`), provider + adapter for sonner.
-- `src/common/logging/*`: logger interface + strategy selector + pluggable adapters (console, noop, debug) + decorator wrappers (context injection, redaction, sampling) + `feature.ts` for feature-scoped loggers.
+- `src/common/logging/*`: OpenTelemetry-shaped `AppLogger` + contextual wrappers + local `debug` and optional remote Sentry adapters.
+- `src/common/analytics/*`: typed `ProductAnalytics` + consent/identity lifecycle + debug/noop/vendor/composite adapters.
+- `src/common/runtime/*`: composition roots that call infrastructure factories and own browser/request lifetimes; never imported as a service locator.
 - `src/common/clients/*`: non-tRPC API client wrappers for external APIs and realtime channels. Each client folder has `index.ts` (client), optional `query-keys.ts` and `schemas.ts`.
 - `src/common/feature-api-hooks.ts`: `useFeatureQuery`, `useFeatureMutation`, `useFeatureQueryCache` wrappers.
 
@@ -103,10 +114,21 @@ src/
     common/
       errors/
         error-adapter.test.ts
+      logging/
+        logger.test.ts
+        adapters/
+          debug.test.ts
+          sentry.test.ts
+      analytics/
+        analytics.test.ts
+      runtime/
+        browser.test.ts
     lib/
       modules/
         <module>/
           shared/
+            contracts/
+              <capability>.contract.test.ts
             domain.test.ts
 ```
 

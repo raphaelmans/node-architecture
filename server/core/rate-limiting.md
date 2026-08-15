@@ -30,8 +30,10 @@ Actual quota values are runtime/provider decisions.
 Use stable identifiers in this order:
 
 1. Authenticated `userId` when available
-2. Network identifier (for example IP) for anonymous traffic
-3. Request-level fallback (`requestId`) when no stronger identifier exists
+2. Trusted network/client identifier (for example a proxy-validated IP) for anonymous traffic
+3. Stable, abuse-resistant anonymous session identifier when the product supports one
+
+Never use `requestId` as the rate-limit key: it changes per request and therefore does not constrain a caller. If no stable subject can be resolved, use an explicitly documented coarse/global bucket or reject the request according to the endpoint's risk policy.
 
 ## Error Contract
 
@@ -39,7 +41,7 @@ On limit exceeded, return `429` with standard error envelope:
 
 ```json
 {
-  "code": "TOO_MANY_REQUESTS",
+  "code": "RATE_LIMIT_EXCEEDED",
   "message": "Rate limit exceeded. Please try again later.",
   "requestId": "req-abc-123"
 }
@@ -55,7 +57,9 @@ At minimum, log:
 - identifier class (`user` / `anonymous`)
 - `limit`
 - `remaining`
-- `requestId`
+- identifier class/source, not raw credentials or an unnecessarily identifying value
+
+The contextual logger adds the namespaced request ID and trace fields automatically.
 
 ## Failure Mode
 
@@ -70,4 +74,3 @@ Choose once per system and apply consistently.
 
 - tRPC middleware pattern: `server/runtime/nodejs/libraries/trpc/rate-limiting.md`
 - Next.js route enforcement for cron/public routes: `server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md`
-

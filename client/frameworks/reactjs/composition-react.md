@@ -10,7 +10,7 @@ Important clarification: **"Fetch low" means "fetch close to the UI that needs i
 
 | Layer | What it owns | What it must NOT own |
 | --- | --- | --- |
-| Provider layer | App coordination + infra wiring (QueryClient, theme, toasts) | Server data fetching, pagination, DTO mapping, cache logic |
+| Provider layer | App coordination + specific infra ports (QueryClient, theme, toasts, analytics) | Server data fetching, provider construction, runtime service locator |
 | Business layer | Feature orchestration + form setup + loading/error wiring | Query wiring, DTO definitions, pure business rules |
 | Presentation layer | Rendering + layout + UI interactions via props/context | Fetching, mutations, navigation, global state |
 
@@ -23,10 +23,12 @@ Good examples:
 - `TRPCProvider` + `QueryClientProvider` wiring
 - Theme provider
 - Toast provider
+- Analytics provider receiving a composition-root-created `ProductAnalytics`
 
 Anti-pattern:
 
 - A provider that fetches "bootstrap" server data and pushes it into context
+- A provider that constructs vendor SDKs or exposes the complete runtime container
 
 ## File Separation Rules (team convention)
 
@@ -34,9 +36,9 @@ In `src/features/<feature>/`:
 
 - `hooks.ts`: **all** server-state hooks for the feature (`useQuery*`, `useMut*`, and optional `useMod*` composition hooks)
 - `types.ts`: shared feature TypeScript types (non-DTO); component prop types may stay local when truly component-only
-- `schemas.ts`: Zod schemas + derived types + DTO-to-feature mapping helpers (schemas never live in TSX or `hooks.ts`)
+- `schemas.ts`: client-only form/UI schemas composed from shared input contracts (schemas never live in TSX or `hooks.ts`)
 - `domain.ts`: business rules (pure, deterministic)
-- `helpers.ts`: small pure utilities (formatting, grouping, small transforms)
+- `helpers.ts`: DTO-to-feature-model mapping and small pure utilities
 
 Colocation exception:
 
@@ -64,6 +66,8 @@ Colocation exception:
 | Small pure utilities | `src/features/<feature>/helpers.ts` |
 | Pure UI sections/fields/cards/lists | `src/features/<feature>/components/*-fields.tsx`, `*-card.tsx`, `*-list.tsx` |
 | Client-only coordination state | `src/features/<feature>/stores/*` (Zustand) |
+| Typed mutation/workflow analytics | Owning `useMut*` / `useMod*` hook after success |
+| Transport/contract operational logs | `clientApi` / `featureApi` through `AppLogger` |
 
 ## Composition Recipes
 
@@ -102,6 +106,8 @@ export function AccountSection() {
 ### 2) Domain hook to avoid hook spaghetti
 
 If a business component starts coordinating many hooks, introduce a domain-level hook in `src/features/<feature>/hooks.ts`.
+
+Do not add a controller or workflow hook solely to emit telemetry. Add orchestration only when the UX flow itself has multiple coordinated steps.
 
 ```ts
 // src/features/chat/hooks.ts
@@ -155,7 +161,8 @@ export function SectionView(props: {
 - Unit test presentation components with fixtures: render `*-fields.tsx` / `*-card.tsx` with props.
 - Test business components by mocking feature hooks (`src/features/<feature>/hooks.ts`) rather than mocking network calls.
 - Test query hooks by mocking `I<Feature>Api` contracts, not transport providers.
-- Test `api.ts` class implementations by mocking injected deps (`clientApi`, `toAppError`).
+- Test mutation analytics with a `ProductAnalytics` spy; completion events emit only after success.
+- Test `api.ts` class implementations by mocking injected deps (`clientApi`, `toAppError`, logger when used).
 - Test `domain.ts` / `helpers.ts` as pure functions (no mocks).
 
 ## Checklist
@@ -166,3 +173,5 @@ export function SectionView(props: {
 - Business rules live in `domain.ts`; small utilities live in `helpers.ts`.
 - Business components wire loading/error and call feature hooks.
 - Presentation components render from props/context only.
+- Provider/vendor construction happens in the client composition root.
+- Providers expose specific ports, never the complete runtime container.
