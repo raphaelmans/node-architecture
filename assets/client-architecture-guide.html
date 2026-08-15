@@ -671,7 +671,7 @@
 
     <span class="tok-key">try</span> {
       <span class="tok-key">const</span> raw = <span class="tok-key">await</span> <span class="tok-key">this</span>.deps.clientApi.post&lt;unknown&gt;(
-        <span class="tok-str">"api/users"</span>,
+        <span class="tok-str">"/api/users"</span>,
         request,
       );
       <span class="tok-key">return</span> toUser(CreateUserResponseSchema.parse(raw));
@@ -682,6 +682,7 @@
           attributes: { <span class="tok-str">"error.type"</span>: <span class="tok-str">"api.invalid_response"</span> },
           error,
         }, <span class="tok-str">"Create user response violated contract"</span>);
+        <span class="tok-key">throw</span> invalidResponseError(error);
       }
       <span class="tok-key">throw</span> <span class="tok-key">this</span>.deps.toAppError(error);
     }
@@ -696,7 +697,7 @@
                 <div class="slice-step-meta"><span class="ordinal">Owner / 04</span><h3>Client API</h3><p>Contains Ky construction and shared transport policy. Its implementation decodes the envelope, correlates, logs once, and returns only payload data.</p><span class="slice-file">common/api/client-api.ts</span></div>
                 <div class="code-block"><div class="code-head"><span>createClientApi</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">createClientApi</span>(deps: ClientApiDeps): IClientApi {
   <span class="tok-key">const</span> transport = ky.create({
-    prefixUrl: deps.prefixUrl,
+    baseUrl: deps.baseUrl,
     timeout: deps.timeoutMs ?? 30_000,
     throwHttpErrors: <span class="tok-key">false</span>,
   });
@@ -720,7 +721,7 @@
     logger,
   });
   <span class="tok-key">const</span> clientApi = createClientApi({
-    prefixUrl: config.apiBaseUrl,
+    baseUrl: config.apiBaseUrl,
     logger,
   });
   <span class="tok-key">const</span> userApi = createUserApi({
@@ -748,7 +749,7 @@
         <div class="section-head"><div><p class="section-kicker">TanStack Query / 04</p><h2>Keys describe identity. Adapters own lifecycle.</h2></div><p>Query keys are centralized, hierarchical, serializable, and specific enough to target cache work without coupling components to cache mechanics.</p></div>
         <div class="key-grid">
           <article class="key-card tone-cyan"><span class="tag">Strategy</span><h3>Match the adapter</h3><p>Direct tRPC uses generated utilities; wrapped tRPC uses matching internal keys; REST and fetch use plain key factories.</p><code>useUtils · buildTrpcQueryKey · userKeys</code><ul><li>One strategy per adapter path</li><li>Preserve tRPC cache interop</li><li>Keep every key serializable</li></ul></article>
-          <article class="key-card tone-violet"><span class="tag">Ownership</span><h3>Shared key registry</h3><p>Reusable feature-specific keys live under common so cross-feature coordinators can invalidate without importing feature internals.</p><code>common/query-keys/users.ts</code><ul><li>No inline keys in components</li><li>Normalize inputs inside builders</li><li>Keep query functions out of key files</li></ul></article>
+          <article class="key-card tone-violet"><span class="tag">Ownership</span><h3>Shared key registry</h3><p>Reusable feature-specific keys live under common so query/cache-sync adapters can coordinate without importing feature internals.</p><code>common/query-keys/users.ts</code><ul><li>No inline keys in components</li><li>Normalize only domain-equivalent inputs</li><li>Keep query functions out of key files</li></ul></article>
           <article class="key-card tone-mint"><span class="tag">Invalidation</span><h3>Narrowest stable scope</h3><p>Invalidate or patch only what the successful operation made stale.</p><code>invalidateQueries({ queryKey: userKeys.lists() })</code><ul><li>Batch related invalidations</li><li>Set detail data when returned</li><li>Avoid invalidating the entire cache</li></ul></article>
         </div>
         <div class="code-block"><div class="code-head"><span>Canonical non-tRPC query key factory</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export const</span> userKeys = {
@@ -1014,7 +1015,7 @@ analytics.track({
         },
         create: {
           title: "Create mutation",
-          code: `UserCreateForm.onSubmit(input)\n  → useCreateUser().mutate(input)\n    → userApi.create(input)\n      → clientApi.post("api/users", input)\n        → POST /api/users\n      → CreateUserResponseSchema.parse(response)\n    → analytics.track({ name: "user_created", ... })\n    → setQueryData(userKeys.detail(id), user)\n    → invalidateQueries({ queryKey: userKeys.lists() })`,
+          code: `UserCreateForm.onSubmit(input)\n  → useCreateUser().mutate(input)\n    → userApi.create(input)\n      → clientApi.post("/api/users", input)\n        → POST /api/users\n      → CreateUserResponseSchema.parse(response)\n    → analytics.track({ name: "user_created", ... })\n    → setQueryData(userKeys.detail(id), user)\n    → invalidateQueries({ queryKey: userKeys.lists() })`,
           nodes: [
             ["Form submit", "Typed user intent", "ui", "The form validates local input and submits one create command to the mutation hook.", "User input is not telemetry context; business parameters remain business parameters."],
             ["Mutation adapter", "Status and workflow", "query", "The hook owns pending state, calls the feature API, and coordinates the confirmed success path.", "Choose this owner once; components must not repeat its invalidation work."],
@@ -1038,7 +1039,7 @@ analytics.track({
         },
         failure: {
           title: "Contract failure",
-          code: `clientApi.get("users/42")\n  → HTTP 200 with malformed payload\n  → UserResponseSchema.safeParse(payload)\n  → featureApi logs "user.response.invalid" once\n  → throws AppError({ kind: "contract", requestId })\n  → query adapter exposes error state\n  → error boundary reports only if unhandled`,
+          code: `clientApi.get("/api/users/42")\n  → HTTP 200 with malformed payload\n  → UserResponseSchema.safeParse(payload)\n  → featureApi logs "user.response.invalid" once\n  → throws { kind: "contract", requestId } satisfies AppError\n  → query adapter exposes error state\n  → error boundary reports only if unhandled`,
           nodes: [
             ["Response arrives", "Transport succeeded", "client", "The network can return a successful status with data that violates the expected feature contract.", "HTTP success and contract validity are separate facts."],
             ["Schema parse", "Validate untrusted wire", "feature", "The feature API parses the payload against its Zod response schema.", "Validation belongs at the boundary that understands the endpoint contract."],

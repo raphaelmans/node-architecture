@@ -11,15 +11,15 @@ Core contracts still live in:
 - `client/core/server-state-tanstack-query.md`
 - `client/core/conventions.md`
 
-## Decision Matrix (Mixed Ownership)
+## Decision Matrix (Cache Ownership + Workflow Sequencing)
 
 Use this matrix when deciding where invalidation/cache orchestration should live.
 
 | Situation | Preferred Pattern | Why |
 | --- | --- | --- |
 | Standard single-feature mutation | Hook-owned invalidation | Reusable, low duplication |
-| Form flow with route-local orchestration (redirect/toast/local UI sequence) | Component-coordinator invalidation | Makes submit sequence explicit near UX flow |
-| Edit/update form must reflect fresh external server data after save | Component-coordinator with explicit refetch | Deterministic post-submit UI state (same as refresh) |
+| Form flow with route-local orchestration (redirect/toast/local UI sequence) | Component-coordinator sequencing through `useMod*Sync` | Makes submit sequence explicit while cache mechanics stay outside TSX |
+| Edit/update form must reflect fresh external server data after save | Await invalidation, then sync from refreshed query data | Active matching queries refetch during invalidation |
 | Mutation has base cache effects, component has extra route-local effects | Hybrid | Shared defaults + local orchestration |
 | Legacy feature currently coordinating in component | Component-coordinator (transitional) | Keeps behavior stable while migrating incrementally |
 
@@ -44,8 +44,8 @@ export function useMutProfileUpdate() {
       });
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
-        queryClient.invalidateQueries({ queryKey: profileQueryKeys.detail._def }),
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() }),
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.details() }),
       ]);
     },
   });
@@ -56,37 +56,42 @@ Component:
 
 ```ts
 const updateMut = useMutProfileUpdate();
-await updateMut.mutateAsync(data);
+await updateMut.mutateAsync(toUpdateProfileInput(data));
 router.push(appRoutes.dashboard);
 ```
 
-## Pattern B: Component-Coordinator Invalidation (Allowed)
+## Pattern B: Component-Coordinator Sequencing (Allowed)
 
-Use when the submit flow is route-local and sequencing is central to UX.
+Use when the submit flow is route-local and sequencing is central to UX. The component owns the order; a query/cache-sync hook owns keys and invalidation mechanics.
 
 ```ts
-// src/features/profile/components/profile-form.tsx
-const queryClient = useQueryClient();
-const profileQuery = useQueryProfileCurrent();
-const updateMut = useMutProfileUpdate();
+// src/features/profile/sync.ts
+export function useModProfileSync() {
+  const queryClient = useQueryClient();
 
-const onSubmitInvalidateQueries = async () =>
-  Promise.all([
-    queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
-    queryClient.invalidateQueries({ queryKey: profileQueryKeys.detail._def }),
-  ]);
+  return {
+    invalidateAfterUpdate: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() }),
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.details() }),
+      ]),
+  };
+}
+
+// src/features/profile/components/profile-form.tsx
+const updateMut = useMutProfileUpdate();
+const profileSync = useModProfileSync();
 
 const onSubmit = async (data: ProfileFormShape) => {
-  await updateMut.mutateAsync(data);
-  await onSubmitInvalidateQueries();
-  await profileQuery.refetch();
+  await updateMut.mutateAsync(toUpdateProfileInput(data));
+  await profileSync.invalidateAfterUpdate();
   router.push(appRoutes.dashboard);
 };
 ```
 
 ## Pattern C: Hybrid Ownership
 
-Mutation hook handles shared invalidation; component handles route-local additions.
+The mutation hook handles shared invalidation; a named sync hook exposes route-local additions that the component sequences.
 
 ```ts
 // hook: shared defaults
@@ -95,15 +100,26 @@ export function useMutProfileUpdate() {
   return useMutation({
     mutationFn: updateProfile,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def });
+      await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() });
     },
   });
 }
 
-// component: route-local additions
+// sync.ts: route-local addition exposed to the component
+export function useModDashboardSync() {
+  const queryClient = useQueryClient();
+  return {
+    invalidateSummary: () =>
+      queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.summary() }),
+  };
+}
+
+// component: route-local sequencing
+const dashboardSync = useModDashboardSync();
+
 const onSubmit = async (data: ProfileFormShape) => {
-  await updateMut.mutateAsync(data);
-  await queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.summary._def });
+  await updateMut.mutateAsync(toUpdateProfileInput(data));
+  await dashboardSync.invalidateSummary();
   router.push(appRoutes.dashboard);
 };
 ```
@@ -117,16 +133,18 @@ const onSubmit = async (data: ProfileFormShape) => {
 
 ### Edit Form
 
-- Either hook-owned or component-coordinator.
+- Either hook-owned or coordinator sequencing through a named sync operation.
 - Button default: disable only during submit.
 - Optional edit/update-only exception: disable when `!isDirty` for no-op prevention.
-- For edit/update forms with external defaults, run explicit `onSubmitRefetch` (`query.refetch()`), then re-sync form defaults from refreshed `query.data`.
+- For edit/update forms with external defaults, await invalidation of the active detail/current query, then re-sync form defaults from refreshed `query.data`.
+- Call `query.refetch()` explicitly only when invalidation is intentionally configured not to refetch, the query is disabled/inactive but must refresh immediately, or no invalidation occurs.
 
 ### Upload + Follow-Up Mutation
 
 - Prefer hybrid:
   - upload mutation owns upload-related invalidation
-  - component coordinates follow-up list/detail invalidations and navigation
+  - a cache-sync hook owns follow-up list/detail invalidations
+  - the component coordinates that sync operation with navigation
 
 ### List + Detail Synchronization
 
@@ -145,7 +163,7 @@ const onSubmit = async (data: ProfileFormShape) => {
 - Query hooks depend on `I<Feature>Api` contracts, not transport clients.
 - Batch invalidation with `Promise.all` when multiple keys are required.
 - For edit/update forms, keep query-data -> form reset logic in a dedicated sync hook (single responsibility).
-- Use deterministic key scopes (`src/common/query-keys/*` for non-tRPC).
+- Use deterministic key scopes (`src/common/query-keys/*` for non-tRPC) inside hooks/cache-sync modules, not TSX.
 - Normalize errors to `AppError` before presentation logic branches.
 - Keep transport checks out of presentation components.
 - Do not re-log transport failures already owned by `clientApi`/`featureApi`.

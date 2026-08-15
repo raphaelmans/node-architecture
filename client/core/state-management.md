@@ -28,7 +28,7 @@ Use a store/provider when state is:
 
 Store placement: co-locate stores inside the feature that owns them at `src/features/<feature>/stores/`. Promote to `src/common/` only when shared across multiple features.
 
-### D) Complex Interaction State (State Machines)
+### C) Complex Interaction State (State Machines)
 
 Use XState state machines (`src/features/<feature>/machines/`) when:
 
@@ -38,7 +38,7 @@ Use XState state machines (`src/features/<feature>/machines/`) when:
 
 Test machine guards and actions separately from the machine definition itself.
 
-### C) Local Ephemeral UI State
+### D) Local Ephemeral UI State
 
 Use component-local state when:
 
@@ -49,8 +49,11 @@ Use component-local state when:
 ## Decision Cheatsheet (PR Review)
 
 1. Is it async/IO data? Use server-state cache.
-2. Is it shared coordination state? Use a store/provider.
-3. Is it local and ephemeral? Use component-local state.
+2. Is it form input/validation state? Use the framework form abstraction.
+3. Must it be shareable/bookmarkable URL state? Use the metaframework URL-state abstraction.
+4. Does it have explicit states, guarded transitions, or complex workflows? Use a state machine.
+5. Is it shared client coordination state? Use a store/provider.
+6. Is it local and ephemeral? Use component-local state.
 
 ## Library-Specific Docs
 

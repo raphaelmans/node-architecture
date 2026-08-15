@@ -177,18 +177,7 @@ export function makeCreateUserController(): ICreateUserController {
 import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
 
 async execute(command: CreateUserCommand): Promise<User> {
-  this.logger.info({}, "Creating user");
-
   const user = await this.userService.create(command);
-
-  this.logger.info(
-    {
-      "otel.event.name": "user.created",
-      "code.function.name": "CreateUserUseCase.execute",
-      "user.id": user.id,
-    },
-    "User created",
-  );
 
   try {
     await this.analytics.track({
@@ -201,7 +190,7 @@ async execute(command: CreateUserCommand): Promise<User> {
       {
         err: error,
         "otel.event.name": "product_analytics.delivery_failed",
-        "user.id": user.id,
+        [APP_ATTRIBUTES.targetUserId]: user.id,
         [APP_ATTRIBUTES.productEventName]: "user_created",
       },
       "Product analytics delivery failed",

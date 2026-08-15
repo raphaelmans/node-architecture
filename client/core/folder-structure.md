@@ -62,7 +62,7 @@ Recommended files:
 Optional (add when the feature's complexity justifies them):
 
 - `sync.ts` for multi-query cache invalidation orchestration
-- `realtime-api.ts` + `realtime-api.runtime.ts` for Supabase realtime subscriptions
+- `realtime-api.ts` + `realtime-api.runtime.ts` for provider-neutral feature realtime subscriptions
 - `query-options.ts` for TanStack Query `queryOptions()` factories (RSC/prefetch)
 - `stores/` for client coordination state (Zustand — co-located with the feature)
 - `machines/` for XState state machines (complex UI interaction logic)
@@ -86,17 +86,18 @@ See Testing Layout below and `client/core/testing.md`.
 - `src/features/<feature>/api.runtime.ts`: stable re-export of a composition-root-owned API accessor for test mocking; it does not construct the instance.
 - `src/features/<feature>/hooks.ts`: query/mutation/cache behavior.
 - `src/features/<feature>/sync.ts`: multi-query cache invalidation orchestration.
+- `src/features/<feature>/realtime-api.ts`: provider payload validation/mapping into feature domain events behind `I<Feature>RealtimeApi`.
 - `src/features/<feature>/components/*`: composition + rendering only.
 - `src/features/<feature>/stores/*`: Zustand stores (co-located with feature).
 - `src/features/<feature>/machines/*`: XState state machines.
 - `src/common/query-keys/*`: cross-feature cache key contracts (plain keys for non-tRPC adapters; `buildTrpcQueryKey` only for tRPC-wrapper interop).
 - `src/common/errors/*`: `AppError` contract + normalization adapters/facades (including `adapters/trpc.ts`).
-- `src/common/toast/*`: toast abstraction with typed methods (`success`, `error`, `info`, `warning`), provider + adapter for sonner.
+- `src/common/toast/*`: provider-neutral `ToastFacade.show({ variant, ... })` contract plus provider adapter.
 - `src/common/logging/*`: OpenTelemetry-shaped `AppLogger` + contextual wrappers + local `debug` and optional remote Sentry adapters.
 - `src/common/analytics/*`: typed `ProductAnalytics` + consent/identity lifecycle + debug/noop/vendor/composite adapters.
 - `src/common/runtime/*`: composition roots that call infrastructure factories and own browser/request lifetimes; never imported as a service locator.
-- `src/common/clients/*`: non-tRPC API client wrappers for external APIs and realtime channels. Each client folder has `index.ts` (client), optional `query-keys.ts` and `schemas.ts`.
-- `src/common/feature-api-hooks.ts`: `useFeatureQuery`, `useFeatureMutation`, `useFeatureQueryCache` wrappers.
+- `src/common/clients/*`: non-tRPC API client wrappers for external APIs and realtime channels. Provider-private schemas may live with the adapter; canonical TanStack keys remain in `src/common/query-keys/*`.
+- `src/common/trpc-feature-api-hooks.ts`: optional tRPC-interoperability wrappers for `IFeatureApi` query adapters; non-tRPC adapters use plain keys directly.
 
 ## Testing Layout
 
@@ -107,7 +108,7 @@ src/
   __tests__/
     features/
       <feature>/
-        api.test.ts       # mock callTrpcQuery/callTrpcMutation, assert class behavior
+        api.test.ts       # mock injected IClientApi/toAppError/logger, assert class behavior
         hooks.test.ts     # mock I<Feature>Api, assert query/invalidation behavior
         domain.test.ts    # pure table-driven tests (no mocks)
         helpers.test.ts   # pure table-driven tests (no mocks)

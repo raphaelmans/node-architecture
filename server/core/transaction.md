@@ -28,9 +28,14 @@ These types belong in the kernel because they're framework-agnostic contracts us
 
 /**
  * TransactionContext represents an active database transaction.
- * This is a type alias that will be narrowed by the infrastructure layer.
+ * The private brand prevents arbitrary request/context objects from being
+ * passed accidentally. Infrastructure adapters explicitly bridge their
+ * concrete transaction type at the database boundary.
  */
-export type TransactionContext = unknown;
+declare const transactionContextBrand: unique symbol;
+export type TransactionContext = {
+  readonly [transactionContextBrand]: "TransactionContext";
+};
 
 /**
  * TransactionManager provides a framework-agnostic interface for
@@ -119,7 +124,7 @@ export class DrizzleTransactionManager implements TransactionManager {
 
   async run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T> {
     return this.db.transaction(async (tx: DrizzleTransaction) => {
-      return fn(tx as TransactionContext);
+      return fn(tx as unknown as TransactionContext);
     });
   }
 }
@@ -224,7 +229,7 @@ export class UserRepository {
   constructor(private db: DbClient) {}
 
   private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
-    return (options?.tx as DrizzleTransaction) ?? this.db;
+    return (options?.tx as unknown as DrizzleTransaction) ?? this.db;
   }
 
   async findById(id: string, options?: TransactionOptions): Promise<User | null> {
@@ -485,7 +490,7 @@ async execute(command: RegisterUserCommand): Promise<User> {
       {
         err: error,
         "otel.event.name": "product_analytics.delivery_failed",
-        "user.id": user.id,
+        [APP_ATTRIBUTES.targetUserId]: user.id,
         [APP_ATTRIBUTES.productEventName]: "user_created",
       },
       "Product analytics delivery failed",
@@ -616,7 +621,8 @@ src/lib/
 - [ ] `DrizzleTransactionManager` implementation in `shared/infra/db/transaction.ts`
 - [ ] `TransactionOptions` contains only an optional `tx` field
 - [ ] Repositories accept `options?: TransactionOptions` parameter
-- [ ] Repositories use `options?.tx ?? this.db` pattern
+- [ ] Repositories use a typed `getClient(options)` boundary to bridge the
+  opaque context to the concrete database transaction
 - [ ] Services receive `TransactionManager` via constructor
 - [ ] Services accept optional `options?: TransactionOptions` for all write methods
 - [ ] Services own transactions when no options.tx provided

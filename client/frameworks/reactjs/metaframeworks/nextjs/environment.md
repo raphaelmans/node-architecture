@@ -1,5 +1,7 @@
 # Environment Variables
 
+The boolean examples target Zod 4. Projects pinned to Zod 3 should use an explicit string enum/transform rather than JavaScript truthiness-based boolean coercion.
+
 > Type-safe environment variable management using `@t3-oss/env-nextjs`.
 
 ## Overview
@@ -28,7 +30,7 @@ export const env = createEnv({
 
     // Optional with defaults
     LANGFUSE_BASE_URL: z.string().url().optional(),
-    ALLOW_PROMOTION_CODES: z.coerce.boolean().default(false),
+    ALLOW_PROMOTION_CODES: z.stringbool().default(false),
   },
 
   // Client-side variables (exposed via NEXT_PUBLIC_ prefix)
@@ -81,7 +83,7 @@ BASE_URL: z.string().url(),
 OPTIONAL_KEY: z.string().optional(),
 
 // Optional with default
-FEATURE_FLAG: z.coerce.boolean().default(false),
+FEATURE_FLAG: z.stringbool().default(false),
 
 // Numeric
 PORT: z.coerce.number().default(3000),
@@ -115,9 +117,9 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 | Practice                    | Reason                               |
 | --------------------------- | ------------------------------------ |
-| Always use `env`            | Never access `process.env` directly  |
+| Application code uses `env` | Keep direct `process.env` access inside the env module and test/runtime setup boundaries |
 | Validate URLs with `.url()` | Catch invalid URLs at build time     |
-| Coerce booleans             | Env vars are always strings          |
+| Parse boolean strings explicitly | `"false"` must become `false`, not JavaScript-truthy `true` |
 | Provide defaults            | For optional config                  |
 | Keep secrets server-side    | Never use `NEXT_PUBLIC_` for secrets |
 
@@ -128,7 +130,7 @@ Missing or invalid variables throw at build/start time:
 ```
 Invalid environment variables:
   DATABASE_URL: Required
-  STRIPE_SECRET_KEY: Invalid url
+  STRIPE_SECRET_KEY: Required
 ```
 
 This prevents deploying with missing configuration.
@@ -141,4 +143,4 @@ This prevents deploying with missing configuration.
 - [ ] `experimental__runtimeEnv` includes all client variables
 - [ ] `.env.local` git-ignored
 - [ ] `.env.example` committed with placeholder values
-- [ ] All code uses `env` instead of `process.env`
+- [ ] Application code uses `env`; only env/bootstrap boundaries access `process.env`

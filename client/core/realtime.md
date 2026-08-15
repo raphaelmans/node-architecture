@@ -1,180 +1,144 @@
 # Realtime Subscriptions (Agnostic)
 
-> Client-side realtime subscription architecture for event-driven cache updates.
+> Framework- and provider-neutral contracts for event-driven client synchronization.
 
 ## Core Pattern
 
-Realtime subscriptions follow a four-layer chain:
-
-```
-Realtime Client (transport) → Feature Realtime API (domain mapping) → React Hook (subscription lifecycle) → Cache Strategy (patch/invalidate)
-```
-
-### 1) Realtime Client (`common/clients/<entity>-realtime-client/`)
-
-Each realtime-enabled entity has a dedicated client in `common/clients/`:
-
 ```text
-src/common/clients/
-  availability-realtime-client/
-  reservation-realtime-client/
-  notification-realtime-client/
-  chat-realtime-client/
+Realtime transport -> feature realtime API -> lifecycle adapter -> cache strategy
 ```
 
-Every client follows the same structural blueprint:
+The layers have separate responsibilities:
 
-- A typed row type matching the DB table columns
-- A connection-status type: `"SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR"`
-- A runtime type guard (`isXxxRow`) to validate the payload before forwarding
-- A channel name generator using `Date.now() + random()` to avoid collisions
-- A filter builder generating PostgREST filter strings (`column=eq.value`)
-- A class implementing an interface, constructed by the composition root and exposed through a stable `getXxxClient()` accessor
-- Subscription returns `{ channelName, unsubscribe }` where `unsubscribe()` calls `supabase.removeChannel(channel)`
+1. The transport owns connection mechanics and provider payloads.
+2. The feature realtime API validates and maps provider payloads into domain events.
+3. A framework lifecycle adapter subscribes, unsubscribes, and tracks reconnect gaps.
+4. A cache strategy applies a safe patch or invalidates affected query scopes.
 
-Clients subscribe to `postgres_changes` with `event: "INSERT"` and `schema: "public"`. This is an append-only event log contract — no UPDATE or DELETE events.
+## Transport Port
 
-### 2) Feature Realtime API (`features/<feature>/realtime-api.ts`)
-
-Maps raw DB rows to domain events, following the same `I<Feature>Api` pattern as `api.ts`:
+Provider types remain behind a transport-neutral interface:
 
 ```typescript
-// src/features/reservation/realtime-api.ts
+export type RealtimeConnectionState =
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "error";
+
+export interface RealtimeSubscription {
+  unsubscribe(): Promise<void> | void;
+}
+
+export interface RealtimeClient<TWireEvent, TFilter> {
+  subscribe(input: {
+    filter: TFilter;
+    onEvent(event: TWireEvent): void;
+    onStateChange?(state: RealtimeConnectionState): void;
+  }): RealtimeSubscription;
+}
+```
+
+The provider adapter validates enough of the outer payload to reject malformed messages safely. It must not expose vendor channel objects, database clients, or SDK error types to feature code.
+
+## Feature Realtime API
+
+The feature boundary validates the capability payload and maps it immediately into a domain event:
+
+```typescript
 export interface IReservationRealtimeApi {
-  subscribePlayer(params: SubscribeParams): Subscription;
-  subscribeOwner(params: SubscribeParams): Subscription;
+  subscribe(input: {
+    reservationId: string;
+    onEvent(event: ReservationRealtimeEvent): void;
+    onStateChange?(state: RealtimeConnectionState): void;
+  }): RealtimeSubscription;
 }
 
-export class ReservationRealtimeApi implements IReservationRealtimeApi {
-  // Maps raw DB rows → ReservationRealtimeDomainEvent
-  // Validates from_status, to_status, triggered_by_role against enums
-  // Constructs sequenceCursor for ordering
+export const createReservationRealtimeApi = (
+  deps: ReservationRealtimeApiDeps,
+): IReservationRealtimeApi => new ReservationRealtimeApi(deps);
+```
+
+Construction follows the normal composition-root rules. The browser instance is application-scoped unless the adapter captures subscriber-specific request context. Tests inject fake transports and do not connect to a live provider.
+
+Provider rows and envelopes are private wire types. They are validated and mapped before `onEvent` receives a domain event.
+
+## Cache Strategies
+
+The lifecycle adapter depends on a narrow cache port so the core event reducer does not import a UI framework:
+
+```typescript
+export interface RealtimeCache {
+  patch<T>(key: QueryKey, update: (current: T | undefined) => T | undefined): void;
+  invalidate(key: QueryKey): Promise<void> | void;
 }
 ```
 
-Has a corresponding `realtime-api.runtime.ts` for test mocking.
+### Event-carried state transfer
 
-### 3) React Hook (subscription lifecycle)
+When the event contains enough state:
 
-Features expose `useMod<Feature>RealtimeSync` hooks that manage the subscription lifecycle in `useEffect`:
-
-```typescript
-useEffect(() => {
-  const sub = realtimeApi.subscribe({
-    filter: { entityId },
-    onEvent: handleEvent,
-    onStatusChange: handleStatus,
-  });
-  return () => sub.unsubscribe();
-}, [entityId]);
-```
-
-### 4) Cache Strategy
-
-Two cache strategies are used depending on event payload richness:
-
-## Event-Carried State Transfer + Eventual Consistency
-
-This is the primary realtime cache pattern. It's a hybrid of two strategies:
-
-1. **Event arrives with payload** → patch the cache immediately (user sees the change now)
-2. **Trigger a background refetch** → server confirms the truth
-3. **Refetch result replaces the optimistic patch** silently
+1. Apply an immutable cache patch for immediate feedback.
+2. Invalidate the affected query scope so active observers reconcile with server truth.
 
 ```typescript
-function handleEvent(event: RealtimeEvent) {
-  // Step 1: Patch the cache with event data (Immer)
-  queryClient.setQueryData(queryKey, (old) =>
-    old
-      ? produce(old, (draft) => {
-          const slot = draft.slots.find((s) => s.id === event.slotId);
-          if (slot) slot.status = event.newStatus;
-        })
-      : old,
+function onReservationEvent(event: ReservationRealtimeEvent) {
+  cache.patch(reservationKeys.detail(event.reservationId), (current) =>
+    applyReservationEvent(current, event),
   );
 
-  // Step 2: Mark stale and refetch active observers for truth reconciliation
-  queryClient.invalidateQueries({ queryKey, refetchType: "none" });
-  queryClient.refetchQueries({ queryKey, type: "active" });
+  void cache.invalidate(reservationKeys.detail(event.reservationId));
 }
 ```
 
-**Why this works:**
+The patch helper is pure and independently tested. Direct immutable transforms are fine for shallow data; Immer is optional when a nested patch is clearer with a draft.
 
-- The event carries enough data to patch the cache immediately → the user sees changes in real-time
-- The background refetch reconciles any drift between the optimistic patch and the actual server state
-- If the refetch returns different data, it silently replaces the patch — no flash, no error
+### Invalidation only
 
-**When to use:** When the realtime event payload contains sufficient data to produce a meaningful cache patch (e.g., availability slot status changes).
-
-## Invalidation-Only Strategy
-
-For simpler cases where patching isn't worth the complexity:
+When the event only signals that something changed, or patch semantics are risky, invalidate the smallest known scope:
 
 ```typescript
-function handleEvent() {
-  queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount });
-  queryClient.invalidateQueries({ queryKey: notificationKeys.list });
+function onNotificationChanged() {
+  void cache.invalidate(notificationKeys.unreadCount());
+  void cache.invalidate(notificationKeys.list());
 }
 ```
 
-**When to use:** When the event signals "something changed" but the payload doesn't carry enough data to patch, or when the query is cheap to refetch.
+Do not fabricate partial entities from an event that does not carry a complete-enough contract.
 
-## Reconnection / Resync
+## Reconnection and Gap Recovery
 
-Realtime clients must handle disconnections gracefully:
+- The initial connection does not imply missed data and should not trigger a redundant resync.
+- After a connected subscription becomes disconnected or errors, mark the scope as potentially stale.
+- On the next successful connection, invalidate all affected scopes once to recover events missed during the gap.
+- Provider retry/backoff policy stays in the transport adapter; cache resynchronization stays in the lifecycle/cache coordinator.
+- If ordering matters, the domain event contract must carry a monotonic sequence/version and the reducer must ignore stale events.
 
-```typescript
-const [hasSeenInitialSubscribe, setHasSeenInitialSubscribe] = useState(false);
-const [shouldResyncOnSubscribe, setShouldResyncOnSubscribe] = useState(false);
+## Operational Ownership
 
-function handleStatus(status: ConnectionStatus) {
-  if (status === "SUBSCRIBED") {
-    if (!hasSeenInitialSubscribe) {
-      setHasSeenInitialSubscribe(true);
-      return; // suppress unnecessary invalidation on first connect
-    }
-    if (shouldResyncOnSubscribe) {
-      // Reconnected after a gap — invalidate everything to catch missed events
-      queryClient.invalidateQueries({ queryKey: scopeKey });
-      setShouldResyncOnSubscribe(false);
-    }
-  }
+- Transport adapter: connection failures, retry exhaustion, sanitized channel/topic, and duration through `AppLogger`.
+- Feature realtime API: invalid payload or domain mapping failure.
+- Lifecycle/cache coordinator: meaningful reconnect/resync outcomes only.
+- Product analytics: never receives transport failures; emit a product event only when a distinct user/business occurrence exists.
 
-  if (["TIMED_OUT", "CLOSED", "CHANNEL_ERROR"].includes(status) && hasSeenInitialSubscribe) {
-    setShouldResyncOnSubscribe(true);
-  }
-}
-```
-
-Rules:
-
-- Suppress invalidation on initial subscribe (no events were missed)
-- On reconnect after error, invalidate all affected queries to catch the gap
-- Each client implements its own resync policy based on payload complexity
-
-## Server-Side Setup (Supabase Realtime)
-
-Realtime broadcasting uses PostgreSQL WAL (Write-Ahead Log) via Supabase Realtime publications:
-
-1. Add the table to the publication: `ALTER PUBLICATION supabase_realtime ADD TABLE public.<table_name>`
-2. Set `REPLICA IDENTITY FULL` on tables with filter columns (required for PostgREST filter validation)
-3. Grant `SELECT` to `authenticated` and `anon` roles (Supabase validates `has_column_privilege` before allowing subscriptions)
-
-These are set up via migration SQL files or one-time scripts.
+Each failure has one reporting owner.
 
 ## Rules
 
-- Each realtime-enabled entity gets its own client in `common/clients/`
-- Clients subscribe to INSERT events only (append-only event log)
-- Use event-carried state transfer when the payload is rich enough to patch
-- Always follow a patch with a background refetch for truth reconciliation
-- Handle reconnection by invalidating affected queries
-- Use Immer for cache patches to preserve immutability guarantees
+- Keep React hooks and provider SDK calls out of this core contract.
+- Validate unknown wire events before mapping.
+- Use domain events rather than database rows outside the provider/feature boundary.
+- Patch only when the event contract is sufficient; otherwise invalidate.
+- Reconcile patched data with server truth through invalidation.
+- Coalesce or throttle reconciliation for high-frequency streams; do not trigger one network refetch per event when events can arrive in bursts.
+- Make unsubscribe idempotent and safe during teardown.
+- Put provider/server setup in a provider-specific guide.
 
 ## Related Docs
 
 - `client/core/server-state-tanstack-query.md` — cache management patterns
 - `client/core/query-keys.md` — query key conventions
-- `client/core/client-api-architecture.md` — `realtime-api.ts` file placement
+- `client/core/composition-root.md` — factories and runtime lifetimes
+- `client/frameworks/reactjs/realtime-react.md` — React subscription lifecycle
+- `client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md` — Supabase adapter example
 - `server/core/event-patterns.md` — server-side event log and outbox patterns

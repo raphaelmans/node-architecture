@@ -70,8 +70,9 @@ We achieve this by:
 3. Add routing tests for known/unknown `event.type`.
 4. Write handler tests that:
    - assert mapping to use case input
-   - enforce idempotency
-5. Add a minimal Vendor Simulator scenario for the main “happy path”.
+5. Write use-case/repository integration tests that enforce atomic idempotency,
+   including two concurrent attempts against a real test database.
+6. Add a minimal Vendor Simulator scenario for the main “happy path”.
 
 ---
 

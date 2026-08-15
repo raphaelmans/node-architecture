@@ -7,8 +7,10 @@ When contributing, treat these docs as a system of contracts, not isolated notes
 
 - Client canonical base: `client/core/*`
 - Client framework layer: `client/frameworks/*`
+- Client agent skill: curated derivatives under `client/skill/references/*`
 - Server canonical base: `server/core/*`
 - Server runtime layer: `server/runtime/*`
+- Server agent skill: curated derivatives under `server/skill/references/*`
 
 Rule:
 
@@ -104,3 +106,29 @@ Use this rule of thumb:
 - Works across frameworks/runtimes: put it in `core/*`
 - Depends on specific framework/runtime behavior: put it in framework/runtime docs
 - If both apply: define the contract in `core/*`, then add implementation details in framework/runtime docs
+
+## Maintaining the Client Skill
+
+The client docs remain canonical. The `$client` skill reorganizes their guidance into concern-based references for portable, progressive loading.
+
+When changing a mapped client source document:
+
+1. Run `python3 client/skill-maintenance/check-source-drift.py`.
+2. Review every slice reported as stale and update its reference when the source change affects the derived guidance.
+3. Refresh only reviewed slices with `python3 client/skill-maintenance/check-source-drift.py --refresh <slice>`.
+4. Run the drift check again and validate `client/skill/` with the official skill validator.
+
+Do not refresh a fingerprint without reviewing the associated reference. Update `client/skill-maintenance/source-map.json` when a source document starts or stops informing a slice. Maintenance tooling stays outside `client/skill/` so it is not copied into consumer installations.
+
+## Maintaining the Server Skill
+
+The server docs remain canonical. The `$server` skill reorganizes their guidance into concern-based references for portable, progressive loading.
+
+When changing a mapped server source document:
+
+1. Run `python3 server/skill-maintenance/check-source-drift.py`.
+2. Review every slice reported as stale and update its reference when the source change affects the derived guidance.
+3. Refresh one reviewed slice with `python3 server/skill-maintenance/check-source-drift.py refresh <slice>`.
+4. Run the drift check again and validate `server/skill/` with the official skill validator.
+
+Do not refresh a fingerprint without reviewing the associated reference. Update `server/skill-maintenance/source-map.json` when a source document starts or stops informing a slice. Every canonical `server/**/*.md` guide outside `server/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside `server/skill/` so it is not copied into consumer installations.

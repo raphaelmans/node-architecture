@@ -6,11 +6,27 @@
 
 Use this for metaframework-specific caching behavior (`revalidate`, cache tags, on-demand invalidation).
 
-## Baseline Patterns
+## Choose the Cache Model First
 
-- Route/page-level TTL with `export const revalidate = <seconds>`
-- Data-level caching with `unstable_cache`
-- Tagged entries for targeted invalidation
+Next.js 16 has two cache models. Do not mix their examples without explicitly
+declaring which model the application uses.
+
+### Cache Components enabled (current model)
+
+```ts
+import { cacheLife, cacheTag } from "next/cache";
+
+export async function getFeatured() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("home:featured");
+  return fetchFeatured();
+}
+```
+
+### Cache Components disabled (previous model)
+
+Only in this model, use route/page `revalidate` and `unstable_cache`:
 
 ```ts
 export const revalidate = 3600;
@@ -18,7 +34,7 @@ export const revalidate = 3600;
 const getFeatured = unstable_cache(
   async () => fetchFeatured(),
   ["home-featured"],
-  { tags: ["home:featured"] },
+  { tags: ["home:featured"], revalidate: 3600 },
 );
 ```
 
@@ -27,7 +43,8 @@ const getFeatured = unstable_cache(
 Use server actions or secure admin endpoints to invalidate:
 
 - `revalidatePath(path)` for route-level refresh
-- `revalidateTag(tag)` for shared data refresh
+- `revalidateTag(tag, "max")` for stale-while-revalidate shared refresh
+- `updateTag(tag)` when a Server Action requires read-your-own-writes behavior
 
 Guard invalidation endpoints/actions with auth/role checks.
 
@@ -47,3 +64,10 @@ Use stable namespace tags:
 
 - Invalidation failures should use contextual `AppLogger`; it adds the namespaced request ID and active trace fields.
 - Mutation success should not silently depend on invalidation success for correctness.
+
+## References
+
+- [Next.js Cache Components](https://nextjs.org/docs/app/getting-started/cache-components)
+- [Caching without Cache Components (previous model)](https://nextjs.org/docs/app/guides/caching-without-cache-components)
+- [`revalidateTag`](https://nextjs.org/docs/app/api-reference/functions/revalidateTag)
+- [`updateTag`](https://nextjs.org/docs/app/api-reference/functions/updateTag)

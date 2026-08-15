@@ -11,12 +11,16 @@ Use this as the default startup path for new projects and new contributors.
 5. `client/core/composition-root.md`
 6. `client/core/client-api-architecture.md`
 7. `client/core/validation-zod.md`
-8. `client/core/server-state-tanstack-query.md`
-9. `client/core/error-handling.md`
-10. `client/core/logging.md`
-11. `client/core/product-analytics.md`
-12. `client/core/testing.md`
-13. `client/core/testing-vitest.md`
+8. `client/core/domain-logic.md`
+9. `client/core/query-keys.md`
+10. `client/core/server-state-tanstack-query.md`
+11. `client/core/state-management.md`
+12. `client/core/error-handling.md`
+13. `client/core/logging.md`
+14. `client/core/product-analytics.md`
+15. `client/core/realtime.md`
+16. `client/core/testing.md`
+17. `client/core/testing-vitest.md`
 
 Then move to framework/metaframework docs.
 
@@ -33,7 +37,7 @@ Then move to framework/metaframework docs.
 - [ ] Add one client composition root for logger, analytics, transport, and feature API factories.
 - [ ] Keep browser instances application-scoped and request-contextual SSR dependencies request-scoped.
 - [ ] Inject specific ports; never inject the complete runtime container.
-- [ ] Adopt client API chain: `clientApi -> featureApi -> query adapter -> components`.
+- [ ] Adopt client call chain: `components -> query adapter -> featureApi -> clientApi` (typed results return in the opposite direction).
 - [ ] Enforce feature API contract: `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`.
 - [ ] Put public Zod input/response contracts in `src/lib/modules/<module>/shared/contracts/`.
 - [ ] Import the same contracts from client `featureApi` and server transport adapters.

@@ -47,6 +47,7 @@ src/
   test/
     shims/
       server-only.ts    # Next.js-specific shim
+    setup-server-env.ts # imported only by server/env-sensitive tests
 ```
 
 ## Config Additions
@@ -70,7 +71,7 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
+    environment: "node",
     globals: true,
     setupFiles: ["./src/test/vitest.setup.ts"],
     include: ["src/__tests__/**/*.test.ts", "src/__tests__/**/*.test.tsx"],
@@ -83,8 +84,18 @@ export default defineConfig({
 Next.js-specific additions on top of the core baseline:
 
 - `react()` plugin so JSX/TSX matches app transforms.
-- `environment: "jsdom"` for client component and hook coverage.
+- `environment: "node"` as the safe default for server modules and pure units.
 - `server-only` alias so Next.js server-only markers do not break unit imports.
+
+Opt individual component/hook test files into a DOM environment:
+
+```typescript
+// @vitest-environment jsdom
+
+import { render } from "@testing-library/react";
+```
+
+For a large suite, use separate named Vitest projects for Node and jsdom instead of a global jsdom environment. This prevents server-oriented tests from accidentally depending on browser globals.
 
 ## Setup File Additions
 
@@ -94,25 +105,15 @@ Extend the core setup file (`src/test/vitest.setup.ts`) with Next.js specifics:
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
-process.env.DATABASE_URL ??=
-  "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-process.env.SUPABASE_URL ??= "https://example.supabase.co";
-process.env.SUPABASE_SECRET_KEY ??= "test-supabase-secret-key";
-process.env.NEXT_PUBLIC_SUPABASE_URL ??= "https://example.supabase.co";
-process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??=
-  "test-supabase-publishable-key";
-process.env.NEXT_PUBLIC_APP_URL ??= "http://localhost:3000";
-
 afterEach(() => {
-  cleanup();
+  if (typeof document !== "undefined") cleanup();
 });
 ```
 
 Next.js-specific additions:
 
 - Testing Library cleanup (`@testing-library/react`) when not relying on auto-cleanup via Vitest globals
-- deterministic env defaults for import-time validation
-- `NEXT_PUBLIC_*` variable stubs
+- DOM cleanup guarded so Node-environment tests remain valid
 
 ## Env Validation in Tests
 
@@ -122,9 +123,18 @@ safe defaults exist.
 
 Rule:
 
-- provide harmless fallback env values in `vitest.setup.ts`
+- provide harmless fallback env values only to the Node/server test project or files whose import graph validates them
 - keep them clearly fake and non-secret
 - use only the minimum variables required to import modules deterministically
+
+```typescript
+// src/test/setup-server-env.ts
+process.env.DATABASE_URL ??=
+  "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+process.env.NEXT_PUBLIC_APP_URL ??= "http://localhost:3000";
+```
+
+Import that setup before dynamically importing an env-sensitive server module, or register it only in a named Node test project. Do not put server-secret placeholders in the global jsdom/client setup; doing so can conceal an accidental server import in client code.
 
 Do not:
 
@@ -146,7 +156,7 @@ add a local shim:
 export {};
 ```
 
-This is a runner compatibility detail, not a signal that server-only code is safe to execute in the browser.
+This is a runner compatibility detail, not a signal that server-only code is safe to execute in the browser. Keep an independent Next.js build or import-boundary check in CI so the shim cannot conceal a server-only import that leaked into a client entry point.
 
 ## First Verification Step
 

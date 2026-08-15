@@ -14,12 +14,16 @@ Use this order for a new project or contributor onboarding:
 5. `client/core/composition-root.md`
 6. `client/core/client-api-architecture.md`
 7. `client/core/validation-zod.md`
-8. `client/core/server-state-tanstack-query.md`
-9. `client/core/error-handling.md`
-10. `client/core/logging.md`
-11. `client/core/product-analytics.md`
-12. `client/core/testing.md`
-13. `client/core/testing-vitest.md`
+8. `client/core/domain-logic.md`
+9. `client/core/query-keys.md`
+10. `client/core/server-state-tanstack-query.md`
+11. `client/core/state-management.md`
+12. `client/core/error-handling.md`
+13. `client/core/logging.md`
+14. `client/core/product-analytics.md`
+15. `client/core/realtime.md`
+16. `client/core/testing.md`
+17. `client/core/testing-vitest.md`
 
 Then read framework details:
 
@@ -29,7 +33,7 @@ Then read framework details:
 ## Key Decisions (Defaults)
 
 - Query keys follow an explicit split: direct tRPC hooks use generated `@trpc/react-query` keys/utils, `IFeatureApi` wrappers may use `buildTrpcQueryKey` for interop, and non-tRPC adapters use plain key objects in `src/common/query-keys/*`.
-- Errors normalize from `unknown` to `AppError`; UI branches on `AppError.kind`, not transport-specific shapes.
+- Transport/provider failures normalize from `unknown` to `AppError`; known response-decoding failures become `kind: "contract"`, while `kind: "validation"` remains user-correctable input.
 - Toast usage is facade-first; feature code should not import toast providers directly.
 - Operational logging uses an OpenTelemetry-shaped `AppLogger`; `debug` is the local browser sink and Sentry is an optional filtered remote sink.
 - Product analytics uses a separate typed `ProductAnalytics` port with consent-aware vendor adapters.
@@ -65,7 +69,7 @@ Rule:
 | [Conventions](./conventions.md) | Layer ownership + decision flows |
 | [Folder Structure](./folder-structure.md) | Directory and feature starter contracts |
 | [Composition Root](./composition-root.md) | Infrastructure factories, DI, browser/SSR lifetimes |
-| [Client API Architecture](./client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
+| [Client API Architecture](./client-api-architecture.md) | `components -> query adapter -> featureApi -> clientApi` call flow |
 | [Zod Validation](./validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./server-state-tanstack-query.md) | TanStack Query playbook |

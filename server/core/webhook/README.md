@@ -28,28 +28,27 @@
 
 ```
 src/
-├─ modules/
-│  └─ webhooks/
-│     ├─ stripe/
-│     │  ├─ stripe.route.ts           # POST /api/webhooks/stripe
-│     │  ├─ stripe.validator.ts       # Signature verification
-│     │  ├─ stripe.schemas.ts         # Zod schemas per event type
-│     │  └─ handlers/                  # Specialized inbound controllers
-│     │     ├─ index.ts               # Handler registry
-│     │     ├─ invoice-paid.handler.ts
-│     │     └─ subscription-updated.handler.ts
-│     │
-│     ├─ clerk/
-│     │  ├─ clerk.route.ts
-│     │  ├─ clerk.validator.ts
-│     │  ├─ clerk.schemas.ts
-│     │  └─ handlers/
-│     │     └─ user-created.handler.ts
-│     │
-│     └─ shared/
-│        ├─ webhook.schemas.ts        # Response schema
-│        ├─ webhook.errors.ts         # Webhook-specific errors
-│        └─ webhook.logger.ts         # Webhook logger factory
+├─ app/api/webhooks/stripe/route.ts   # Next.js adapter; Express/Hono use routes/
+└─ lib/modules/
+   └─ webhooks/
+      ├─ stripe/
+      │  ├─ stripe.validator.ts       # Signature verification
+      │  ├─ stripe.schemas.ts         # Zod schemas per event type
+      │  └─ handlers/                 # Specialized inbound controllers
+      │     ├─ index.ts               # Handler registry
+      │     ├─ invoice-paid.handler.ts
+      │     └─ subscription-updated.handler.ts
+      │
+      ├─ clerk/
+      │  ├─ clerk.validator.ts
+      │  ├─ clerk.schemas.ts
+      │  └─ handlers/
+      │     └─ user-created.handler.ts
+      │
+      └─ shared/
+         ├─ webhook.schemas.ts        # Payload schema
+         ├─ webhook.errors.ts         # Webhook-specific errors
+         └─ webhook-log-fields.ts     # Structured log fields
 ```
 
 ## Request Flow
@@ -75,7 +74,7 @@ Webhook Route (HTTP endpoint)
   data: {
     received: true,
     eventId: string,
-    processed: boolean,   // false if skipped due to idempotency
+    processed: boolean,   // false for a duplicate or unsupported event type
   }
 }
 ```
@@ -117,16 +116,14 @@ Webhook Route (HTTP endpoint)
 ### Response Schema
 
 ```typescript
-// modules/webhooks/shared/webhook.schemas.ts
+// src/lib/modules/webhooks/shared/webhook.schemas.ts
 
 import { z } from 'zod';
 
 export const WebhookResponseSchema = z.object({
-  data: z.object({
-    received: z.literal(true),
-    eventId: z.string(),
-    processed: z.boolean(),
-  }),
+  received: z.literal(true),
+  eventId: z.string(),
+  processed: z.boolean(),
 });
 
 export type WebhookResponse = z.infer<typeof WebhookResponseSchema>;
@@ -155,14 +152,12 @@ export class WebhookPayloadError extends ValidationError {
   }
 }
 
-export class WebhookHandlerNotFoundError extends ValidationError {
-  readonly code = 'WEBHOOK_HANDLER_NOT_FOUND';
-
-  constructor(provider: string, eventType: string) {
-    super(`No handler registered for ${provider} event: ${eventType}`);
-  }
-}
 ```
+
+Unknown provider event types are not application errors. Providers add event
+types over time, so an unhandled type is acknowledged with HTTP 200,
+`processed: false`, and a structured `webhook.skipped` record. Invalid
+signatures and malformed supported payloads still fail.
 
 ### Webhook Log Fields
 
@@ -196,7 +191,7 @@ This helper builds custom fields only. The injected/contextual `AppLogger` suppl
 |-------|-------|------|
 | `webhook.received` | `info` | Signature verified, before processing |
 | `webhook.processed` | `info` | Successfully processed |
-| `webhook.skipped` | `info` | Skipped due to idempotency |
+| `webhook.skipped` | `info` | Duplicate or unsupported event type |
 | `webhook.failed` | `error` | Processing failed |
 | `webhook.verification_failed` | `warn` | Signature verification failed |
 | `webhook.validation_failed` | `warn` | Payload validation failed |
@@ -350,14 +345,12 @@ import { InvoicePaidHandler } from './invoice-paid.handler';
 import { SubscriptionUpdatedHandler } from './subscription-updated.handler';
 import { makeProcessPaymentUseCase } from '@/modules/payment/factories/payment.factory';
 import { makeUpdateSubscriptionUseCase } from '@/modules/subscription/factories/subscription.factory';
-import { makePaymentRepository } from '@/modules/payment/factories/payment.factory';
 
 type StripeEventType = 'invoice.paid' | 'customer.subscription.updated';
 
 const handlers: Record<StripeEventType, () => IWebhookHandler> = {
   'invoice.paid': () => new InvoicePaidHandler(
     makeProcessPaymentUseCase(),
-    makePaymentRepository(),
   ),
   'customer.subscription.updated': () => new SubscriptionUpdatedHandler(
     makeUpdateSubscriptionUseCase(),
@@ -380,13 +373,14 @@ export function isHandledEventType(eventType: string): boolean {
 // app/api/webhooks/stripe/route.ts
 
 import { NextResponse } from 'next/server';
-import { GENERIC_PUBLIC_ERROR_MESSAGE } from '@/shared/kernel/public-error';
 import { appLogger } from '@/shared/infra/logger';
+import { handleError } from '@/shared/infra/http/error-handler';
 import {
   APP_ATTRIBUTES,
   withRequestObservability,
 } from '@/shared/infra/observability';
 import { wrapResponse } from '@/shared/utils/response';
+import { WebhookResponseSchema } from '@/modules/webhooks/shared/webhook.schemas';
 import { verifyStripeSignature } from '@/modules/webhooks/stripe/stripe.validator';
 import { StripeEventSchema } from '@/modules/webhooks/stripe/stripe.schemas';
 import { getStripeHandler, isHandledEventType } from '@/modules/webhooks/stripe/handlers';
@@ -436,22 +430,24 @@ export async function POST(req: Request) {
           },
           'Webhook skipped',
         );
-        return NextResponse.json(
-          wrapResponse({
-            received: true,
-            eventId: event.id,
-            processed: false,
-          }),
-          { status: 200 },
-        );
+        const response = WebhookResponseSchema.parse({
+          received: true,
+          eventId: event.id,
+          processed: false,
+        });
+        return NextResponse.json(wrapResponse(response), { status: 200 });
       }
 
       const handler = getStripeHandler(event.type);
       if (!handler) {
-        return NextResponse.json(
-          wrapResponse({ received: true, eventId: event.id, processed: false }),
-          { status: 200 },
-        );
+        // Defensive fallback if the registry changes between the type check
+        // and resolution. It follows the same unknown-event policy.
+        const response = WebhookResponseSchema.parse({
+          received: true,
+          eventId: event.id,
+          processed: false,
+        });
+        return NextResponse.json(wrapResponse(response), { status: 200 });
       }
 
       const start = Date.now();
@@ -479,104 +475,76 @@ export async function POST(req: Request) {
         );
       }
 
-      return NextResponse.json(
-        wrapResponse({
-          received: true,
-          eventId: event.id,
-          processed: !result.skipped,
-        }),
-        { status: 200 },
-      );
+      const response = WebhookResponseSchema.parse({
+        received: true,
+        eventId: event.id,
+        processed: !result.skipped,
+      });
+      return NextResponse.json(wrapResponse(response), { status: 200 });
 
     } catch (error) {
-      if (error instanceof WebhookVerificationError) {
-        appLogger.warn(
-          {
-            ...webhookFields,
-            'otel.event.name': 'webhook.verification_failed',
-            'error.type': error.code,
-            err: error,
-          },
-          'Verification failed',
-        );
-        return NextResponse.json(
-          { code: error.code, message: error.message, requestId },
-          { status: 401 },
-        );
-      }
-
-      if (error instanceof WebhookPayloadError) {
-        appLogger.warn(
-          {
-            ...webhookFields,
-            'otel.event.name': 'webhook.validation_failed',
-            'error.type': error.code,
-            err: error,
-          },
-          'Validation failed',
-        );
-        return NextResponse.json(
-          {
-            code: error.code,
-            message: error.message,
-            requestId,
-            ...(error.publicDetails && { details: error.publicDetails }),
-          },
-          { status: 400 },
-        );
-      }
-
-      appLogger.error(
-        {
-          ...webhookFields,
-          'otel.event.name': 'webhook.failed',
-          'error.type': error instanceof Error ? error.constructor.name : 'UnknownError',
-          err: error,
-        },
-        'Webhook processing failed',
-      );
-      return NextResponse.json(
-        { code: 'INTERNAL_ERROR', message: GENERIC_PUBLIC_ERROR_MESSAGE, requestId },
-        { status: 500 },
-      );
+      const failureEvent = error instanceof WebhookVerificationError
+        ? 'webhook.verification_failed'
+        : error instanceof WebhookPayloadError
+          ? 'webhook.validation_failed'
+          : 'webhook.failed';
+      const { status, body } = handleError(error, requestId, {
+        ...webhookFields,
+        'otel.event.name': failureEvent,
+      });
+      return NextResponse.json(body, { status });
     }
   });
 }
 ```
 
-Prefer the shared helpers from `server/core/error-handling.md` for public message policy. Webhook handlers follow the same rule: 5xx responses are generic and never include raw provider or infrastructure details.
+`handleError` is the same central HTTP error adapter used by other framework
+routes. Webhook routes do not maintain a second status/message mapping.
 
 ## Idempotency
 
-Idempotency is handled via **domain logic**, not a dedicated webhook events table.
+Idempotency is enforced by **domain logic plus a database uniqueness
+constraint**. A dedicated webhook-events table is optional, but an atomic
+database guard is required.
 
 ### Pattern
 
-Each handler checks if the action has already been performed:
+The handler maps the event and calls one use case. The use case attempts one
+atomic domain write using the provider's stable ID:
 
 ```typescript
-// Check by provider's unique ID
-const existing = await this.paymentRepository.findByStripeInvoiceId(invoiceId);
-if (existing) {
-  return { skipped: true, reason: 'Payment already processed' };
-}
+const outcome = await this.transactionManager.run(async (tx) => {
+  const payment = await this.paymentService.createFromStripeInvoiceIfAbsent(
+    command,
+    { tx },
+  );
 
-// Check by provider's user ID
-const existing = await this.userRepository.findByClerkId(clerkUserId);
-if (existing) {
-  return { skipped: true, reason: 'User already exists' };
-}
+  if (!payment) {
+    return { skipped: true, reason: 'payment_already_processed' } as const;
+  }
+
+  // Required side effects are persisted as outbox intent in the same tx.
+  await this.receiptOutbox.enqueue({ paymentId: payment.id }, { tx });
+  return { skipped: false } as const;
+});
+
+return outcome;
 ```
+
+The repository implements this with a unique constraint such as
+`UNIQUE (stripe_invoice_id)` and `INSERT ... ON CONFLICT DO NOTHING RETURNING`.
+Do not implement idempotency as `find` followed by `insert`; concurrent
+deliveries can both pass the read.
 
 ### Benefits
 
-- No extra table to maintain
+- No extra webhook table is required when the domain table owns a natural key
 - Idempotency logic lives close to domain
-- Natural checks using existing queries
+- Concurrent deliveries are serialized by a database constraint
 
 ## Adding a New Provider
 
-1. Create provider folder: `modules/webhooks/<provider>/`
+1. Create provider folder: `src/lib/modules/webhooks/<provider>/`
 
 2. Create schemas: `<provider>.schemas.ts`
    - Base event schema
@@ -588,17 +556,14 @@ if (existing) {
 4. Create handlers: `handlers/*.handler.ts`
    - Implement `IWebhookHandler` interface
    - Validate with Zod
-   - Check idempotency
    - Call use case
 
 5. Create handler registry: `handlers/index.ts`
    - Map event types to handlers
 
-6. Create route: `<provider>.route.ts`
-   - Follow the standard flow
-
-7. Register route in your metaframework/router
-   - Example (Next.js): `app/api/webhooks/<provider>/route.ts`
+6. Create the framework adapter in its entrypoint folder and follow the
+   standard flow. Example: `app/api/webhooks/<provider>/route.ts` for Next.js,
+   or `routes/webhooks.<provider>.ts` for Express/Hono.
 
 ## Future Considerations
 
@@ -611,14 +576,16 @@ if (existing) {
 
 ## Checklist
 
-- [ ] Webhook module created at `modules/webhooks/`
-- [ ] Shared components: `webhook.schemas.ts`, `webhook.errors.ts`, `webhook.logger.ts`
-- [ ] Per-provider: schemas, validator, handlers, route
+- [ ] Webhook module created at `src/lib/modules/webhooks/`
+- [ ] Shared components: `webhook.schemas.ts`, `webhook.errors.ts`, `webhook-log-fields.ts`
+- [ ] Per-provider module: schemas, validator, handlers
+- [ ] Framework route exists only in the selected adapter entrypoint folder
 - [ ] Handler registry maps event types to handlers
 - [ ] Handlers implement `IWebhookHandler` interface
 - [ ] Handlers validate payloads with Zod
 - [ ] Handlers import no framework, repository, database, or provider SDK types
-- [ ] Use cases/services own idempotency checks
+- [ ] Use cases/services own idempotency and repositories enforce it atomically
+- [ ] Provider IDs have explicit database unique constraints
 - [ ] Handlers delegate to Use Cases (not Services directly)
 - [ ] Routes verify signatures before processing
 - [ ] Routes return standard envelope response

@@ -168,7 +168,8 @@ src/
 │  │  │  ├─ product-analytics.ts # Typed ProductAnalytics port
 │  │  │  ├─ auth.ts             # Session, UserRole, Permission types
 │  │  │  ├─ errors.ts           # Base error classes
-│  │  │  └─ public-error.ts     # Shared public message policy
+│  │  │  ├─ public-error.ts     # Shared public message policy
+│  │  │  └─ schemas.ts          # Browser-safe reusable Zod primitives
 │  │  ├─ infra/
 │  │  │  ├─ db/
 │  │  │  │  ├─ drizzle.ts       # Drizzle client (postgres.js driver)
@@ -278,8 +279,8 @@ src/
 // Throw domain error
 throw new UserNotFoundError(userId);
 
-// Validation with Zod
-const input = CreateUserInputSchema.parse(data);
+// Inbound adapter validation normalizes Zod failures to ValidationError
+const input = parseRequestInput(CreateUserInputSchema, data);
 ```
 
 ### Logging
@@ -292,8 +293,8 @@ const useCase = new CreateUserUseCase(userService, appLogger, productAnalytics);
 appLogger.info(
   {
     "otel.event.name": "user.created",
-    "code.function.name": "CreateUserUseCase.execute",
-    "user.id": userId,
+    "code.function.name": "UserService.create",
+    [APP_ATTRIBUTES.targetUserId]: userId,
   },
   "User created",
 );
@@ -319,9 +320,10 @@ const user = await makeCreateUserController().execute(data, actor);
 const result = await makeRegisterUserController().execute(input, actor);
 ```
 
-## Implemented Event-Driven Patterns
+## Canonical Event-Driven Patterns
 
-The following are production-complete (see `server/core/event-patterns.md`):
+The following are canonical patterns whose production readiness must be proven
+in each consuming project (see `server/core/event-patterns.md`):
 
 - **Domain event log** — append-only event tables for real-time broadcasting (e.g., `availability_change_event`)
 - **Notification outbox** — transactional enqueue + async QStash dispatch with retry/backoff

@@ -17,7 +17,7 @@ Use Zustand for **client coordination state** (UI state that is not server/IO st
 For app-wide state (single instance):
 
 ```typescript
-// src/features/media/stores.ts
+// src/features/media/stores/media-selection-store.ts
 "use client";
 
 import { create } from "zustand";
@@ -55,11 +55,17 @@ export const useMediaSelectionStore = create<MediaSelectionState>()(
 For isolated state per component tree (multiple instances):
 
 ```typescript
-// src/features/customer/stores/customer-store.ts
+// src/features/customer/stores/customer-store.tsx
 "use client";
 
-import { createContext, useContext } from "react";
-import { create, useStore } from "zustand";
+import {
+  createContext,
+  useContext,
+  useState,
+  type PropsWithChildren,
+} from "react";
+import { useStore } from "zustand";
+import { createStore } from "zustand/vanilla";
 
 type CustomerState = {
   activeCustomerId: string | undefined;
@@ -68,7 +74,7 @@ type CustomerState = {
 };
 
 export const createCustomerStore = (initialCustomerId?: string) =>
-  create<CustomerState>((set) => ({
+  createStore<CustomerState>()((set) => ({
     activeCustomerId: initialCustomerId,
     setActiveCustomerId: (id) => set({ activeCustomerId: id }),
     reset: () => set({ activeCustomerId: undefined }),
@@ -76,6 +82,18 @@ export const createCustomerStore = (initialCustomerId?: string) =>
 
 export type CustomerStoreAPI = ReturnType<typeof createCustomerStore>;
 export const CustomerStoreContext = createContext<CustomerStoreAPI | null>(null);
+
+export function CustomerStoreProvider({
+  initialCustomerId,
+  children,
+}: PropsWithChildren<{ initialCustomerId?: string }>) {
+  const [store] = useState(() => createCustomerStore(initialCustomerId));
+  return (
+    <CustomerStoreContext.Provider value={store}>
+      {children}
+    </CustomerStoreContext.Provider>
+  );
+}
 
 export const useCustomerInContext = <T>(selector: (s: CustomerState) => T): T => {
   const store = useContext(CustomerStoreContext);
@@ -91,4 +109,4 @@ export const useCustomerInContext = <T>(selector: (s: CustomerState) => T): T =>
 - Prefer selecting primitives over selecting entire state objects.
 - Use `useShallow` when selecting multiple values to avoid unnecessary re-renders.
 - Persisted stores must use `partialize` to avoid storing accidental data.
-
+- In SSR applications, do not render persistence-dependent UI as authoritative until client hydration has completed; server markup cannot read browser storage.

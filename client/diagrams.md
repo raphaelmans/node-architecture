@@ -25,6 +25,9 @@ client/
     error-handling.md
     logging.md
     product-analytics.md
+    testing.md
+    testing-vitest.md
+    realtime.md
     folder-structure.md
 
   frameworks/                      # framework-specific
@@ -36,6 +39,7 @@ client/
       composition-react.md
       error-handling.md
       forms-react-hook-form.md
+      realtime-react.md
       ui-shadcn-radix.md
       state-zustand.md
       metaframeworks/
@@ -48,7 +52,9 @@ client/
           url-state-nuqs.md
           trpc.md
           ky-fetch.md
+          realtime-supabase.md
           query-keys.md            # moved to client/core/query-keys.md (keep as redirect)
+          testing-vitest.md
 
 legacy/
   client/                         # detailed historical references (non-canonical)
@@ -160,10 +166,13 @@ What kind of state is it?
 3) Is it form state (validation + dirty/submission state)?
    -> Form library (React: react-hook-form)
 
-4) Is it shared UI coordination state (client-derived)?
+4) Does it have explicit states, guarded transitions, or a complex workflow?
+   -> State machine (XState)
+
+5) Is it shared UI coordination state (client-derived)?
    -> Store/provider (React: Zustand)
 
-5) Is it local and ephemeral?
+6) Is it local and ephemeral?
    -> Component-local state
 ```
 
@@ -229,8 +238,7 @@ useForm(...) + useQueryProfileCurrent()
   v
 onSubmit = useCatchErrorToast(async () => {
   await updateMut.mutateAsync(payload)
-  await onSubmitInvalidateQueries()    // Promise.all([...]) when needed
-  await onSubmitRefetch()              // query.refetch()
+  await onSubmitInvalidateQueries()    // active matches refetch during invalidation
   // optional navigation
 })
   |
@@ -251,5 +259,5 @@ Rules:
 - Success path re-syncs from refreshed external data.
 - Keep each unit single-responsibility:
   - `onSubmitInvalidateQueries`: invalidation only
-  - `onSubmitRefetch`: refetch only
   - `useProfileFormSyncFromQueryData`: query-data -> form reset only
+- Add explicit `query.refetch()` only for a documented exception: invalidation is configured not to refetch, the target is disabled/inactive but must refresh immediately, or the flow skips invalidation.

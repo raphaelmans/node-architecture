@@ -92,13 +92,14 @@ export function createProfileMutation(deps: {
   profileApi: IProfileApi;
   cache: FeatureQueryCache;
   analytics: ProductAnalytics;
+  source: "settings" | "onboarding";
 }) {
   return defineMutation({
     execute: (input: CreateProfileInput) => deps.profileApi.create(input),
     onSuccess: (profile, input) => {
       deps.analytics.track({
         name: "profile_created",
-        properties: { source: input.source },
+        properties: { source: deps.source },
       });
 
       deps.cache.set(profileKeys.detail(profile.id), profile);
@@ -106,6 +107,8 @@ export function createProfileMutation(deps: {
   });
 }
 ```
+
+`source` describes where this UI workflow occurred, so it is injected into the workflow/mutation definition. It is not added to `CreateProfileInput` or forwarded to `profileApi.create()` unless the server contract independently defines it as business data.
 
 Emit after the meaningful operation succeeds. An attempted click is a different event from a completed business action and must have a different name/definition.
 

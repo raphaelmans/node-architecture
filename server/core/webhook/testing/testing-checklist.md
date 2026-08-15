@@ -24,8 +24,8 @@
 ## 3. Routing
 
 - [ ] Known `event.type` resolves to a handler
-- [ ] Unknown `event.type` fails with `WEBHOOK_HANDLER_NOT_FOUND`
-- [ ] No events are silently ignored
+- [ ] Unknown `event.type` returns HTTP 200 with `processed: false`
+- [ ] Unknown events emit `webhook.skipped` with reason `unhandled_event_type`
 
 ---
 
@@ -40,6 +40,7 @@
 ## 5. Idempotency + Retries
 
 - [ ] Duplicate webhook delivery is safe (no double side effects)
+- [ ] Concurrent duplicate deliveries are protected by a database unique constraint
 - [ ] Response indicates skip via `processed: false`
 - [ ] Skip reasons are logged
 
@@ -61,5 +62,6 @@
 - [ ] Simulator can run at least one happy-path scenario
 - [ ] Simulator can produce at least one failure-path scenario
 - [ ] Simulator can deliver duplicates to test idempotency
+- [ ] Simulator or integration harness can deliver duplicates concurrently
 - [ ] Simulator payloads are validated against schemas
 - [ ] Simulator supports correlation via `e2eTag` (or equivalent)

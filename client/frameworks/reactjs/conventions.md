@@ -31,9 +31,9 @@ Feature API contract for hook dependencies:
 Two patterns are valid:
 
 - Preferred default: hook-owned invalidation (reusable mutation behavior).
-- Allowed: component-coordinator invalidation (route/form-local orchestration).
+- Allowed: component-coordinator sequencing through a named query/cache-sync operation (route/form-local orchestration).
 
-Choose component-coordinator when sequencing (submit -> invalidate -> navigate) is specific to one screen flow.
+Choose component-coordinator sequencing when `submit -> sync -> navigate` is specific to one screen flow. Keep `queryClient`, tRPC utilities, and concrete query keys inside `hooks.ts`/`sync.ts`; the component calls the named sync operation.
 
 ## Operational Logging and Product Analytics
 

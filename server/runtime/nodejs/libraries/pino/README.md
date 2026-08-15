@@ -35,11 +35,29 @@ const pinoLogger = pino({
       "token",
       "accessToken",
       "refreshToken",
+      "apiKey",
+      "secret",
       "authorization",
       "cookie",
+      "req.headers.authorization",
+      "req.headers.cookie",
+      "request.headers.authorization",
+      "request.headers.cookie",
+      "res.headers.set-cookie",
+      "response.headers.set-cookie",
       "*.password",
       "*.token",
+      "*.accessToken",
+      "*.refreshToken",
+      "*.apiKey",
+      "*.secret",
       "*.authorization",
+      "*.cookie",
+      "*.*.password",
+      "*.*.token",
+      "*.*.accessToken",
+      "*.*.refreshToken",
+      "*.*.authorization",
     ],
     censor: "[REDACTED]",
   },
@@ -86,6 +104,23 @@ export class PinoAppLogger implements AppLogger {
 
 Correlation is written after caller fields so application code cannot spoof trusted IDs. Configure equivalent enrichment and redaction for every method.
 
+Redaction is defense in depth, not permission to log entire request, session, or
+provider objects. Prefer allowlisted log fields. Add a redaction path whenever a
+new credential shape is introduced, and keep regression fixtures for root,
+header, one-level, and two-level nesting.
+
+```typescript
+it.each([
+  { password: "secret" },
+  { req: { headers: { authorization: "Bearer secret" } } },
+  { session: { refreshToken: "secret" } },
+  { provider: { credentials: { accessToken: "secret" } } },
+])("redacts credential-shaped fields", (fields) => {
+  appLogger.info(fields, "Redaction test");
+  expect(testDestination.lastLine()).not.toContain("secret");
+});
+```
+
 ## Checklist
 
 - [ ] Pino is imported only by infrastructure
@@ -93,6 +128,8 @@ Correlation is written after caller fields so application code cannot spoof trus
 - [ ] Production output is structured JSON
 - [ ] Development pretty printing is optional and disabled in production
 - [ ] Secrets and nested sensitive fields are redacted
+- [ ] Redaction tests cover nested headers and token objects
+- [ ] Logs use allowlisted fields rather than full request/session objects
 - [ ] Errors use the standard error serializer
 - [ ] Resource identity is stable
 - [ ] Active request/trace context is merged into every method

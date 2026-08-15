@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "algorithm": "sha256(path-null-content-null, sources sorted by path)",
+  "slices": {
+    "foundations": {
+      "reference": "client/skill/references/foundations.md",
+      "sources": [
+        "client/README.md",
+        "client/core/README.md",
+        "client/core/architecture.md",
+        "client/core/composition-root.md",
+        "client/core/conventions.md",
+        "client/core/domain-logic.md",
+        "client/core/folder-structure.md",
+        "client/core/onboarding.md",
+        "client/diagrams.md"
+      ],
+      "fingerprint": "614da5718fd31a738bdd95fb95f58da23cd12fd80929a87083c29a075c8b95ad"
+    },
+    "contracts": {
+      "reference": "client/skill/references/contracts.md",
+      "sources": [
+        "client/core/client-api-architecture.md",
+        "client/core/domain-logic.md",
+        "client/core/error-handling.md",
+        "client/core/validation-zod.md",
+        "client/frameworks/reactjs/error-handling.md",
+        "client/frameworks/reactjs/forms-react-hook-form.md"
+      ],
+      "fingerprint": "ba05956b238267cbc49ac5b09e0839d1146dd3bb4a6c2a6513791e77f7d7ad0f"
+    },
+    "data-flow": {
+      "reference": "client/skill/references/data-flow.md",
+      "sources": [
+        "client/core/client-api-architecture.md",
+        "client/core/conventions.md",
+        "client/core/query-keys.md",
+        "client/core/server-state-tanstack-query.md",
+        "client/frameworks/reactjs/server-state-patterns-react.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
+      ],
+      "fingerprint": "b21a268c34a2bf083b57e8c75ba746374e7ff55f363285d9e47dba31e7f68009"
+    },
+    "state-realtime": {
+      "reference": "client/skill/references/state-realtime.md",
+      "sources": [
+        "client/core/query-keys.md",
+        "client/core/realtime.md",
+        "client/core/server-state-tanstack-query.md",
+        "client/core/state-management.md",
+        "client/frameworks/reactjs/realtime-react.md",
+        "client/frameworks/reactjs/state-zustand.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
+      ],
+      "fingerprint": "31b7886d0d6cde287ae304f104f12ffea996186d564b1bdef7faa1da09c3d4da"
+    },
+    "telemetry": {
+      "reference": "client/skill/references/telemetry.md",
+      "sources": [
+        "client/core/client-api-architecture.md",
+        "client/core/composition-root.md",
+        "client/core/error-handling.md",
+        "client/core/logging.md",
+        "client/core/product-analytics.md",
+        "client/frameworks/reactjs/conventions.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
+      ],
+      "fingerprint": "2303589ad187b75e5273320ccc92b2db8020332c4073c2959a092e9075465c7b"
+    },
+    "testing": {
+      "reference": "client/skill/references/testing.md",
+      "sources": [
+        "client/core/composition-root.md",
+        "client/core/folder-structure.md",
+        "client/core/testing-vitest.md",
+        "client/core/testing.md",
+        "client/frameworks/reactjs/composition-react.md",
+        "client/frameworks/reactjs/conventions.md",
+        "client/frameworks/reactjs/realtime-react.md",
+        "client/frameworks/reactjs/server-state-patterns-react.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md"
+      ],
+      "fingerprint": "f700f8de8fcf236d4de31a842250db190f7c9c9e835ef04504f15823307da89c"
+    },
+    "react": {
+      "reference": "client/skill/references/react.md",
+      "sources": [
+        "client/frameworks/reactjs/README.md",
+        "client/frameworks/reactjs/composition-react.md",
+        "client/frameworks/reactjs/conventions.md",
+        "client/frameworks/reactjs/error-handling.md",
+        "client/frameworks/reactjs/forms-react-hook-form.md",
+        "client/frameworks/reactjs/overview.md",
+        "client/frameworks/reactjs/realtime-react.md",
+        "client/frameworks/reactjs/server-state-patterns-react.md",
+        "client/frameworks/reactjs/state-zustand.md",
+        "client/frameworks/reactjs/ui-shadcn-radix.md"
+      ],
+      "fingerprint": "4f9561e13638747fb8f86c37c8ed8aa8f5487c8c3a735eab96c9f14a0f21b018"
+    },
+    "nextjs": {
+      "reference": "client/skill/references/nextjs.md",
+      "sources": [
+        "client/frameworks/reactjs/metaframeworks/nextjs/README.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/environment.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/folder-structure.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/query-keys.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
+      ],
+      "fingerprint": "b36fb24843017017c6c43a9b9e94ddbe039f8015eafb5547ea59ff8a4c12ce68"
+    }
+  }
+}

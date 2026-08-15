@@ -110,6 +110,7 @@ import {
 } from '@/shared/kernel/public-error';
 import { appLogger } from '@/shared/infra/logger';
 import { APP_ATTRIBUTES } from '@/shared/infra/observability/attributes';
+import { getObservabilityContext } from '@/shared/infra/observability';
 import type { Context } from './context';
 
 /**
@@ -128,7 +129,8 @@ function pickPublicTrpcShapeData(
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
     const cause = error.cause;
-    const requestId = ctx?.requestId ?? 'unknown';
+    const requestId =
+      ctx?.requestId ?? getObservabilityContext()?.requestId ?? 'unknown';
 
     if (cause instanceof AppError) {
       appLogger.warn(
@@ -269,32 +271,10 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 ```
 
-### Middleware
-
-```typescript
-// shared/infra/trpc/middleware/auth.middleware.ts
-
-import { TRPCError } from '@trpc/server';
-import { middleware } from '../trpc';
-import type { AuthenticatedContext } from '../context';
-
-export const authMiddleware = middleware(async ({ ctx, next }) => {
-  if (!ctx.session || !ctx.userId) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Authentication required',
-    });
-  }
-
-  return next({
-    ctx: ctx as AuthenticatedContext,
-  });
-});
-```
-
 ### Procedure Definitions
 
-**Important:** Define middleware inline in `trpc.ts` to avoid circular dependencies. Do NOT create separate middleware files that import from `trpc.ts`.
+Define middleware inline in `trpc.ts` to avoid circular dependencies. Do not
+create middleware files that import procedure builders from `trpc.ts`.
 
 ```typescript
 // shared/infra/trpc/trpc.ts (continued)
@@ -649,38 +629,39 @@ src/
 │        └─ [trpc]/
 │           └─ route.ts      # tRPC HTTP handler
 │
-├─ shared/
-│  ├─ kernel/
-│  │  ├─ transaction.ts
-│  │  └─ errors.ts
-│  ├─ infra/
-│  │  ├─ db/
-│  │  │  ├─ drizzle.ts       # Drizzle client
-│  │  │  └─ schema.ts        # Drizzle schema definitions
-│  │  ├─ trpc/
-│  │  │  ├─ trpc.ts          # tRPC init + middleware (inline)
-│  │  │  ├─ root.ts          # Root router
-│  │  │  └─ context.ts       # Request context
-│  │  └─ container.ts
-│  └─ utils/
+├─ lib/
+│  ├─ shared/
+│  │  ├─ kernel/
+│  │  │  ├─ transaction.ts
+│  │  │  └─ errors.ts
+│  │  ├─ infra/
+│  │  │  ├─ db/
+│  │  │  │  ├─ drizzle.ts    # Drizzle client
+│  │  │  │  └─ schema.ts     # Drizzle schema definitions
+│  │  │  ├─ trpc/
+│  │  │  │  ├─ trpc.ts       # tRPC init + middleware (inline)
+│  │  │  │  ├─ root.ts       # Root router
+│  │  │  │  └─ context.ts    # Request context
+│  │  │  └─ container.ts
+│  │  └─ utils/
 │
-├─ modules/
-│  └─ user/
-│     ├─ user.router.ts      # tRPC router
-│     ├─ controllers/        # Framework-neutral capability boundary
-│     ├─ shared/
-│     │  └─ contracts/       # Browser-safe public input/response schemas
-│     ├─ dtos/               # Server-only commands (optional)
-│     ├─ use-cases/
-│     ├─ factories/
-│     ├─ services/
-│     └─ repositories/
+│  ├─ modules/
+│  │  └─ user/
+│  │     ├─ user.router.ts   # tRPC router
+│  │     ├─ controllers/     # Framework-neutral capability boundary
+│  │     ├─ shared/
+│  │     │  └─ contracts/    # Browser-safe public input/response schemas
+│  │     ├─ dtos/            # Server-only commands (optional)
+│  │     ├─ use-cases/
+│  │     ├─ factories/
+│  │     ├─ services/
+│  │     └─ repositories/
 │
 ├─ drizzle/
 │  └─ migrations/
 │
-└─ trpc/
-   └─ client.ts              # Client-side tRPC setup
+└─ features/
+   └─ shared/api/client.ts   # Client-side tRPC setup
 ```
 
 ## Key Differences from Generic Architecture

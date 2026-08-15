@@ -2,7 +2,10 @@
 
 > Server-side patterns for domain events, side effects, and async delivery.
 
-The architecture uses practical event-driven patterns without a formal event bus. These patterns are production-complete and tested.
+The architecture uses practical event-driven patterns without a formal event
+bus. They are canonical design patterns; a consuming project may call them
+production-ready only after its migrations, concurrency behavior, retry paths,
+and integration tests pass.
 
 ## Domain Event Log
 
@@ -36,10 +39,10 @@ A persistence port encapsulates event emission without creating a service-to-ser
 
 ```typescript
 export interface IAvailabilityChangeEventWriter {
-  emitReservationBooked(params: EmitParams): Promise<void>;
-  emitReservationReleased(params: EmitParams): Promise<void>;
-  emitCourtBlockBooked(params: EmitParams): Promise<void>;
-  emitCourtBlockReleased(params: EmitParams): Promise<void>;
+  emitReservationBooked(params: EmitParams, options: TransactionOptions): Promise<void>;
+  emitReservationReleased(params: EmitParams, options: TransactionOptions): Promise<void>;
+  emitCourtBlockBooked(params: EmitParams, options: TransactionOptions): Promise<void>;
+  emitCourtBlockReleased(params: EmitParams, options: TransactionOptions): Promise<void>;
 }
 ```
 
@@ -47,7 +50,9 @@ Named methods are thin adapters over `emitMany(events)` which calls the reposito
 
 ### Emission Rules
 
-- Event writes happen **inside the DB transaction** — if the transaction rolls back, no event is written and no realtime broadcast happens
+- Event writes receive `{ tx }` through `TransactionOptions` and happen inside
+  the same DB transaction—if it rolls back, no event is written and no realtime
+  broadcast happens
 - All services that modify the entity's state must emit events: create, cancel, expire, confirm, reject
 - Event names use `<entity>.<past_tense_action>` format
 

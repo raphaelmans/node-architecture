@@ -87,7 +87,101 @@ repository test   -> real test database where persistence behavior matters
 - A consuming project chooses its framework entrypoint folder; the inward `lib/shared/` and `lib/modules/` structure remains stable.
 - Legacy server documentation remains historical reference only and does not override the canonical core/runtime guides.
 
+## Post-Audit Coherence Hardening
+
+A complete follow-up review of all `server/` guides corrected the remaining
+places where copyable examples disagreed with the core decisions.
+
+### Security and Provider Boundaries
+
+- User/session-scoped Supabase clients now use the publishable key; the secret
+  key is confined to separately named privileged/admin factories.
+- Supabase Auth and Storage adapters translate provider failures to typed
+  application errors instead of leaking raw vendor errors across the port.
+- tRPC context creation now receives a module-owned `SessionResolver`; shared
+  transport infrastructure no longer constructs Supabase clients or resolves a
+  module repository directly, and infrastructure outages are not swallowed as
+  anonymous sessions.
+- OAuth and PKCE route examples invoke framework-neutral controllers and derive
+  redirects from a validated application origin rather than forwarded host
+  headers.
+- Pino and manual sanitization guidance now covers nested authorization,
+  cookie, token, API-key, and secret shapes with regression tests and an
+  allowlist-first logging rule.
+
+### Correctness and Concurrency
+
+- Removed the generic PostgreSQL `23505` UUID retry pattern. Known uniqueness
+  conflicts are translated by exact constraint name; unexpected UUID
+  collisions fail once rather than being retried inside an aborted transaction.
+- Webhook idempotency now requires an atomic unique constraint/upsert or
+  insert-on-conflict operation. Check-then-insert is explicitly forbidden for
+  concurrent deliveries.
+- Unsupported webhook event types have one canonical policy: acknowledge with
+  HTTP 200, return `processed: false`, and emit a structured skip record.
+- Webhook handler wiring, response-schema ownership, central HTTP error mapping,
+  provider folder paths, and fixture layouts were corrected and unified.
+- `TransactionContext` is now an opaque branded kernel type; only transaction
+  infrastructure and repositories bridge it to a concrete Drizzle transaction.
+
+### Cross-Framework and Contract Parity
+
+- Express and Hono validation examples normalize Zod failures to the shared
+  `ValidationError` so every transport reaches the canonical error envelope.
+- Copyable core and Next.js controller examples use the same request-body and
+  schema-normalization helpers; no inbound example leaks a raw parser error.
+- tRPC documentation now has one inline authentication/authorization
+  middleware implementation, preserves domain errors as causes, and routes
+  logout/current-session capabilities through controllers.
+- Procedure tests using `createCaller` are explicitly separated from real HTTP
+  adapter integration tests; only the latter claim coverage of context,
+  observability, raw parsing, and serialized error formatting.
+- All runtime folder examples now follow `src/lib/shared` and
+  `src/lib/modules`; capability response schemas validate payloads while the
+  kernel owns envelopes.
+- Numeric pagination is consistently named `offset`/`nextOffset`; true cursors
+  are reserved for opaque, stable traversal keys.
+- Cron response examples now use the standard success envelope and rely on
+  contextual request/invocation correlation.
+
+### Observability and Framework Currency
+
+- Operational event ownership is explicit: services own single-domain events,
+  while use cases log only distinct workflow events. Duplicate `user.created`
+  records were removed.
+- Contextual `user.id` is reserved for the authenticated actor; target users
+  use the namespaced `com.example.api.target.user.id` attribute.
+- Trace correlation is runtime-owned, while callers supply stable
+  `otel.event.name` and `code.function.name` values such as
+  `AuthConfirmRoute.GET` or `UserService.create`.
+- The core observability primitive accepts plain context values and a minimal
+  header reader; Fetch, Express, and Hono request types remain adapter details.
+- Next.js caching now distinguishes the Cache Components model from the
+  previous `unstable_cache` model and uses the current
+  `revalidateTag(tag, "max")`/`updateTag` guidance.
+- Event-driven patterns are described as canonical designs whose production
+  readiness must be demonstrated in each consuming project, rather than being
+  declared implemented by documentation alone.
+- The standalone server HTML now uses the same normalized Next.js, Express, and
+  Hono validation snippets and distinguishes procedure tests from real HTTP
+  adapter tests.
+
 ## Notes
 
 - Documentation-only change.
-- HTML structure/scripts, local documentation links, desktop/mobile layouts, and the downstream guide-copy bundle were validated.
+- HTML structure/scripts, local documentation links, desktop/mobile layouts, and the downstream guide-copy bundle were validated during the original architecture update.
+- The post-audit hardening pass validated all server Markdown links, code-fence
+  balance, terminology scans, and whitespace integrity.
+
+## Review Follow-up
+
+- Hardened the OAuth callback against backslash-normalized open redirects by
+  checking the final parsed origin, and converted code-exchange failures into a
+  centrally logged, same-origin error redirect.
+- Corrected the pagination examples so offset pagination uses a regular tRPC
+  query; infinite queries now explicitly require an optional opaque `cursor`
+  contract.
+- Centralized sanitized Zod issue projection into `publicDetails`, preserving
+  field-level 400 details without exposing raw validation objects.
+- Added an explicit Hono status adapter so the shared numeric HTTP result is
+  narrowed before it reaches `c.json()`.

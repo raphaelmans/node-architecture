@@ -21,6 +21,7 @@ Read core first:
 - [Forms (react-hook-form + StandardForm)](./forms-react-hook-form.md)
 - [UI (shadcn/ui + Radix)](./ui-shadcn-radix.md)
 - [Client State (Zustand)](./state-zustand.md)
+- [Realtime Subscriptions (React)](./realtime-react.md)
 
 ## Metaframeworks
 

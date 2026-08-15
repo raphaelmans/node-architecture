@@ -33,6 +33,7 @@ export type AppError =
       kind: "validation";
       fieldErrors?: Record<string, string>;
     } & AppErrorMeta)
+  | ({ kind: "contract" } & AppErrorMeta)
   | ({ kind: "unknown" } & AppErrorMeta);
 ```
 
@@ -48,6 +49,21 @@ export function toAppError(err: unknown): AppError;
 ```
 
 Provider-specific checks live **only** inside adapters.
+
+Feature response parsing uses a small provider-neutral constructor because the owning boundary already knows the failure classification:
+
+```ts
+export function invalidResponseError(cause: unknown): AppError {
+  return {
+    kind: "contract",
+    code: "api.invalid_response",
+    message: "Something went wrong",
+    cause,
+  };
+}
+```
+
+This is not a second normalization pass: transport/provider failures go through `toAppError`; a response parser directly constructs the known contract error.
 
 Runtime placement (Next.js convention):
 
@@ -80,23 +96,25 @@ This adapter is used by `toAppError` to extract `code`, `httpStatus`, `requestId
 
 ## Error Types
 
-| Error Type        | Source                 | Handling                        |
-| ----------------- | ---------------------- | ------------------------------- |
-| Validation errors | Schema boundary        | Field-level messages            |
-| API errors        | `clientApi` / `featureApi` | Toast or root-level error    |
-| Query errors      | Query adapter layer    | Error UI or retry               |
-| Unexpected errors | Runtime exceptions     | Framework error boundary        |
+| Error Type | Source | Handling |
+| --- | --- | --- |
+| Input validation | User-correctable request/form input | Field-level messages |
+| Contract violation | Successful response fails decoding/mapping | Generic UI message + boundary-owned diagnostic |
+| API errors | `clientApi` / `featureApi` | Toast or root-level error |
+| Query errors | Query adapter layer | Error UI or retry |
+| Unexpected errors | Runtime exceptions | Framework error boundary |
 
 ## Rules
 
 - Prefer typed, inspectable errors emitted from `clientApi`.
 - Validation errors should be mapped close to the user’s input.
-- Query adapter owns retry and invalidation policies; components only render states.
+- Query adapter owns retry and invalidation policies. Screen/business coordinators may sequence named query/cache-sync operations; presentation components only render states.
 - Preserve safe metadata from transport errors when available: `message`, `code`, `status`, `requestId`.
 - Treat `message` as public-safe text, not raw diagnostics.
-- Treat response-decoding schema failures (for example `ZodError` while parsing API payloads) as transport contract violations; map to a safe `validation`/`api.invalid_response` message and keep detailed issues in non-UI metadata/logs.
+- Treat response-decoding or DTO-mapping failures as `kind: "contract"` with code `api.invalid_response`; keep detailed issues in boundary-owned logs and expose only a generic UI message.
+- Reserve `kind: "validation"` for user-correctable input failures. Only this kind may populate form field errors.
 - For internal/unexpected/server failures (`5xx` / `INTERNAL_*`), render a generic message (for example: `Something went wrong`).
-- Normalize once at adapter boundary, then branch only on `AppError.kind`.
+- Normalize once at the owning adapter boundary, then pass `AppError` through unchanged and branch only on `AppError.kind`.
 - Inject `toAppError` into `featureApi` classes so normalization behavior is testable and consistent.
 - Assign one operational reporting owner: `clientApi` for transport failures, `featureApi` for contract/mapping failures, and the framework error boundary for unhandled exceptions.
 - Do not report the same handled error again from QueryClient defaults, hooks, forms, and components.

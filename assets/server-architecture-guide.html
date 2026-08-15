@@ -1065,7 +1065,7 @@
               <pre><code><span class="tok-key">export async function</span> GET(request: Request) {
   <span class="tok-key">return</span> withRequestObservability(request, <span class="tok-key">async</span> ({ requestId }) =&gt; {
     <span class="tok-key">try</span> {
-      <span class="tok-key">const</span> input = GetUserInputSchema.parse({
+      <span class="tok-key">const</span> input = parseRequestInput(GetUserInputSchema, {
         id: <span class="tok-key">new</span> URL(request.url).searchParams.get(<span class="tok-str">"id"</span>),
       });
       <span class="tok-key">const</span> actor = <span class="tok-key">await</span> authenticateNextRequest(request);
@@ -1084,7 +1084,7 @@
             <div class="code-block">
               <div class="code-head"><span>routes/users.route.ts</span><button class="copy-button" type="button">Copy</button></div>
               <pre><code>app.get(<span class="tok-str">"/users/:id"</span>, <span class="tok-key">async</span> (req, res) =&gt; {
-  <span class="tok-key">const</span> input = GetUserInputSchema.parse(req.params);
+  <span class="tok-key">const</span> input = parseRequestInput(GetUserInputSchema, req.params);
   <span class="tok-key">const</span> actor = requireActor(req);
   <span class="tok-key">const</span> result = <span class="tok-key">await</span> makeGetUserController().execute(input, actor);
   res.json({ data: GetUserResponseSchema.parse(result) });
@@ -1098,9 +1098,17 @@ app.use(expressErrorMiddleware);</code></pre>
             <summary><span class="adapter-key">03</span><span><strong>Hono adapter</strong><small>Hono Context stays at the edge</small></span></summary>
             <div class="code-block">
               <div class="code-head"><span>routes/users.route.ts</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>app.get(
+              <pre><code><span class="tok-key">const</span> validateUserParams = zValidator(
+  <span class="tok-str">"param"</span>,
+  GetUserInputSchema,
+  (result) =&gt; {
+    <span class="tok-key">if</span> (!result.success) <span class="tok-key">throw</span> toValidationError(result.error, <span class="tok-str">"Invalid request parameters"</span>);
+  },
+);
+
+app.get(
   <span class="tok-str">"/users/:id"</span>,
-  zValidator(<span class="tok-str">"param"</span>, GetUserInputSchema),
+  validateUserParams,
   <span class="tok-key">async</span> (c) =&gt; {
     <span class="tok-key">const</span> input = c.req.valid(<span class="tok-str">"param"</span>);
     <span class="tok-key">const</span> actor = c.get(<span class="tok-str">"actor"</span>);
@@ -1109,8 +1117,11 @@ app.use(expressErrorMiddleware);</code></pre>
   },
 );
 
-<span class="tok-comment">// Registered once: observability middleware + central AppError mapping.</span>
-app.onError(honoErrorHandler);</code></pre>
+<span class="tok-comment">// Registered once: central mapping, then a typed Hono status adapter.</span>
+app.onError((error, c) =&gt; {
+  <span class="tok-key">const</span> { status, body } = handleError(error, c.get(<span class="tok-str">"requestId"</span>));
+  <span class="tok-key">return</span> c.json(body, toHonoErrorStatus(status));
+});</code></pre>
             </div>
           </details>
         </div>
@@ -1197,7 +1208,7 @@ app.onError(honoErrorHandler);</code></pre>
 
         <div class="test-grid">
           <article class="test-card" style="--tone: var(--cyan)"><span class="test-number">TEST / 01</span><h3>Contract</h3><p>Prove the canonical wire schema.</p><ul><li>Valid, minimal, invalid fixtures</li><li>Sensitive-field exclusion</li><li>Serialization boundaries</li></ul></article>
-          <article class="test-card" style="--tone: var(--violet)"><span class="test-number">TEST / 02</span><h3>Framework Adapter</h3><p>Prove framework translation, not application mapping.</p><ul><li>Input and malformed-body handling</li><li>One controller call</li><li>Envelope, auth, and error integration</li></ul></article>
+          <article class="test-card" style="--tone: var(--violet)"><span class="test-number">TEST / 02</span><h3>Framework Adapter</h3><p>Prove framework translation at the real HTTP boundary.</p><ul><li>Input and malformed-body handling</li><li>One controller call</li><li>Envelope, auth, and serialized error integration</li><li><code>createCaller</code> remains a procedure-only test</li></ul></article>
           <article class="test-card" style="--tone: var(--acid)"><span class="test-number">TEST / 03</span><h3>Controller</h3><p>Prove the portable public boundary.</p><ul><li>Input/actor to command mapping</li><li>Null-to-domain-error decision</li><li>Internal result to response mapping</li></ul></article>
           <article class="test-card" style="--tone: var(--violet)"><span class="test-number">TEST / 04</span><h3>Use Case</h3><p>Prove orchestration and timing.</p><ul><li>Transaction boundary</li><li>Service sequence</li><li>Post-commit effects or outbox</li></ul></article>
           <article class="test-card" style="--tone: var(--mint)"><span class="test-number">TEST / 05</span><h3>Service</h3><p>Prove single-domain behavior.</p><ul><li>Rules and error decisions</li><li>Null/conflict behavior</li><li>Own vs supplied transaction</li></ul></article>

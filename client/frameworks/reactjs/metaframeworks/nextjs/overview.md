@@ -68,7 +68,7 @@ For the current Next.js adapters:
 - Feature APIs are class-based (`class <Feature>Api implements I<Feature>Api`) and created via factories.
 - Next.js routes and client feature APIs import one Zod wire contract from `src/lib/modules/<module>/shared/contracts/`.
 - Components only wire loading/error/UI and never implement transport logic.
-- Invalidation ownership may be hook-owned (preferred) or component-coordinator (allowed) based on route/form orchestration needs.
+- Reusable invalidation is hook-owned. A component coordinator may sequence a named `useMod*Sync` operation for route/form-local orchestration without owning concrete keys or query-client mechanics.
 - Prefer typed, injected interfaces at each layer to enable testing doubles.
 - Create logger, analytics, transport, and feature APIs through factories in one client composition root.
 - Keep browser instances application-scoped; create SSR/request instances only when they capture request context.

@@ -1,40 +1,15 @@
-# Architecture Guides
+# Architecture Skill Consumers
 
-> **STOP — These files are generated. Do not edit them directly.**
+The generated `guides/` bundle is deprecated and `copy-guides.sh` is disabled.
 
-All files under `guides/` are copied from the source `node-architecture` repository by `copy-guides.sh`.
-Any direct edits inside `guides/` will be overwritten the next time the guides are synced.
+Use [INSTALL-SKILLS.md](./INSTALL-SKILLS.md) to install the `$client` and `$server` architecture routers.
 
-## What Gets Copied
+## Source Model
 
-```text
-guides/
-  client/                  canonical frontend docs
-  server/                  canonical backend docs
-  legacy/                  historical reference docs
-  assets/                  standalone interactive HTML guides
-  README.md                this file
-  AGENTS-MD-ALIGNMENT.md   agent include/template guidance
-  UPDATE-ARCHITECTURE.md   source-repo update workflow
-  OPENCODE-INTEGRATION.md  OpenCode integration patterns
-```
+- `client/core/` and `client/frameworks/` remain the canonical authoring documents.
+- `server/core/` and `server/runtime/` remain the canonical server authoring documents.
+- `client/skill/references/` contains portable, concern-based derivatives for agents.
+- `server/skill/references/` contains the matching server derivatives.
+- The sibling `client/skill-maintenance/` and `server/skill-maintenance/` directories flag references that require review after source-doc changes; they are not installed with the skills.
 
-## How to Make Changes
-
-1. Edit the source `node-architecture` repository, not `guides/`.
-2. Follow `guides/UPDATE-ARCHITECTURE.md` for the update workflow.
-3. Re-run `copy-guides.sh` from the source repo root:
-
-```bash
-./copy-guides.sh /absolute/path/to/this/repo
-```
-
-## What To Read First
-
-- `guides/client/` and `guides/server/` are canonical.
-- `guides/assets/client-architecture-guide.html` is the standalone interactive client companion.
-- `guides/assets/server-architecture-guide.html` is the standalone interactive server companion.
-- `guides/assets/architecture-guide.html` is the standalone interactive full-stack companion.
-- `guides/legacy/` is reference-only and not source of truth.
-- `guides/AGENTS-MD-ALIGNMENT.md` explains how to wire the guides into `AGENTS.md` / `CLAUDE.md`.
-- `guides/OPENCODE-INTEGRATION.md` explains a thinner OpenCode-specific integration model.
+Legacy integration files in this directory now provide migration pointers only; they are no longer copied into consumer repositories.

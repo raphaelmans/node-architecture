@@ -49,7 +49,7 @@ Do not import a contract from a server route, router, service, repository, `dtos
 import { z } from "zod";
 import { CreateUserInputSchema } from "@/lib/modules/user/shared/contracts";
 
-export const CreateUserFormSchema = CreateUserInputSchema.extend({
+export const CreateUserFormSchema = CreateUserInputSchema.safeExtend({
   confirmEmail: z.string().email(),
 });
 

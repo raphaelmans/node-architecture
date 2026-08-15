@@ -91,19 +91,19 @@ Exception:
 ## Cache Ownership Rules
 
 - Query key definitions live in dedicated key modules.
-- Invalidation helpers live next to query adapter hooks, not in view components.
+- Invalidation helpers live next to query adapter hooks (or in feature `sync.ts`), not inline in view components.
 - Cache updates should reference stable keys/contracts, never ad-hoc arrays inside UI code.
 
 ## Anti-Patterns
 
 - Storing server entities in client stores as primary source of truth.
-- Calling `invalidateQueries` directly from presentation components.
+- Calling `invalidateQueries` directly from presentation or business component TSX; coordinators call a named query/cache-sync operation instead.
 - A “god hook” that fetches unrelated concerns and mutates multiple domains.
 - Inline DTO parsing in render paths.
 
 ## Immer for Cache Patching
 
-Use Immer's `produce` for all TanStack Query cache updates to preserve immutability guarantees:
+TanStack Query cache updates must be immutable. Use direct immutable transforms for simple updates and Immer's `produce` when nested or multi-step patches are clearer with a draft:
 
 ```typescript
 import { produce } from "immer";
@@ -123,8 +123,9 @@ queryClient.setQueryData(queryKey, (old) =>
 
 Rules:
 
-- Always use `produce` — never spread/clone manually for nested updates
-- Immer patches are used in both optimistic updates and realtime event-carried state transfer
+- Preserve immutability for every cache update.
+- Prefer direct immutable transforms for shallow changes; use `produce` for nested or multi-step changes where it improves clarity.
+- The same rule applies to optimistic updates and realtime event-carried state transfer.
 - Keep patch functions small and focused on one concern
 
 ## Optimistic Updates
@@ -132,7 +133,8 @@ Rules:
 For mutations where immediate UI feedback matters:
 
 ```typescript
-const mutation = useFeatureMutation(api.mutUpdateItem, {
+const mutation = useMutation({
+  mutationFn: (input: UpdateItemInput) => api.updateItem(input),
   onMutate: async (input) => {
     // 1. Cancel in-flight refetches
     await queryClient.cancelQueries({ queryKey });
@@ -179,12 +181,11 @@ For paginated lists, use `keepPreviousData` to prevent layout shift:
 ```typescript
 const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
 
-const query = useFeatureQuery(
-  ["items", "list"],
-  () => api.queryItemsList({ page, limit: 25 }),
-  { page, limit: 25 },
-  { placeholderData: keepPreviousData },
-);
+const query = useQuery({
+  queryKey: itemQueryKeys.list({ page, limit: 25 }),
+  queryFn: () => api.queryItemsList({ page, limit: 25 }),
+  placeholderData: keepPreviousData,
+});
 ```
 
 ### Infinite Scroll
@@ -193,7 +194,7 @@ For infinite lists, use `useInfiniteQuery`:
 
 ```typescript
 const query = useInfiniteQuery({
-  queryKey: buildTrpcQueryKey(["items", "listInfinite"], filters),
+  queryKey: itemQueryKeys.infinite(filters),
   queryFn: ({ pageParam }) => api.queryItemsList({ cursor: pageParam, limit: 25 }),
   getNextPageParam: (lastPage) => lastPage.nextCursor,
   initialPageParam: undefined,
@@ -214,12 +215,11 @@ Debounce search input before feeding it to queries:
 const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
 const debouncedSearch = useDebounce(search, 300);
 
-const query = useFeatureQuery(
-  ["items", "search"],
-  () => api.queryItemsSearch({ q: debouncedSearch }),
-  { q: debouncedSearch },
-  { enabled: debouncedSearch.length >= 2 },
-);
+const query = useQuery({
+  queryKey: itemQueryKeys.search({ q: debouncedSearch }),
+  queryFn: () => api.queryItemsSearch({ q: debouncedSearch }),
+  enabled: debouncedSearch.length >= 2,
+});
 ```
 
 Rules:
@@ -244,11 +244,10 @@ const filters = useMemo(
   [status, sort, debouncedSearch],
 );
 
-const query = useFeatureQuery(
-  ["items", "list"],
-  () => api.queryItemsList(filters),
-  filters,
-);
+const query = useQuery({
+  queryKey: itemQueryKeys.list(filters),
+  queryFn: () => api.queryItemsList(filters),
+});
 ```
 
 Rules:
@@ -256,7 +255,7 @@ Rules:
 - All filter state lives in URL params via nuqs (shareable, bookmarkable, back-button friendly)
 - Use `history: "replace"` for filters (don't pollute browser history)
 - Use `history: "push"` for tabs and modals (back button should work)
-- Memoize the filter object to prevent unnecessary re-renders and refetches
+- Keep the filter object serializable and include every result-changing value. TanStack Query hashes equivalent object keys deterministically; memoize only when another referential consumer benefits.
 - Debounce text inputs, not select/toggle filters
 
 ## Implementation Notes
@@ -268,7 +267,7 @@ Framework-specific examples and API signatures live in:
 
 Testing split:
 
-- `api.ts` class tests mock `callTrpcQuery` / `callTrpcMutation`
+- `api.ts` class tests mock the injected `IClientApi`, `toAppError`, and logger when used
 - `hooks.ts` tests mock `I<Feature>Api`
 
 Related docs:

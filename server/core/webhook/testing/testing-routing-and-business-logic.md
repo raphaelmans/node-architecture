@@ -6,14 +6,17 @@
 
 ## 1. Routing Tests (Event Type → Handler)
 
-Routing lives in the provider handler registry (e.g. `modules/webhooks/<provider>/handlers/index.ts`).
+Routing lives in the provider handler registry (for example
+`src/lib/modules/webhooks/<provider>/handlers/index.ts`).
 
 Test cases:
 
 - known `event.type` resolves a handler
-- unknown `event.type` returns `null` (or throws a `WEBHOOK_HANDLER_NOT_FOUND` error at the route layer)
+- unknown `event.type` returns `null`; the route acknowledges it with HTTP 200,
+  `processed: false`, and a structured skip record
 
-Key assertion: no event type is silently ignored.
+Key assertion: unsupported events are explicitly observed and acknowledged, not
+silently discarded or retried forever.
 
 ---
 
@@ -39,20 +42,25 @@ This is where most webhook bugs happen (field mapping and assumptions).
 You want explicit tests for duplicates:
 
 - same provider event delivered twice
+- same provider event delivered concurrently from two requests/workers
 - different provider events referencing the same external object
 
 Expected outcome:
 
 - first run: `processed: true`
 - second run: `processed: false` (skipped) with a reason
+- concurrent run: exactly one attempt processes and one skips; ordering is not assumed
 
-This aligns with the response structure in `server/core/webhook/README.md`.
+Use a fake for fast sequential use-case tests. Prove the concurrent outcome
+against a real test database so the production unique constraint and
+insert-on-conflict behavior are exercised. This aligns with the response
+structure in `server/core/webhook/README.md`.
 
 ### 2.3 Error Path Tests
 
 - invalid payload → `WEBHOOK_PAYLOAD_INVALID`
 - invalid signature → `WEBHOOK_VERIFICATION_FAILED`
-- handler not found → `WEBHOOK_HANDLER_NOT_FOUND`
+- unsupported event type → HTTP 200, `processed: false`, logged skip reason
 
 ---
 

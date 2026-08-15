@@ -88,12 +88,33 @@ nuqs is the canonical mechanism for all user-facing filter, search, and paginati
 ```typescript
 // Feature filter hook
 export function useItemFilters() {
-  const [status, setStatus] = useQueryState("status", parseAsStringLiteral(STATUSES));
-  const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(SORT_OPTIONS).withDefault("newest"));
-  const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
-  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
+  const replace = { history: "replace" } as const;
+  const [status, setStatusValue] = useQueryState(
+    appQueryParams.status,
+    parseAsStringLiteral(STATUSES).withOptions(replace),
+  );
+  const [sort, setSortValue] = useQueryState(
+    appQueryParams.sort,
+    parseAsStringLiteral(SORT_OPTIONS).withDefault("newest").withOptions(replace),
+  );
+  const [search, setSearchValue] = useQueryState(
+    appQueryParams.search,
+    parseAsString.withDefault("").withOptions(replace),
+  );
+  const [page, setPage] = useQueryState(
+    appQueryParams.page,
+    parseAsInteger.withDefault(1).withOptions(replace),
+  );
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // nuqs batches updates issued in the same tick into one URL update.
+  const setStatus = (next: (typeof STATUSES)[number] | null) =>
+    Promise.all([setStatusValue(next), setPage(1)]);
+  const setSort = (next: (typeof SORT_OPTIONS)[number]) =>
+    Promise.all([setSortValue(next), setPage(1)]);
+  const setSearch = (next: string) =>
+    Promise.all([setSearchValue(next), setPage(1)]);
 
   return { status, setStatus, sort, setSort, search, setSearch, debouncedSearch, page, setPage };
 }

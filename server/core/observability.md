@@ -91,6 +91,7 @@ export const APP_ATTRIBUTES = {
   webhookEventId: "com.example.api.webhook.event.id",
   skipReason: "com.example.api.skip.reason",
   authVerificationType: "com.example.api.auth.verification.type",
+  targetUserId: "com.example.api.target.user.id",
 } as const;
 ```
 
@@ -150,7 +151,11 @@ export function getObservabilityContext():
   | ObservabilityContext
   | undefined;
 
-export function getTrustedRequestId(headers: Headers): string | undefined;
+export interface HeaderReader {
+  get(name: string): string | null;
+}
+
+export function getTrustedRequestId(headers: HeaderReader): string | undefined;
 
 export interface TrustedClientIdentifier {
   value: string;
@@ -158,16 +163,35 @@ export interface TrustedClientIdentifier {
 }
 
 export function getTrustedClientIdentifier(
-  headers: Headers,
+  headers: HeaderReader,
 ): TrustedClientIdentifier | undefined;
 
-export function withRequestObservability<T>(
-  request: Request,
+export function runWithObservability<T>(
+  initial: ObservabilityContext,
   fn: (context: ObservabilityContext) => Promise<T>,
 ): Promise<T>;
 ```
 
-This runtime context is infrastructure. It is not passed as a service or repository method parameter.
+The core runtime primitive accepts plain context values and a minimal header
+reader; it does not depend on Fetch `Request`, Express `Request`, or Hono
+`Context`. Each framework adapter extracts trusted boundary values and then
+calls it.
+
+Node.js Fetch-based adapters may expose a convenience wrapper:
+
+```typescript
+export function withRequestObservability<T>(
+  request: Request,
+  fn: (context: ObservabilityContext) => Promise<T>,
+): Promise<T> {
+  const requestId = getTrustedRequestId(request.headers) ?? randomUUID();
+  return runWithObservability({ requestId }, fn);
+}
+```
+
+Express adapts with `{ get: (name) => req.get(name) ?? null }`; Hono adapts with
+`{ get: (name) => c.req.header(name) ?? null }`. This runtime context is
+infrastructure and is not passed as a service or repository method parameter.
 
 ## Async and Queue Boundaries
 
@@ -236,17 +260,14 @@ export class CreateUserUseCase {
   ) {}
 
   async execute(command: CreateUserCommand): Promise<User> {
-    this.logger.info({}, "Creating user");
-    const user = await this.userService.create(command);
-    this.logger.info(
+    this.logger.debug(
       {
-        "otel.event.name": "user.created",
+        "otel.event.name": "user.create.started",
         "code.function.name": "CreateUserUseCase.execute",
-        "user.id": user.id,
       },
-      "User created",
+      "Creating user",
     );
-    return user;
+    return this.userService.create(command);
   }
 }
 ```
@@ -258,6 +279,10 @@ Rules:
 - Do not inject a combined service locator containing logging, analytics, and tracing.
 - The logger adapter applies trusted request/trace fields after caller fields so application code cannot overwrite correlation identifiers.
 - The contextual `user.id` represents the authenticated actor. Use a namespaced application attribute when logging a different target entity.
+- Emit a named operational event at one owning layer only. A service owns a
+  single-domain state event such as `user.created`; a use case owns only a
+  distinct workflow event such as `registration.completed`. Do not emit
+  `user.created` from both.
 - Repositories normally do not log; translate database failures to domain errors and let the boundary log them.
 - Logging failures must never change business behavior.
 
@@ -309,7 +334,7 @@ Every emitted record carries the same `trace_id` and namespaced request ID autom
   "trace_flags": "01",
   "otel.event.name": "user.created",
   "code.function.name": "UserService.create",
-  "user.id": "user-456",
+  "com.example.api.target.user.id": "user-456",
   "com.example.api.request.id": "req-123",
   "com.example.api.code.layer": "service",
   "com.example.api.operation.name": "user.create"
@@ -321,8 +346,9 @@ Field ownership:
 | Fields | Source |
 | --- | --- |
 | `level`, `time`, `msg` | Example logging transport |
-| `trace_id`, `span_id`, `trace_flags`, `otel.event.name`, `code.function.name`, `user.id` | OpenTelemetry |
-| `com.example.api.*` | Explicit application convention |
+| `trace_id`, `span_id`, `trace_flags`, contextual `user.id` | OpenTelemetry/runtime context |
+| `otel.event.name`, `code.function.name` | Caller, using OpenTelemetry semantic conventions |
+| `com.example.api.*`, including target entity IDs | Explicit application convention |
 
 When logs are emitted directly through the OpenTelemetry Logs API, populate the native `EventName`, `TraceId`, and `SpanId` fields instead of compatibility JSON attributes.
 
@@ -353,15 +379,15 @@ Inject a spy or no-op logger in unit tests:
 
 ```typescript
 const logger = createLoggerSpy();
-const useCase = new CreateUserUseCase(userService, logger);
+const service = new UserService(userRepository, logger);
 
-await useCase.execute(input);
+await service.create(input);
 
 expect(logger.info).toHaveBeenCalledWith(
   {
     "otel.event.name": "user.created",
-    "code.function.name": "CreateUserUseCase.execute",
-    "user.id": "user-1",
+    "code.function.name": "UserService.create",
+    [APP_ATTRIBUTES.targetUserId]: "user-1",
   },
   "User created",
 );

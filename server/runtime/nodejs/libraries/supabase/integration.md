@@ -51,7 +51,7 @@ This implementation uses **PKCE flow** (not implicit flow) for magic links:
 ```typescript
 // Inner request-scoped service factory (needs cookies)
 function makeAuthService(cookies: CookieMethodsServer) {
-  const client = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, cookies);
+  const client = createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, cookies);
   return new AuthService(
     new AuthRepository(client),
     getContainer().appLogger,
@@ -117,6 +117,24 @@ export interface ObjectStorage {
 
 import { createClient } from "./create-client";
 import type { ObjectStorage } from "@/shared/kernel/storage";
+import { BadGatewayError } from "@/shared/kernel/errors";
+
+class ObjectStorageProviderError extends BadGatewayError {
+  readonly code = "OBJECT_STORAGE_PROVIDER_FAILED";
+
+  constructor(operation: string, details?: Record<string, unknown>) {
+    super("Object storage provider request failed", { operation, ...details });
+  }
+}
+
+function storageFailure(
+  operation: string,
+  error?: { message?: string },
+): ObjectStorageProviderError {
+  return new ObjectStorageProviderError(operation, {
+    providerMessage: error?.message,
+  });
+}
 
 export class SupabaseObjectStorage implements ObjectStorage {
   constructor(
@@ -130,7 +148,7 @@ export class SupabaseObjectStorage implements ObjectStorage {
       .from(this.bucket)
       .upload(path, file, { upsert: true });
 
-    if (error) throw error;
+    if (error) throw storageFailure("upload", error);
   }
 
   async getSignedUrl(path: string): Promise<string> {
@@ -138,8 +156,8 @@ export class SupabaseObjectStorage implements ObjectStorage {
       .from(this.bucket)
       .createSignedUrl(path, this.signedURLExpSeconds);
 
-    if (error) throw error;
-    if (!data?.signedUrl) throw new Error("Failed to get signed URL");
+    if (error) throw storageFailure("create_signed_url", error);
+    if (!data?.signedUrl) throw storageFailure("create_signed_url");
 
     return data.signedUrl;
   }
@@ -154,8 +172,8 @@ export class SupabaseObjectStorage implements ObjectStorage {
       .from(this.bucket)
       .download(path);
 
-    if (error) throw error;
-    if (!data) throw new Error("Failed to download file");
+    if (error) throw storageFailure("download", error);
+    if (!data) throw storageFailure("download");
 
     return data;
   }
@@ -165,7 +183,7 @@ export class SupabaseObjectStorage implements ObjectStorage {
       .from(this.bucket)
       .remove([path]);
 
-    if (error) throw error;
+    if (error) throw storageFailure("delete", error);
   }
 }
 ```
@@ -281,20 +299,25 @@ Repositories use Drizzle, not the Supabase client, for database operations:
 import { eq } from "drizzle-orm";
 import { profiles } from "@/shared/infra/db/schema";
 import type { AppDatabase } from "@/shared/infra/db/drizzle";
-import type { Tx } from "@/shared/kernel/transaction";
+import type { TransactionOptions } from "@/shared/kernel/transaction";
+import type { DrizzleTransaction } from "@/shared/infra/db/types";
 
 export class ProfileRepo {
   constructor(private db: AppDatabase) {}
 
-  async getById(id: string, tx?: Tx) {
-    const result = await (tx ?? this.db).query.profiles.findFirst({
+  private getClient(options?: TransactionOptions): AppDatabase | DrizzleTransaction {
+    return (options?.tx as unknown as DrizzleTransaction) ?? this.db;
+  }
+
+  async getById(id: string, options?: TransactionOptions) {
+    const result = await this.getClient(options).query.profiles.findFirst({
       where: eq(profiles.id, id),
     });
     return result ?? null;
   }
 
-  async getByUserId(userId: string, tx?: Tx) {
-    const result = await (tx ?? this.db)
+  async getByUserId(userId: string, options?: TransactionOptions) {
+    const result = await this.getClient(options)
       .select()
       .from(profiles)
       .where(eq(profiles.userId, userId))
@@ -303,8 +326,8 @@ export class ProfileRepo {
     return result[0] ?? null;
   }
 
-  async create(data: InsertProfile, tx?: Tx) {
-    const [result] = await (tx ?? this.db)
+  async create(data: InsertProfile, options?: TransactionOptions) {
+    const [result] = await this.getClient(options)
       .insert(profiles)
       .values(data)
       .returning();
@@ -312,8 +335,8 @@ export class ProfileRepo {
     return result;
   }
 
-  async update(id: string, data: Partial<UpdateProfile>, tx?: Tx) {
-    const [result] = await (tx ?? this.db)
+  async update(id: string, data: Partial<UpdateProfile>, options?: TransactionOptions) {
+    const [result] = await this.getClient(options)
       .update(profiles)
       .set(data)
       .where(eq(profiles.id, id))
@@ -406,7 +429,7 @@ export class UpdateProfileImageUseCase {
           {
             err: compensationError,
             "otel.event.name": "profile.image.compensation_failed",
-            "user.id": userId,
+            [APP_ATTRIBUTES.targetUserId]: userId,
           },
           "Profile image compensation failed",
         );
@@ -451,9 +474,10 @@ USING (
 );
 ```
 
-### Service Role Bypass
+### Privileged Secret-Key Client
 
-When using `SUPABASE_SERVICE_ROLE_KEY`, RLS is bypassed. This is useful for:
+When using `SUPABASE_SECRET_KEY`, RLS is bypassed. Keep this client in a
+separate, narrowly named server-only factory. It is useful for:
 
 - Background jobs
 - Admin operations
@@ -468,18 +492,22 @@ When using `SUPABASE_SERVICE_ROLE_KEY`, RLS is bypassed. This is useful for:
 
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 
 # Database (can be Supabase connection string)
 DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
 ```
 
+Legacy `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` values may still
+exist in older projects, but new documentation and factories use the
+publishable/secret key names consistently.
+
 ---
 
 ## Checklist
 
-### Authentication
+### Authentication Setup Checks
 
 - [ ] Create Supabase client with cookie handling
 - [ ] Implement AuthRepo with auth methods

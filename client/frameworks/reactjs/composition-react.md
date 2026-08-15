@@ -34,7 +34,7 @@ Anti-pattern:
 
 In `src/features/<feature>/`:
 
-- `hooks.ts`: **all** server-state hooks for the feature (`useQuery*`, `useMut*`, and optional `useMod*` composition hooks)
+- `hooks.ts`: server-state hooks for a small/medium feature (`useQuery*`, `useMut*`, and optional `useMod*` composition hooks); split into `hooks/` by capability when the root file becomes too large
 - `types.ts`: shared feature TypeScript types (non-DTO); component prop types may stay local when truly component-only
 - `schemas.ts`: client-only form/UI schemas composed from shared input contracts (schemas never live in TSX or `hooks.ts`)
 - `domain.ts`: business rules (pure, deterministic)
@@ -60,10 +60,10 @@ Colocation exception:
 | Screen-level orchestration (compose sections, own navigation) | `src/features/<feature>/components/<feature>-view.tsx` or `<feature>-form.tsx` |
 | Section business component (loading/error wiring) | `src/features/<feature>/components/<feature>-*.tsx` |
 | Server state hooks (queries/mutations) | `src/features/<feature>/hooks.ts` |
-| Schemas + mapping | `src/features/<feature>/schemas.ts` |
+| Client-only form/UI schemas | `src/features/<feature>/schemas.ts` |
 | Feature types (non-DTO) | `src/features/<feature>/types.ts` |
 | Business rules | `src/features/<feature>/domain.ts` |
-| Small pure utilities | `src/features/<feature>/helpers.ts` |
+| DTO-to-feature mapping + small pure utilities | `src/features/<feature>/helpers.ts` |
 | Pure UI sections/fields/cards/lists | `src/features/<feature>/components/*-fields.tsx`, `*-card.tsx`, `*-list.tsx` |
 | Client-only coordination state | `src/features/<feature>/stores/*` (Zustand) |
 | Typed mutation/workflow analytics | Owning `useMut*` / `useMod*` hook after success |
@@ -146,7 +146,7 @@ export function SectionView(props: {
 - Prefer `select` for UI shaping; call pure functions from `domain.ts` / `helpers.ts`.
 - Use `enabled` for dependent queries.
 - Prefer invalidation inside mutation hooks for reusable behavior.
-- Component-coordinator invalidation is allowed for route-local orchestration.
+- Component coordinators may own route-local sequencing, but call named cache-sync operations from `hooks.ts`/`sync.ts` instead of inlining keys or `queryClient` mechanics.
 - See `./server-state-patterns-react.md` for decision rules and cookbook scenarios.
 
 ## Anti-patterns (don't do these)

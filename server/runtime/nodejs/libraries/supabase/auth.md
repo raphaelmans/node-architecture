@@ -211,6 +211,7 @@ export interface AuthenticatedAuthResult {
 
 import type { SupabaseClient } from "@/shared/infra/supabase/types";
 import type { User, Session } from "@supabase/supabase-js";
+import type { AppError } from "@/shared/kernel/errors";
 import type {
   AuthUser,
   AuthResult,
@@ -219,7 +220,25 @@ import type {
 import {
   InvalidCredentialsError,
   EmailNotVerifiedError,
+  SessionExpiredError,
+  AuthProviderUnavailableError,
 } from "../errors/auth.errors";
+
+function translateSupabaseAuthError(error: { code?: string }): AppError {
+  if (error.code === "invalid_credentials") return new InvalidCredentialsError();
+  if (error.code === "email_not_confirmed") return new EmailNotVerifiedError();
+  if (
+    error.code === "session_not_found" ||
+    error.code === "refresh_token_not_found" ||
+    error.code === "refresh_token_already_used"
+  ) {
+    return new SessionExpiredError();
+  }
+
+  // Keep the provider code as internal diagnostics only. The public formatter
+  // returns the generic 5xx message for this bad-gateway domain error.
+  return new AuthProviderUnavailableError(error.code);
+}
 
 export interface IAuthRepository {
   getCurrentUser(): Promise<AuthUser | null>;
@@ -245,7 +264,7 @@ export class AuthRepository implements IAuthRepository {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     const { data: { user }, error } = await this.client.auth.getUser();
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
     return toAuthUser(user);
   }
 
@@ -255,15 +274,7 @@ export class AuthRepository implements IAuthRepository {
       password,
     });
 
-    if (error) {
-      if (error.code === "invalid_credentials") {
-        throw new InvalidCredentialsError();
-      }
-      if (error.code === "email_not_confirmed") {
-        throw new EmailNotVerifiedError();
-      }
-      throw error;
-    }
+    if (error) throw translateSupabaseAuthError(error);
 
     return toAuthenticatedAuthResult(data);
   }
@@ -274,7 +285,7 @@ export class AuthRepository implements IAuthRepository {
       options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
     });
 
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
     return toAuthResult(data);
   }
 
@@ -285,20 +296,20 @@ export class AuthRepository implements IAuthRepository {
       options: { emailRedirectTo: redirectTo },
     });
 
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
 
     return toAuthResult(data);
   }
 
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
   }
 
   // OAuth flow (kept for OAuth providers)
   async exchangeCodeForSession(code: string): Promise<AuthenticatedAuthResult> {
     const { data, error } = await this.client.auth.exchangeCodeForSession(code);
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
     return toAuthenticatedAuthResult(data);
   }
 
@@ -308,7 +319,7 @@ export class AuthRepository implements IAuthRepository {
       token_hash: tokenHash,
       type: "magiclink",
     });
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
     return toAuthResult(data);
   }
 
@@ -317,7 +328,7 @@ export class AuthRepository implements IAuthRepository {
       token_hash: tokenHash,
       type: "signup",
     });
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
     return toAuthResult(data);
   }
 
@@ -326,7 +337,7 @@ export class AuthRepository implements IAuthRepository {
       token_hash: tokenHash,
       type: "recovery",
     });
-    if (error) throw error;
+    if (error) throw translateSupabaseAuthError(error);
   }
 }
 ```
@@ -375,6 +386,14 @@ export class AuthRegistrationFailedError extends BadGatewayError {
 
   constructor() {
     super("Authentication provider did not create a user");
+  }
+}
+
+export class AuthProviderUnavailableError extends BadGatewayError {
+  readonly code = "AUTH_PROVIDER_UNAVAILABLE";
+
+  constructor(providerCode?: string) {
+    super("Authentication provider request failed", { providerCode });
   }
 }
 
@@ -658,7 +677,7 @@ export class UserRoleRepository implements IUserRoleRepository {
   constructor(private db: DbClient) {}
 
   private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
-    return (options?.tx as DrizzleTransaction) ?? this.db;
+    return (options?.tx as unknown as DrizzleTransaction) ?? this.db;
   }
 
   async findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null> {
@@ -876,6 +895,7 @@ Auth factories are **request-scoped** because Supabase client needs cookies:
 
 import type { CookieMethodsServer } from "@supabase/ssr";
 import { createClient } from "@/shared/infra/supabase/create-client";
+import { createPrivilegedAuthClient } from "@/shared/infra/supabase/privileged-client";
 import { env } from "@/lib/env";
 import { getContainer } from "@/shared/infra/container";
 import { AuthRepository } from "../repositories/auth.repository";
@@ -884,6 +904,7 @@ import { ProvisionManagedUserUseCase } from "../use-cases/provision-managed-user
 import { CompleteSignupUseCase } from "../use-cases/complete-signup.use-case";
 import {
   CurrentSessionController,
+  ExchangeOAuthCodeController,
   LoginController,
   LoginWithMagicLinkController,
   LogoutController,
@@ -902,11 +923,15 @@ import { makeUserRoleService } from "@/modules/user-role/factories/user-role.fac
 export function makeAuthRepository(cookies: CookieMethodsServer) {
   const client = createClient(
     env.SUPABASE_URL,
-    env.SUPABASE_SECRET_KEY,
+    env.SUPABASE_PUBLISHABLE_KEY,
     cookies,
   );
   return new AuthRepository(client);
 }
+
+// This request-scoped user client deliberately uses the publishable key. The
+// authenticated user's JWT determines authorization and RLS behavior. Only
+// `createPrivilegedAuthClient` uses `SUPABASE_SECRET_KEY`.
 
 function makeAuthService(cookies: CookieMethodsServer) {
   return new AuthService(
@@ -951,6 +976,8 @@ export const makeLogoutController = (cookies: CookieMethodsServer) =>
   new LogoutController(makeAuthService(cookies));
 export const makeCurrentSessionController = (cookies: CookieMethodsServer) =>
   new CurrentSessionController(makeAuthService(cookies));
+export const makeExchangeOAuthCodeController = (cookies: CookieMethodsServer) =>
+  new ExchangeOAuthCodeController(makeAuthService(cookies));
 export const makeVerifyMagicLinkController = (cookies: CookieMethodsServer) =>
   new VerifyMagicLinkController(makeAuthService(cookies));
 export const makeVerifySignupController = (cookies: CookieMethodsServer) =>
@@ -972,17 +999,13 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { CookieMethodsServer } from "@supabase/ssr";
-import { createClient } from "@/shared/infra/supabase/create-client";
 import type { AppLogger } from "@/shared/kernel/logger";
-import { appLogger } from "@/shared/infra/logger";
 import {
   getObservabilityContext,
   getTrustedClientIdentifier,
   getTrustedRequestId,
 } from "@/shared/infra/observability";
-import { env } from "@/lib/env";
 import type { Session } from "@/shared/kernel/auth";
-import { makeUserRoleRepository } from "@/modules/user-role/factories/user-role.factory";
 
 export interface Context {
   requestId: string;
@@ -1000,98 +1023,67 @@ export interface AuthenticatedContext extends Context {
   userId: string;
 }
 
-const USER_ROLES = ["admin", "member", "viewer"] as const;
-
-function isUserRole(role: unknown): role is Session["role"] {
-  return USER_ROLES.some((allowedRole) => allowedRole === role);
+export interface SessionResolver {
+  resolve(cookieMethods: CookieMethodsServer): Promise<Session | null>;
 }
 
-function normalizeUserRole(
-  role: unknown,
-): Session["role"] | null {
-  return isUserRole(role) ? role : null;
+interface ContextDependencies {
+  sessionResolver: SessionResolver;
+  log: AppLogger;
+  applicationOrigin: string;
 }
 
-export async function createContext({ req }: FetchCreateContextFnOptions): Promise<Context> {
-  const requestId =
-    getObservabilityContext()?.requestId ??
-    getTrustedRequestId(req.headers) ??
-    randomUUID();
-  const cookieStore = await cookies();
-  const client = getTrustedClientIdentifier(req.headers);
+export function makeCreateContext(deps: ContextDependencies) {
+  return async function createContext(
+    { req }: FetchCreateContextFnOptions,
+  ): Promise<Context> {
+    const requestId =
+      getObservabilityContext()?.requestId ??
+      getTrustedRequestId(req.headers) ??
+      randomUUID();
+    const cookieStore = await cookies();
+    const client = getTrustedClientIdentifier(req.headers);
 
-  const cookieMethods: CookieMethodsServer = {
-    getAll() {
-      return cookieStore.getAll();
-    },
-    setAll(cookiesToSet) {
-      cookiesToSet.forEach(({ name, value, options }) => {
-        try {
-          cookieStore.set(name, value, options);
-        } catch {
-          // Server Component - ignore
-        }
-      });
-    },
-  };
+    const cookieMethods: CookieMethodsServer = {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          try {
+            cookieStore.set(name, value, options);
+          } catch {
+            // Server Component - ignore
+          }
+        });
+      },
+    };
 
-  // Get current user from Supabase
-  const supabase = createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    cookieMethods,
-  );
-  let session: Session | null = null;
+    // The module-owned resolver composes AuthService and UserRoleService. It
+    // returns null only for genuine anonymous/expired sessions. Provider or
+    // database outages remain typed errors and propagate to central mapping.
+    const session = await deps.sessionResolver.resolve(cookieMethods);
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // Fetch role from user_roles table
-      const userRole = await makeUserRoleRepository().findByUserId(user.id);
-      const role = normalizeUserRole(userRole?.role);
-      if (role && user.email) {
-        session = { userId: user.id, email: user.email, role };
-      } else {
-        appLogger.warn(
-          {
-            "otel.event.name": "auth.user_role_missing",
-            "user.id": user.id,
-          },
-          "Authenticated user has no valid application role",
-        );
-      }
-    }
-  } catch {
-    // No session
-  }
-
-  // Redirect origins come from trusted configuration, never arbitrary Host headers.
-  const getOriginUrl = (): string => {
-    if (env.NEXT_PUBLIC_APP_URL) {
-      return new URL(env.NEXT_PUBLIC_APP_URL).origin;
-    }
-
-    if (process.env.NODE_ENV !== "production") {
-      return new URL(req.url).origin;
-    }
-
-    throw new Error("NEXT_PUBLIC_APP_URL is required in production");
-  };
-
-  return {
-    requestId,
-    session,
-    userId: session?.userId ?? null,
-    clientIdentifier: session?.userId ?? client?.value ?? null,
-    clientIdentifierSource: session
-      ? "authenticated_user"
-      : client?.source ?? null,
-    cookies: cookieMethods,
-    origin: getOriginUrl(),
-    log: appLogger,
+    return {
+      requestId,
+      session,
+      userId: session?.userId ?? null,
+      clientIdentifier: session?.userId ?? client?.value ?? null,
+      clientIdentifierSource: session
+        ? "authenticated_user"
+        : client?.source ?? null,
+      cookies: cookieMethods,
+      origin: new URL(deps.applicationOrigin).origin,
+      log: deps.log,
+    };
   };
 }
 ```
+
+Compose `makeCreateContext` in the Next.js/tRPC entrypoint with a
+module-owned `SessionResolver`, `appLogger`, and validated application origin.
+The shared context adapter does not construct Supabase clients or call module
+repositories directly.
 
 ---
 
@@ -1115,6 +1107,7 @@ import {
 } from "@/shared/kernel/public-error";
 import { appLogger } from "@/shared/infra/logger";
 import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+import { getObservabilityContext } from "@/shared/infra/observability";
 import type { Context, AuthenticatedContext } from "./context";
 
 function pickPublicTrpcShapeData(
@@ -1129,7 +1122,8 @@ function pickPublicTrpcShapeData(
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
     const cause = error.cause;
-    const requestId = ctx?.requestId ?? "unknown";
+    const requestId =
+      ctx?.requestId ?? getObservabilityContext()?.requestId ?? "unknown";
 
     if (cause instanceof AppError) {
       appLogger.warn(
@@ -1473,11 +1467,15 @@ Handles magic link, signup confirmation, and password recovery:
 // app/auth/confirm/route.ts
 
 import { type EmailOtpType } from "@supabase/supabase-js";
+import type { CookieMethodsServer } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/shared/infra/supabase/create-client";
-import { env } from "@/lib/env";
 import { appLogger } from "@/shared/infra/logger";
+import {
+  makeVerifyMagicLinkController,
+  makeVerifyRecoveryController,
+  makeVerifySignupController,
+} from "@/modules/auth/factories/auth.factory";
 import {
   APP_ATTRIBUTES,
   withRequestObservability,
@@ -1503,7 +1501,7 @@ async function handleAuthConfirm(request: NextRequest) {
     appLogger.warn(
       {
         "otel.event.name": "auth.confirm.invalid_request",
-        "code.function.name": "GET",
+        "code.function.name": "AuthConfirmRoute.GET",
         [APP_ATTRIBUTES.authVerificationType]: type,
       },
       "Missing token_hash or type parameter",
@@ -1513,34 +1511,26 @@ async function handleAuthConfirm(request: NextRequest) {
   }
 
   const cookieStore = await cookies();
-  const supabase = createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
-        });
-      },
+  const cookieMethods: CookieMethodsServer = {
+    getAll() {
+      return cookieStore.getAll();
     },
-  );
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        cookieStore.set(name, value, options);
+      });
+    },
+  };
 
   switch (type) {
     case "magiclink":
       try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash,
-          type: "magiclink",
-        });
+        const result = await makeVerifyMagicLinkController(cookieMethods)
+          .execute({ tokenHash: token_hash });
 
-        if (error) throw error;
-
-        if (data.user) {
+        if (result.user) {
           appLogger.info(
-            { "otel.event.name": "user.magic_link_verified", "user.id": data.user.id },
+            { "otel.event.name": "user.magic_link_verified", "user.id": result.user.id },
             "Magic link verified",
           );
         }
@@ -1550,7 +1540,7 @@ async function handleAuthConfirm(request: NextRequest) {
         appLogger.error(
           {
             "otel.event.name": "auth.verification.failed",
-            "code.function.name": "GET",
+            "code.function.name": "AuthConfirmRoute.GET",
             "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
             [APP_ATTRIBUTES.authVerificationType]: "magiclink",
             err: error,
@@ -1562,16 +1552,15 @@ async function handleAuthConfirm(request: NextRequest) {
 
     case "signup":
       try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash,
-          type: "signup",
-        });
+        const result = await makeVerifySignupController(cookieMethods)
+          .execute({ tokenHash: token_hash });
 
-        if (error) throw error;
-
-        if (data.user) {
+        if (result.user) {
           appLogger.info(
-            { "otel.event.name": "user.signup_verified", "user.id": data.user.id },
+            {
+              "otel.event.name": "user.signup_verified",
+              [APP_ATTRIBUTES.targetUserId]: result.user.id,
+            },
             "Signup verified",
           );
         }
@@ -1581,7 +1570,7 @@ async function handleAuthConfirm(request: NextRequest) {
         appLogger.error(
           {
             "otel.event.name": "auth.verification.failed",
-            "code.function.name": "GET",
+            "code.function.name": "AuthConfirmRoute.GET",
             "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
             [APP_ATTRIBUTES.authVerificationType]: "signup",
             err: error,
@@ -1593,12 +1582,8 @@ async function handleAuthConfirm(request: NextRequest) {
 
     case "recovery":
       try {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash,
-          type: "recovery",
-        });
-
-        if (error) throw error;
+        await makeVerifyRecoveryController(cookieMethods)
+          .execute({ tokenHash: token_hash });
 
         appLogger.info(
           { "otel.event.name": "user.recovery_verified" },
@@ -1610,7 +1595,7 @@ async function handleAuthConfirm(request: NextRequest) {
         appLogger.error(
           {
             "otel.event.name": "auth.verification.failed",
-            "code.function.name": "GET",
+            "code.function.name": "AuthConfirmRoute.GET",
             "error.type": error instanceof Error ? error.constructor.name : "UnknownError",
             [APP_ATTRIBUTES.authVerificationType]: "recovery",
             err: error,
@@ -1624,7 +1609,7 @@ async function handleAuthConfirm(request: NextRequest) {
       appLogger.warn(
         {
           "otel.event.name": "auth.confirm.unknown_verification_type",
-          "code.function.name": "GET",
+          "code.function.name": "AuthConfirmRoute.GET",
           [APP_ATTRIBUTES.authVerificationType]: type,
         },
         "Unknown verification type",
@@ -1652,55 +1637,84 @@ Kept for OAuth providers that use authorization codes:
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/shared/infra/supabase/create-client";
+import type { CookieMethodsServer } from "@supabase/ssr";
 import { env } from "@/lib/env";
+import { makeExchangeOAuthCodeController } from "@/modules/auth/factories/auth.factory";
+import { handleError } from "@/shared/infra/http/error-handler";
+import { withRequestObservability } from "@/shared/infra/observability";
+import { getSafeRedirectPath } from "@/shared/lib/redirects";
+
+function resolveSafeAppRedirect(
+  requestedPath: string | null,
+  appOrigin: string,
+): URL {
+  const trustedOrigin = new URL(appOrigin).origin;
+  const safePath = getSafeRedirectPath(requestedPath ?? undefined, {
+    fallback: "/",
+  });
+
+  // Defense in depth: URL parsing normalizes backslashes, so verify the final
+  // resolved origin instead of trusting a string prefix check.
+  try {
+    const resolved = new URL(safePath, trustedOrigin);
+    return resolved.origin === trustedOrigin
+      ? resolved
+      : new URL("/", trustedOrigin);
+  } catch {
+    return new URL("/", trustedOrigin);
+  }
+}
 
 /**
  * Auth callback route handler for OAuth flows.
  * Exchanges authorization code for session.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
-
-  if (code) {
-    const cookieStore = await cookies();
-    const supabase = createClient(
-      env.NEXT_PUBLIC_SUPABASE_URL,
-      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
+  return withRequestObservability(request, async ({ requestId }) => {
+    const { searchParams } = new URL(request.url);
+    const code = searchParams.get("code");
+    const appOrigin = new URL(env.NEXT_PUBLIC_APP_URL).origin;
+    const successUrl = resolveSafeAppRedirect(
+      searchParams.get("next"),
+      appOrigin,
     );
+    const failureUrl = new URL("/", appOrigin);
+    failureUrl.searchParams.set("authError", "oauth_callback_failed");
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (code) {
+      const cookieStore = await cookies();
+      const cookieMethods: CookieMethodsServer = {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => cookiesToSet.forEach(
+          ({ name, value, options }) => cookieStore.set(name, value, options),
+        ),
+      };
 
-    if (!error) {
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
-
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
+      try {
+        await makeExchangeOAuthCodeController(cookieMethods).execute({ code });
+        return NextResponse.redirect(successUrl);
+      } catch (error) {
+        // Browser OAuth callbacks need a safe redirect response. Reuse the
+        // central mapper for one sanitized operational log, but do not expose
+        // provider diagnostics in the redirect.
+        handleError(error, requestId, {
+          "otel.event.name": "auth.oauth_code_exchange.failed",
+        });
+        return NextResponse.redirect(failureUrl);
       }
-      if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      }
-      return NextResponse.redirect(`${origin}${next}`);
     }
-  }
 
-  // Redirect to index on error
-  return NextResponse.redirect(`${origin}/`);
+    // Missing code: redirect to the same safe application error destination.
+    return NextResponse.redirect(failureUrl);
+  });
 }
 ```
+
+The final-origin comparison is required even when a shared path sanitizer is
+used: URL parsing treats backslashes as separators in special schemes, so a
+prefix-only check can be bypassed. Exchange failures are logged once through
+the central handler and become a same-origin browser redirect instead of an
+unhandled route-level 500.
 
 ---
 
@@ -1747,6 +1761,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 
 # Supabase (server-only - NEVER expose)
 SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 SUPABASE_SECRET_KEY=sb_secret_xxx
 
 # Database
@@ -1779,6 +1794,7 @@ src/
     │   └── infra/
     │       ├── supabase/
     │       │   ├── create-client.ts  # SSR client factory
+    │       │   ├── privileged-client.ts # Secret-key admin factory
     │       │   └── types.ts          # SupabaseClient type
     │       ├── db/
     │       │   ├── drizzle.ts        # Database client
@@ -1789,7 +1805,7 @@ src/
     │       │       └── index.ts
     │       ├── trpc/
     │       │   ├── trpc.ts           # tRPC init + procedures
-    │       │   ├── context.ts        # Session extraction
+    │       │   ├── context.ts        # Calls injected SessionResolver
     │       │   └── root.ts           # Root router
     │       └── container.ts          # Composition root
     └── modules/
@@ -1797,6 +1813,7 @@ src/
         │   ├── shared/contracts/     # Public input/response payloads
         │   ├── models/               # Provider-neutral auth models
         │   ├── errors/
+        │   ├── controllers/          # Framework-neutral auth capabilities
         │   ├── repositories/
         │   ├── services/
         │   ├── use-cases/
@@ -1829,11 +1846,12 @@ src/
   - `http://localhost:3000/auth/callback**` (dev OAuth)
 - [ ] **Configure email templates** to use `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=...` (or push via `supabase config push`)
 
-### Environment Variables
+### Environment Variable Checks
 - [ ] `NEXT_PUBLIC_APP_URL` set to production URL
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` configured
 - [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` configured
 - [ ] `SUPABASE_URL` configured
+- [ ] `SUPABASE_PUBLISHABLE_KEY` configured for request-scoped user clients
 - [ ] `SUPABASE_SECRET_KEY` configured
 - [ ] `DATABASE_URL` configured
 

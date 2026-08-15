@@ -8,9 +8,9 @@ TanStack Query cache behavior depends on **stable query keys**.
 
 When a feature uses direct `trpc.*.useQuery/useMutation`, use tRPC-generated keys and utilities (`trpc.useUtils()`) as the default invalidation path.
 
-### 2) `IFeatureApi` Wrappers Backed by tRPC
+### 2) Optional `IFeatureApi` Wrappers Backed by tRPC
 
-Features using the `IFeatureApi` pattern with tRPC use `buildTrpcQueryKey` to construct keys that match tRPC's internal key format:
+When an `IFeatureApi`-based query adapter is backed by tRPC and must interoperate with tRPC cache utilities, use `buildTrpcQueryKey` to construct keys that match tRPC's internal key format:
 
 ```typescript
 // src/common/trpc-query-key.ts
@@ -30,8 +30,10 @@ For features that use non-tRPC adapters (REST clients, realtime subscriptions), 
 // src/common/query-keys/<feature>.ts
 export const featureQueryKeys = {
   all: ["feature"] as const,
-  byId: (id: string) => ["feature", "byId", id] as const,
-  list: (filters: Filters) => ["feature", "list", filters] as const,
+  lists: () => [...featureQueryKeys.all, "list"] as const,
+  list: (filters: Filters) => [...featureQueryKeys.lists(), filters] as const,
+  details: () => [...featureQueryKeys.all, "detail"] as const,
+  detail: (id: string) => [...featureQueryKeys.details(), id] as const,
 };
 ```
 
@@ -40,27 +42,23 @@ export const featureQueryKeys = {
 Store keys in `src/common/query-keys/<feature>.ts` so that:
 
 - query adapters can use them consistently
-- cross-feature components (shared widgets, nav, dashboards) can invalidate/refetch without importing feature internals
+- cross-feature query/cache-sync modules (shared widgets, nav, dashboards) can coordinate without importing feature internals
 
 ## Where to put keys
 
 ```
 src/common/query-keys/
-  shared.ts           # normalizeString, serializeStableScope utilities
+  shared.ts           # optional semantic normalization utilities
   <feature>.ts        # per-feature key definitions
 ```
 
 ## Input Normalization
 
-Query key inputs must be normalized for cache stability. Use `normalizeString` (trim + lowercase) and `serializeStableScope` (JSON.stringify with sorted keys) to prevent cache misses from whitespace, case, or key-order differences:
+TanStack Query hashes serializable object members deterministically, so object key order does not require custom sorting or serialization. Keep structured values in the key.
 
-```typescript
-// src/common/query-keys/shared.ts
-export function normalizeString(s: string): string;
-export function serializeStableScope(obj: Record<string, unknown>): string;
-```
+Normalize a value only when the server/domain treats multiple representations as the same input. For example, trim a search term if the endpoint also trims it. Do not lowercase IDs, case-sensitive search terms, or arbitrary user input merely for cache stability.
 
-Apply these in key builder functions, not at call sites.
+When semantic normalization is required, apply it in the key builder and the request mapping through one shared pure helper so the cache key describes the request that is actually sent.
 
 ## Using With TanStack Query
 
@@ -99,10 +97,11 @@ queryClient.setQueryData(
 ## Rules
 
 - Keys must be serializable and stable.
-- Normalize inputs before embedding in keys.
+- Include every query-function dependency that changes the result.
+- Apply only domain-approved semantic normalization; do not stringify structured key inputs.
 - Keep keys **key-only** (no `queryFn`) — `queryFn` lives in the query adapter layer.
 - Invalidation patterns:
   1. `trpc.useUtils()` for direct tRPC procedures
-  2. `buildTrpcQueryKey(...)` for `IFeatureApi` wrappers backed by tRPC
+  2. `buildTrpcQueryKey(...)` only for `IFeatureApi` wrappers backed by tRPC that require interop
   3. plain key objects for non-tRPC adapters
   4. `useModFeatureSync()` for orchestrated multi-query invalidation (see `client/core/client-api-architecture.md`)

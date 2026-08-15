@@ -5,7 +5,9 @@
 ## Principles
 
 - Authentication is handled at the middleware layer
-- Authorization is handled at the service/use case layer
+- Coarse authentication and role/permission gates may run in transport
+  middleware; resource ownership and domain-specific authorization are enforced
+  by the service/use-case policy
 - Session data is available through tRPC context
 - Token management is infrastructure concern, hidden from business logic
 - Clear separation between "who are you?" (authn) and "can you do this?" (authz)
@@ -161,34 +163,13 @@ export function isAuthenticated(ctx: Context): ctx is AuthenticatedContext {
 
 ## tRPC Procedures
 
-### Auth Middleware
-
-```typescript
-// shared/infra/trpc/middleware/auth.middleware.ts
-
-import { TRPCError } from '@trpc/server';
-import { middleware } from '../trpc';
-import type { AuthenticatedContext } from '../context';
-
-export const authMiddleware = middleware(async ({ ctx, next }) => {
-  if (!ctx.session || !ctx.userId) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Authentication required',
-    });
-  }
-
-  return next({
-    ctx: ctx as AuthenticatedContext,
-  });
-});
-```
-
 ### Procedure Definitions
 
 ```typescript
 // shared/infra/trpc/trpc.ts
 
+import { TRPCError } from '@trpc/server';
+import { AuthenticationError } from '@/shared/kernel/errors';
 import { APP_ATTRIBUTES } from '@/shared/infra/observability/attributes';
 
 // Middleware defined inline to avoid circular dependencies
@@ -400,7 +381,9 @@ export const SESSION_COOKIE_NAME = 'session_token';
 
 import { router, publicProcedure, protectedProcedure } from '@/shared/infra/trpc';
 import {
+  makeCurrentSessionController,
   makeLoginController,
+  makeLogoutController,
   makeRegisterController,
 } from './factories/auth.factory';
 import { wrapResponse } from '@/shared/utils/response';
@@ -430,16 +413,16 @@ export const authRouter = router({
     }),
 
   logout: protectedProcedure.mutation(async ({ ctx }) => {
+    await makeLogoutController().execute(toActor(ctx.session));
     ctx.responseCookies.clearSession();
     return wrapResponse(LogoutResponseSchema.parse({ success: true }));
   }),
 
   me: protectedProcedure.query(async ({ ctx }) => {
-    const response = CurrentSessionResponseSchema.parse({
-      id: ctx.session.userId,
-      email: ctx.session.email,
-      role: ctx.session.role,
-    });
+    const result = await makeCurrentSessionController().execute(
+      toActor(ctx.session),
+    );
+    const response = CurrentSessionResponseSchema.parse(result);
     return wrapResponse(response);
   }),
 });
@@ -470,26 +453,22 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 ### Authorization Middleware
 
 ```typescript
-// shared/infra/trpc/middleware/authorize.middleware.ts
+// src/lib/shared/infra/trpc/trpc.ts (continued)
 
-import { TRPCError } from '@trpc/server';
-import { middleware } from '../trpc';
 import { hasPermission, type Permission } from '@/shared/kernel/auth';
+import {
+  AuthenticationError,
+  AuthorizationError,
+} from '@/shared/kernel/errors';
 
 export function requirePermission(permission: Permission) {
-  return middleware(async ({ ctx, next }) => {
+  return t.middleware(async ({ ctx, next }) => {
     if (!ctx.session) {
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'Authentication required',
-      });
+      throw new AuthenticationError('Authentication required');
     }
 
     if (!hasPermission(ctx.session.role, permission)) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions',
-      });
+      throw new AuthorizationError('Insufficient permissions');
     }
 
     return next();
@@ -502,7 +481,7 @@ export function requirePermission(permission: Permission) {
 ```typescript
 // modules/user/user.router.ts
 
-import { requirePermission } from '@/shared/infra/trpc/middleware/authorize.middleware';
+import { requirePermission } from '@/shared/infra/trpc';
 import { wrapResponse } from '@/shared/utils/response';
 import {
   DeleteUserResponseSchema,
@@ -607,34 +586,31 @@ export async function verifyPassword(
 
 ```
 src/
-├─ shared/
-│  ├─ kernel/
-│  │  └─ auth.ts              # Session, UserRole, Permission types
-│  ├─ infra/
-│  │  ├─ auth/
-│  │  │  ├─ session.ts        # JWT/DB session management
-│  │  │  └─ cookies.ts        # Cookie utilities
-│  │  └─ trpc/
-│  │     ├─ context.ts        # Context creation with session
-│  │     ├─ trpc.ts           # Procedure definitions
-│  │     └─ middleware/
-│  │        ├─ auth.middleware.ts       # Authentication check
-│  │        └─ authorize.middleware.ts  # Permission check
-│  └─ utils/
-│     └─ password.ts          # bcrypt utilities
-│
-├─ modules/
-│  └─ auth/
-│     ├─ auth.router.ts       # Login, register, logout, me
-│     ├─ use-cases/
-│     │  └─ auth.use-case.ts  # Authentication logic
-│     └─ factories/
-│        └─ auth.factory.ts   # Auth use case factory
+└─ lib/
+   ├─ shared/
+   │  ├─ kernel/
+   │  │  └─ auth.ts              # Session, UserRole, Permission types
+   │  ├─ infra/
+   │  │  ├─ auth/
+   │  │  │  ├─ session.ts        # JWT/DB session management
+   │  │  │  └─ cookies.ts        # Cookie utilities
+   │  │  └─ trpc/
+   │  │     ├─ context.ts        # Context creation with session
+   │  │     └─ trpc.ts           # Procedures + middleware
+   │  └─ utils/
+   │     └─ password.ts          # bcrypt utilities
+   │
+   └─ modules/
+      └─ auth/
+         ├─ auth.router.ts       # Login, register, logout, me
+         ├─ controllers/
+         ├─ use-cases/
+         └─ factories/
 ```
 
 ## Security Checklist
 
-### Authentication
+### Authentication Checks
 - [ ] Passwords hashed with bcrypt (cost factor >= 12) or argon2
 - [ ] Session tokens are cryptographically secure
 - [ ] Tokens stored in HTTP-only cookies
@@ -643,7 +619,7 @@ src/
 - [ ] Generic error messages prevent user enumeration
 - [ ] Failed login attempts are logged
 
-### Session Management
+### Session Checks
 - [ ] Sessions have reasonable expiration (7-30 days)
 - [ ] Session can be revoked (logout, security events)
 - [ ] New session created on login (prevent session fixation)

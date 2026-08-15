@@ -38,7 +38,31 @@ There are two valid cache-key patterns depending on adapter choice.
 - Do not define custom key objects for direct tRPC procedures.
 - Use tRPC-generated keys and utilities.
 - Prefer invalidation via `trpc.useUtils()` in mutation hooks.
-- Component-coordinator invalidation is also allowed for route-local orchestration.
+- Component-coordinator sequencing is allowed for route-local orchestration, but tRPC cache mechanics stay in a named `useMod*Sync` hook.
+
+Direct-tRPC compatibility hooks are themselves adapter boundaries. Return an app-facing projection rather than the raw provider result:
+
+```typescript
+function toAppMutationFacade<TInput, TData>(mutation: {
+  isPending: boolean;
+  error: unknown;
+  mutateAsync(input: TInput): Promise<TData>;
+}) {
+  return {
+    isPending: mutation.isPending,
+    error: mutation.error ? toAppError(mutation.error) : null,
+    async mutateAsync(input: TInput) {
+      try {
+        return await mutation.mutateAsync(input);
+      } catch (error) {
+        throw toAppError(error);
+      }
+    },
+  };
+}
+```
+
+Do not spread the raw tRPC mutation/query result into the facade because that would re-expose its provider-specific `error`.
 
 Variant A (preferred): hook-owned invalidation
 
@@ -47,7 +71,7 @@ export function useMutProfileUpdate() {
   const utils = trpc.useUtils();
   const analytics = useProductAnalytics();
 
-  return trpc.profile.update.useMutation({
+  const mutation = trpc.profile.update.useMutation({
     onSuccess: async (result) => {
       analytics.track({
         name: "profile_updated",
@@ -60,29 +84,36 @@ export function useMutProfileUpdate() {
       ]);
     },
   });
+
+  return toAppMutationFacade(mutation);
 }
 ```
 
-Variant B (allowed): component-coordinator invalidation
+Variant B (allowed): component-coordinator sequencing
 
 ```typescript
 export function useMutProfileUpdate() {
-  return trpc.profile.update.useMutation();
+  return toAppMutationFacade(trpc.profile.update.useMutation());
+}
+
+export function useModProfileSync() {
+  const utils = trpc.useUtils();
+  return {
+    invalidateAfterUpdate: (id: string) =>
+      Promise.all([
+        utils.profile.getByCurrentUser.invalidate(),
+        utils.profile.getById.invalidate({ id }),
+      ]),
+  };
 }
 
 export function ProfileForm() {
-  const utils = trpc.useUtils();
   const updateMut = useMutProfileUpdate();
-
-  const onSubmitInvalidateQueries = async (id: string) =>
-    Promise.all([
-      utils.profile.getByCurrentUser.invalidate(),
-      utils.profile.getById.invalidate({ id }),
-    ]);
+  const profileSync = useModProfileSync();
 
   const onSubmit = async (data: ProfileFormShape) => {
-    const result = await updateMut.mutateAsync(data);
-    await onSubmitInvalidateQueries(result.data.id);
+    const result = await updateMut.mutateAsync(toUpdateProfileInput(data));
+    await profileSync.invalidateAfterUpdate(result.data.id);
     router.push(appRoutes.dashboard);
   };
 }
@@ -91,8 +122,8 @@ export function ProfileForm() {
 When to choose:
 
 - Choose Variant A when invalidation behavior should be reusable across multiple screens.
-- Choose Variant B when submit sequencing is route-local and easier to audit in one component.
-- Choose hybrid when mutation hook owns shared defaults and component adds route-local invalidations.
+- Choose Variant B when submit sequencing is route-local and easier to audit in one component while `useMod*Sync` owns provider/cache details.
+- Choose hybrid when the mutation hook owns shared defaults and a named `useMod*Sync` operation exposes route-local additions to the component coordinator.
 
 Detailed scenario matrix:
 
@@ -165,13 +196,20 @@ Example:
 
 ```typescript
 export function useQueryProfileMe() {
-  return trpc.profile.getByCurrentUser.useQuery();
+  const query = trpc.profile.getByCurrentUser.useQuery();
+  return {
+    data: query.data,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    error: query.error ? toAppError(query.error) : null,
+    refetch: query.refetch,
+  };
 }
 
 export function useModDashboard() {
-  const profileQuery = trpc.profile.get.useQuery();
-  const statsQuery = trpc.stats.get.useQuery();
-  const notificationsQuery = trpc.notifications.list.useQuery();
+  const profileQuery = useQueryProfileMe();
+  const statsQuery = useQueryStats();
+  const notificationsQuery = useQueryNotificationsList();
 
   return { profileQuery, statsQuery, notificationsQuery };
 }

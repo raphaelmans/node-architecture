@@ -96,8 +96,8 @@ The resulting JSON uses `trace_id`, `span_id`, `trace_flags`, and `com.example.a
 
 ```typescript
 log.error({ err }, "Unexpected database failure");
-log.warn({ "error.type": "USER_NOT_FOUND", "user.id": userId }, "User not found");
-log.info({ "otel.event.name": "user.created", "user.id": user.id }, "User created");
+log.warn({ "error.type": "USER_NOT_FOUND", [APP_ATTRIBUTES.targetUserId]: userId }, "User not found");
+log.info({ "otel.event.name": "user.created", [APP_ATTRIBUTES.targetUserId]: user.id }, "User created");
 log.debug({ input }, "Request input");
 ```
 
@@ -270,6 +270,8 @@ Log significant business events in services.
 ```typescript
 // modules/user/services/user.service.ts
 
+import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+
 export class UserService implements IUserService {
   constructor(
     private readonly repository: IUserRepository,
@@ -283,7 +285,7 @@ export class UserService implements IUserService {
       {
         "otel.event.name": "user.created",
         "code.function.name": "UserService.create",
-        "user.id": user.id,
+        [APP_ATTRIBUTES.targetUserId]: user.id,
       },
       "User created",
     );
@@ -298,7 +300,7 @@ export class UserService implements IUserService {
       {
         "otel.event.name": "user.deleted",
         "code.function.name": "UserService.delete",
-        "user.id": id,
+        [APP_ATTRIBUTES.targetUserId]: id,
       },
       "User deleted",
     );
@@ -351,7 +353,7 @@ Correlation fields are required on every request-scoped record, but the adapter 
 // Good messages
 log.info({ "otel.event.name": "rpc.request.started", "rpc.method": path }, "Request started");
 log.info({ "otel.event.name": "rpc.request.completed", "rpc.method": path }, "Request completed");
-appLogger.info({ "otel.event.name": "user.registered", "user.id": userId }, "User registered");
+appLogger.info({ "otel.event.name": "user.registered", [APP_ATTRIBUTES.targetUserId]: userId }, "User registered");
 appLogger.warn({ err, "error.type": error.code }, error.message);
 
 // Bad messages (avoid)
@@ -392,7 +394,7 @@ Standard auth-related events:
 
 | Event | When | Fields |
 |-------|------|--------|
-| `user.registered` | New user created | `user.id` |
+| `user.registered` | New user created | namespaced target user ID |
 | `user.logged_in` | Successful login | `user.id` |
 | `user.logged_out` | User logged out | — |
 | `user.magic_link_requested` | Magic link sent | Avoid email address in logs |
@@ -479,19 +481,28 @@ const SENSITIVE_KEYS = [
   "secret",
 ];
 
-export function sanitize<T extends Record<string, unknown>>(obj: T): T {
-  const result = { ...obj };
+export function sanitize(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value)) return "[Circular]";
+  seen.add(value);
 
-  for (const key of Object.keys(result)) {
-    const lowerKey = key.toLowerCase();
-    if (SENSITIVE_KEYS.some((sensitive) => lowerKey.includes(sensitive))) {
-      (result as Record<string, unknown>)[key] = "[REDACTED]";
-    }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitize(item, seen));
   }
 
-  return result;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => {
+      const lowerKey = key.toLowerCase();
+      const sensitive = SENSITIVE_KEYS.some((part) => lowerKey.includes(part));
+      return [key, sensitive ? "[REDACTED]" : sanitize(nested, seen)];
+    }),
+  );
 }
 ```
+
+Prefer explicit allowlisted fields even when sanitization is available. Test
+automatic redaction and this recursive fallback with the credential shapes used
+by the application.
 
 **Usage:**
 
@@ -519,8 +530,8 @@ log.debug(
 
 [2026-08-15 10:30:46] INFO: User created
     otel.event.name: "user.created"
-    code.function.name: "CreateUserUseCase.execute"
-    user.id: "usr-789"
+    code.function.name: "UserService.create"
+    com.example.api.target.user.id: "usr-789"
     trace_id: "4bf92f3577b34da6a3ce929d0e0e4736"
     span_id: "00f067aa0ba902b7"
     com.example.api.request.id: "req-abc-123"
@@ -530,7 +541,7 @@ log.debug(
 
 ```json
 {"level":30,"time":1786761045000,"msg":"Request started","otel.event.name":"http.request.started","http.request.method":"POST","http.route":"/api/users","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","trace_flags":"01","com.example.api.request.id":"req-abc-123"}
-{"level":30,"time":1786761046000,"msg":"User created","otel.event.name":"user.created","code.function.name":"CreateUserUseCase.execute","user.id":"usr-789","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","trace_flags":"01","com.example.api.request.id":"req-abc-123"}
+{"level":30,"time":1786761046000,"msg":"User created","otel.event.name":"user.created","code.function.name":"UserService.create","com.example.api.target.user.id":"usr-789","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","trace_flags":"01","com.example.api.request.id":"req-abc-123"}
 ```
 
 ## Observability Integration
@@ -563,7 +574,7 @@ Request-scoped JSON logs include the configured namespaced request ID and, when 
 - [ ] Auth events follow standard naming (`user.logged_in`, `user.registered`, etc.)
 - [ ] Message is past tense, concise ("User logged in", not "A user has logged in")
 
-### Error Logging
+### Error-Handling Checks
 - [ ] Error handler logs known errors at `warn` with `error.type` and safe details
 - [ ] Correlation fields come from `AppLogger`; callers do not pass them manually
 - [ ] Error handler logs unknown errors at `error` with full stack

@@ -96,7 +96,7 @@ End-to-end assertions typically verify:
 
 - webhook route returned `received: true`
 - handler routed correctly
-- idempotency handled duplicates
+- atomic idempotency handled sequential and concurrent duplicates
 - use case executed side effects exactly once
 
 ---
@@ -109,5 +109,6 @@ Then add:
 
 - 1 failure scenario
 - 1 duplicate delivery scenario
+- 1 concurrent duplicate-delivery scenario when the simulator supports parallel requests
 
 This is usually enough to convince stakeholders and de-risk integration.

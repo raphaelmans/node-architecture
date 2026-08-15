@@ -82,7 +82,9 @@ ErrorHandling Facade              <-- FACADE
 
 ### React Query hooks
 
-- Normalize errors inside hooks or business components.
+- Hooks backed by `I<Feature>Api` receive normalized `AppError` rejections and pass them through unchanged.
+- Direct-provider compatibility hooks normalize at their adapter boundary before exposing an error to components.
+- Business components use the facade only for truly unknown local callback errors; normalization is idempotent for an existing `AppError`.
 - Presentation components should never check provider-specific error types.
 
 ### Forms (react-hook-form)
@@ -114,7 +116,7 @@ src/common/toast/
 Minimal contract example:
 
 ```ts
-export type ToastVariant = "success" | "error" | "info";
+export type ToastVariant = "success" | "error" | "info" | "warning";
 
 export type ToastOptions = {
   title?: string;
@@ -165,9 +167,8 @@ const catchErrorToast = useCatchErrorToast();
 const onSubmit = async (data: ProfileFormShape) => {
   const result = await catchErrorToast(
     async () => {
-      await updateMut.mutateAsync(data);
+      await updateMut.mutateAsync(toUpdateProfileInput(data));
       await onSubmitInvalidateQueries();
-      await onSubmitRefetch();
       // Optional route transition:
       // router.push(appRoutes.dashboard);
     },
@@ -186,7 +187,7 @@ Notes:
 
 - The only place that knows about provider-specific errors is the adapter layer (`toAppError`).
 - `useCatchErrorToast` uses the toast facade (`ToastFacade.show`) under the hood, so it stays toast-library-agnostic.
-- Success toast fires only after the wrapped async callback resolves (for example after mutation + invalidate + refetch sequence).
+- Success toast fires only after the wrapped async callback resolves (for example after mutation + awaited invalidation).
 
 ## Do / Don't
 

@@ -6,12 +6,16 @@ See [../README.md](../README.md) for the source-repo overview and [../legacy/REA
 
 Interactive companion: [Client Architecture Field Guide](../assets/client-architecture-guide.html).
 
+Installable agent interface: [Client Architecture Skill](./skill/SKILL.md).
+
+The documents under `core/` and `frameworks/` remain the authoring source of truth. The `$client` skill packages curated, composable derivatives of that guidance for progressive agent loading.
+
 ## Focus
 
 This documentation emphasizes:
 
 - Feature-based organization
-- A strict client API chain: `clientApi -> featureApi -> query adapter -> components`
+- A strict client dependency stack: `components -> query adapter -> featureApi -> clientApi` for calls, with typed results returning in the opposite direction
 - Clear separation of business and presentation logic
 - One shared Zod wire contract across client and server
 - Typed validation and normalized error handling
@@ -37,6 +41,13 @@ This documentation emphasizes:
 
 ## Canonical Navigation
 
+### Agent Skill
+
+| Document | Description |
+| -------- | ----------- |
+| [Client Skill Router](./skill/SKILL.md) | Routes `$client` tasks through the smallest relevant architecture slices |
+| [Skill References](./skill/references/) | Portable concern-based derivatives of the canonical client docs |
+
 ### Core
 
 | Document | Description |
@@ -46,7 +57,7 @@ This documentation emphasizes:
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
 | [Composition Root](./core/composition-root.md) | Factories, dependency injection, runtime lifetimes |
-| [Client API Architecture](./core/client-api-architecture.md) | `clientApi -> featureApi -> query adapter` |
+| [Client API Architecture](./core/client-api-architecture.md) | `components -> query adapter -> featureApi -> clientApi` call flow |
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
 | [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |

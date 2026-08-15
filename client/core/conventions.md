@@ -31,8 +31,10 @@ Owns:
 Does not own:
 
 - transport (HTTP/tRPC)
-- cache invalidation rules
+- reusable cache invalidation rules or direct query-key mechanics
 - direct logging or analytics vendor calls
+
+A screen/business coordinator may own route-local sequencing such as `mutate -> sync -> navigate`, but it calls an exported query/cache-sync operation from the query adapter rather than inlining `queryClient` keys in TSX. Presentation components never coordinate cache operations.
 
 ### Query Adapter Layer (Server State + Cache)
 
@@ -40,7 +42,8 @@ Owns:
 
 - query/mutation definitions
 - query keys (for non-tRPC adapters, defined in `src/common/query-keys/<feature>.ts`)
-- cache utilities/invalidation (for tRPC adapters, via generated tRPC query utilities)
+- reusable cache utilities/invalidation (for tRPC adapters, via generated tRPC query utilities)
+- route-local cache-sync operations exposed to screen/business coordinators
 - invalidation / optimistic updates
 - combined loading/success/error composition for multiple query units
 - successful mutation product events when the mutation hook owns the reusable action

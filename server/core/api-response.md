@@ -7,7 +7,8 @@
 - Envelope pattern for all responses
 - OpenAPI-aligned structure
 - Consistent shape for frontend consumption
-- Pagination compatible with tRPC `useInfiniteQuery` and REST/OpenAPI clients
+- Explicit offset pagination for regular queries and an explicit cursor
+  contract when a tRPC capability needs `useInfiniteQuery`
 - Contract schemas are defined once (Zod-first) and reused by both transports
 
 ## Success Response - Single Resource
@@ -42,12 +43,22 @@
   meta: {
     total: number,            // Total count in database
     limit: number,            // Requested limit
-    cursor: number | null,    // Current offset (null for first page)
-    nextCursor: number | null, // Next offset (null = no more pages)
+    offset: number,            // Current numeric offset
+    nextOffset: number | null, // Next offset (null = no more pages)
     sort: 'asc' | 'desc'
   }
 }
 ```
+
+This is explicitly offset pagination. Do not call a numeric offset a
+`cursor`. When a capability needs stable traversal under concurrent inserts,
+define an opaque cursor from a deterministic sort key instead of reusing these
+fields.
+
+Use this offset contract with a regular tRPC `useQuery` or REST/OpenAPI query.
+tRPC exposes `useInfiniteQuery` only when a procedure input accepts an optional
+field named `cursor`; an infinite capability therefore needs a separate,
+cursor-based contract and must not pass `nextOffset` as its page parameter.
 
 **Example:**
 
@@ -60,8 +71,8 @@
   "meta": {
     "total": 150,
     "limit": 20,
-    "cursor": 40,
-    "nextCursor": 60,
+    "offset": 40,
+    "nextOffset": 60,
     "sort": "desc"
   }
 }
@@ -75,8 +86,8 @@
   "meta": {
     "total": 0,
     "limit": 20,
-    "cursor": null,
-    "nextCursor": null,
+    "offset": 0,
+    "nextOffset": null,
     "sort": "desc"
   }
 }
@@ -103,10 +114,7 @@ Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse`
 {
   "code": "USER_NOT_FOUND",
   "message": "User not found",
-  "requestId": "req-abc-123",
-  "details": {
-    "userId": "550e8400-e29b-41d4-a716-446655440000"
-  }
+  "requestId": "req-abc-123"
 }
 
 {
@@ -133,7 +141,7 @@ import { z } from "zod";
  */
 export const PaginationInputSchema = z.object({
   limit: z.number().min(1).max(100).default(20),
-  cursor: z.number().nullish(),
+  offset: z.number().int().min(0).default(0),
   sort: z.enum(["asc", "desc"]).default("desc"),
   search: z.string().nullish(),
 });
@@ -152,8 +160,8 @@ export type PaginationInput = z.infer<typeof PaginationInputSchema>;
 export const PaginationMetaSchema = z.object({
   total: z.number(),
   limit: z.number(),
-  cursor: z.number().nullable(),
-  nextCursor: z.number().nullable(),
+  offset: z.number().int().min(0),
+  nextOffset: z.number().int().min(0).nullable(),
   sort: z.enum(["asc", "desc"]),
 });
 
@@ -162,7 +170,7 @@ export type PaginationMeta = z.infer<typeof PaginationMetaSchema>;
 /**
  * Creates a paginated response schema for a given item type.
  */
-export function createPaginatedSchema<T extends z.ZodType>(itemSchema: T) {
+export function createPaginatedResponseSchema<T extends z.ZodType>(itemSchema: T) {
   return z.object({
     data: z.array(itemSchema),
     meta: PaginationMetaSchema,
@@ -215,7 +223,7 @@ import type {
 } from "@/shared/kernel/pagination";
 
 /**
- * Builds a paginated response with computed nextCursor.
+ * Builds an offset-paginated response with computed nextOffset.
  */
 export function buildPaginatedResponse<T>(
   data: T[],
@@ -223,18 +231,17 @@ export function buildPaginatedResponse<T>(
   input: PaginationInput,
 ): PaginatedResponse<T> {
   const limit = input.limit ?? 20;
-  const cursor = input.cursor ?? null;
-  const currentOffset = cursor ?? 0;
+  const currentOffset = input.offset ?? 0;
   const nextOffset = currentOffset + data.length;
-  const nextCursor = nextOffset < total ? nextOffset : null;
+  const followingOffset = nextOffset < total ? nextOffset : null;
 
   return {
     data,
     meta: {
       total,
       limit,
-      cursor,
-      nextCursor,
+      offset: currentOffset,
+      nextOffset: followingOffset,
       sort: input.sort ?? "desc",
     },
   };
@@ -338,8 +345,7 @@ import type { User } from "@/shared/infra/db/schema";
 
 export class UserService {
   async list(input: ListUsersInput): Promise<PaginatedResponse<User>> {
-    const { limit = 20, cursor, sort = "desc", search, role } = input;
-    const offset = cursor ?? 0;
+    const { limit = 20, offset = 0, sort = "desc", search, role } = input;
 
     // Build where conditions
     const conditions = [];
@@ -374,32 +380,25 @@ export class UserService {
 }
 ```
 
-### tRPC Client Usage with `useInfiniteQuery`
+### tRPC Client Usage with an Offset Query
 
 ```typescript
 // Client-side (React)
 
 import { trpc } from '@/trpc/client';
+import { useState } from 'react';
 
 function UserList() {
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = trpc.user.list.useInfiniteQuery(
-    {
-      limit: 20,
-      sort: 'desc',
-      search: 'john',
-    },
-    {
-      getNextPageParam: (lastPage) => lastPage.meta.nextCursor,
-    },
-  );
+  const [offset, setOffset] = useState(0);
+  const query = trpc.user.list.useQuery({
+    limit: 20,
+    offset,
+    sort: 'desc',
+    search: 'john',
+  });
 
-  // Flatten pages
-  const users = data?.pages.flatMap((page) => page.data) ?? [];
+  const users = query.data?.data ?? [];
+  const nextOffset = query.data?.meta.nextOffset ?? null;
 
   return (
     <div>
@@ -407,18 +406,24 @@ function UserList() {
         <UserCard key={user.id} user={user} />
       ))}
 
-      {hasNextPage && (
+      {nextOffset !== null && (
         <button
-          onClick={() => fetchNextPage()}
-          disabled={isFetchingNextPage}
+          onClick={() => setOffset(nextOffset)}
+          disabled={query.isFetching}
         >
-          {isFetchingNextPage ? 'Loading...' : 'Load More'}
+          {query.isFetching ? 'Loading...' : 'Next page'}
         </button>
       )}
     </div>
   );
 }
 ```
+
+For an infinite list, define a different input such as
+`{ limit, cursor?: string }` and return an opaque `nextCursor`. The cursor must
+encode the deterministic sort position (for example, `createdAt` plus `id`),
+not a numeric offset. Then pass `lastPage.meta.nextCursor` from
+`getNextPageParam`.
 
 ### OpenAPI Route Handler Example
 
@@ -429,12 +434,16 @@ import { NextResponse } from "next/server";
 import type { ApiResponse, ApiErrorResponse } from "@/shared/kernel/response";
 import { wrapResponse } from "@/shared/utils/response";
 import { handleError } from "@/shared/infra/http/error-handler";
+import { parseRequestInput } from "@/shared/infra/http/validation";
 import { withRequestObservability } from "@/shared/infra/observability";
 
 export async function GET(req: Request) {
   return withRequestObservability(req, async ({ requestId }) => {
     try {
-      const input = ListProfilesInputSchema.parse(/* parsed query */);
+      const input = parseRequestInput(
+        ListProfilesInputSchema,
+        /* parsed query */,
+      );
       const actor = await authenticateNextRequest(req);
       const result = await makeListProfilesController().execute(input, actor);
       const response = ListProfilesResponseSchema.parse(result);
@@ -495,7 +504,7 @@ src/lib/
 
 - [ ] `PaginationInputSchema` in `shared/kernel/pagination.ts`
 - [ ] `PaginationMetaSchema` in `shared/kernel/pagination.ts`
-- [ ] `createPaginatedSchema` helper for output validation
+- [ ] `createPaginatedResponseSchema` helper for the kernel-owned envelope
 - [ ] `createResponseSchema` helper for single resource
 - [ ] `buildPaginatedResponse` utility in `shared/utils/pagination.ts`
 - [ ] `wrapResponse` utility in `shared/utils/response.ts`

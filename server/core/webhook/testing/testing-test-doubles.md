@@ -66,7 +66,8 @@ A **mock** is a spy with expectations baked in (call counts, parameters).
 
 A **fake** is a working simplified implementation.
 
-**Use for:** idempotency and stateful behavior without a real DB.
+**Use for:** sequential idempotency decisions and stateful behavior without a
+real DB. A fake cannot prove database uniqueness or concurrent delivery safety.
 
 **Examples:**
 
@@ -97,7 +98,8 @@ See: [Vendor Simulator](./testing-vendor-simulator.md)
 | --- | --- | --- |
 | Signature verification | provider SDK call | stub or fake |
 | Use cases | side effects orchestration | spy/mock |
-| Repositories | idempotency checks | fake |
+| Repositories | sequential idempotency behavior | fake |
+| Database unique constraint/upsert | concurrent duplicate safety | real test database |
 | Logger | event emission | spy (optional) |
 | Time | delays/retries | fake clock (if needed) |
 
@@ -116,5 +118,7 @@ See: [Vendor Simulator](./testing-vendor-simulator.md)
 
 - Use **fixtures + schema tests** as your “safety net”.
 - Use **spies** to verify mapping and use case calls.
-- Use **fakes** for idempotency and lightweight persistence.
+- Use **fakes** for fast sequential idempotency tests.
+- Use a **real test database** for the unique constraint/upsert and concurrent
+  duplicate-delivery integration test.
 - Use the **Vendor Simulator** for a small number of end-to-end scenarios.

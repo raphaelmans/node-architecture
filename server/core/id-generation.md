@@ -48,12 +48,21 @@ Since the database generates IDs, repositories don't need to provide them:
 ```typescript
 // modules/user/repositories/user.repository.ts
 
+import type { TransactionOptions } from "@/shared/kernel/transaction";
+import type { DbClient, DrizzleTransaction } from "@/shared/infra/db/types";
+
 export class UserRepository {
+  constructor(private readonly db: DbClient) {}
+
+  private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
+    return (options?.tx as unknown as DrizzleTransaction) ?? this.db;
+  }
+
   async create(
     data: Omit<UserInsert, "id">,
     options?: TransactionOptions,
   ): Promise<User> {
-    const client = options?.tx ?? this.db;
+    const client = this.getClient(options);
 
     const result = await client
       .insert(users)
@@ -103,70 +112,25 @@ export const UpdateUserSchema = z.object({
 });
 ```
 
-## Collision Retry Wrapper
+## Collision Policy
 
-UUID collisions are astronomically unlikely, but for absolute safety:
+Do not add a generic retry wrapper for PostgreSQL error `23505`. That code means
+**any** unique-constraint violation, not specifically a UUID primary-key
+collision. Retrying it can hide a real email/slug conflict, and a retry inside
+an already-aborted transaction cannot succeed.
 
-```typescript
-// shared/utils/db.ts
+Database-generated UUID collisions are sufficiently improbable that the
+canonical behavior is:
 
-import { ConflictError } from "@/shared/kernel/errors";
+1. perform the insert once;
+2. inspect the exact constraint for known business uniqueness conflicts;
+3. translate those conflicts to the corresponding domain error;
+4. let an unexpected primary-key collision surface as an internal failure.
 
-/**
- * Executes a database operation with retry on primary key collision.
- * Use for inserts where database generates the UUID.
- */
-export async function withRetryOnCollision<T>(
-  operation: () => Promise<T>,
-  maxRetries = 3,
-): Promise<T> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (isPrimaryKeyViolation(error) && attempt < maxRetries - 1) {
-        continue; // Retry - database will generate new UUID
-      }
-      throw error;
-    }
-  }
-
-  throw new ConflictError("Failed to insert after retries", {
-    attempts: maxRetries,
-  });
-}
-
-/**
- * Checks if error is a primary key violation.
- */
-function isPrimaryKeyViolation(error: unknown): boolean {
-  if (error && typeof error === "object" && "code" in error) {
-    // PostgreSQL unique violation on primary key
-    return error.code === "23505";
-  }
-  return false;
-}
-```
-
-**Usage in repository:**
-
-```typescript
-// modules/user/repositories/user.repository.ts
-
-import { withRetryOnCollision } from "@/shared/utils/db";
-
-export class UserRepository {
-  async create(data: UserInsert, options?: TransactionOptions): Promise<User> {
-    const client = options?.tx ?? this.db;
-
-    return withRetryOnCollision(async () => {
-      const result = await client.insert(users).values(data).returning();
-
-      return result[0];
-    });
-  }
-}
-```
+Constraint translation belongs in the repository and must compare an explicit
+allowlisted constraint name, as described in
+[Error Handling](./error-handling.md#database-error-translation). Never infer
+"primary-key collision" from `23505` alone.
 
 ## Application-Side Generation (When Needed)
 
@@ -206,5 +170,6 @@ await transactionManager.run(async (tx) => {
 - [ ] All tables use `uuid('id').primaryKey().defaultRandom()`
 - [ ] Insert types omit `id` field
 - [ ] Shared API contracts validate IDs with `z.string().uuid()`
-- [ ] `withRetryOnCollision()` utility in `shared/utils/db.ts`
+- [ ] Known unique constraints are translated by exact constraint name
+- [ ] No generic retry is performed for PostgreSQL `23505`
 - [ ] `generateId()` utility available for edge cases

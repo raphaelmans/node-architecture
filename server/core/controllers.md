@@ -118,7 +118,8 @@ Every adapter reuses the same controller. The examples below show two transports
 export async function POST(request: Request) {
   return withRequestObservability(request, async ({ requestId }) => {
     try {
-      const input = CreateUserInputSchema.parse(await request.json());
+      const body = await parseJsonRequestBody(request);
+      const input = parseRequestInput(CreateUserInputSchema, body);
       const actor = await authenticateNextRequest(request);
       const result = await makeCreateUserController().execute(input, actor);
       const response = CreateUserResponseSchema.parse(result);

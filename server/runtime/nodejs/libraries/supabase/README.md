@@ -97,8 +97,13 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 
 # Server-only (NEVER expose)
 SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 SUPABASE_SECRET_KEY=sb_secret_xxx
 
 # Database
 DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
 ```
+
+Request-scoped user/session clients use `SUPABASE_PUBLISHABLE_KEY`. The secret
+key is read only by a separately named privileged client used for narrowly
+authorized admin/worker operations; it is never the default server client.

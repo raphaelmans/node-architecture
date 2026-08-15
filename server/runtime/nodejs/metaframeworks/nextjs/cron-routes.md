@@ -22,12 +22,13 @@ Standardize cron-triggered routes for safety, observability, and retry tolerance
 
 Return structured JSON containing:
 
-- success flag
-- processed count(s)
-- timestamp
-- optional per-item errors for partial failure cases
+- the standard `{ data: ... }` success envelope
+- processed count(s) inside `data`
+- timestamp inside `data`
+- optional safe per-item outcomes for partial-failure cases
 
-For non-cron public endpoints, continue using standard API envelope conventions.
+Do not add a redundant `success` boolean. HTTP status plus the canonical error
+body represents total failure; typed item outcomes represent partial failure.
 
 ## Logging
 
@@ -35,8 +36,10 @@ Log start/end and failure with:
 
 - cron job name/event key
 - processed counts
-- requestId
 - error details when applicable
+
+The contextual `AppLogger` adds the invocation/request ID and active trace
+fields. Cron code does not pass or repeat them manually.
 
 ## Runtime Notes
 
@@ -48,4 +51,3 @@ Log start/end and failure with:
 
 - Async job model: `../../../../core/async-jobs-outbox.md`
 - Core rate-limiting contract (if cron endpoint is externally callable): `../../../../core/rate-limiting.md`
-

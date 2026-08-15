@@ -2,10 +2,12 @@
 
 > Conventions for browser-side HTTP clients that call Next.js `route.ts` endpoints.
 
+Examples target Ky 2 (`baseUrl`/`prefix`). If a consumer is pinned to Ky 1, follow that version's `prefixUrl` path rules until it migrates; do not mix option names across major versions.
+
 ## Goals
 
 - Use a consistent HTTP client wrapper (`ky`)
-- Decode the standard server envelope (`ApiResponse<T>` / `ApiErrorResponse>`)
+- Decode the standard server envelope (`ApiResponse<T>` / `ApiErrorResponse`)
 - Throw typed, inspectable errors (aligned with server error-handling)
 - Integrate cleanly with TanStack Query hooks
 - Import the same Zod input/response contracts used by the Next.js route
@@ -30,11 +32,11 @@ import ky from "ky";
 
 export function createClientApi(deps: {
   logger: AppLogger;
-  prefixUrl?: string;
+  baseUrl?: string;
   timeoutMs?: number;
 }): IClientApi {
   const transport = ky.create({
-    prefixUrl: deps.prefixUrl,
+    baseUrl: deps.baseUrl,
     throwHttpErrors: false,
     timeout: deps.timeoutMs ?? 30_000,
   });
@@ -43,11 +45,11 @@ export function createClientApi(deps: {
 }
 ```
 
-The browser composition root calls `createClientApi` once. SSR calls it per request only when the transport closes over request headers/cookies/context.
+The browser composition root calls `createClientApi` once. Same-origin browser calls may omit `baseUrl` and use origin-relative paths such as `/api/profile`. SSR supplies an absolute `baseUrl` when required and creates the client per request only when the transport closes over request headers/cookies/context.
 
 ## Typed client error
 
-Throw a typed error so UI + hooks can inspect `code` and `requestId`.
+Throw a typed transport error so `toAppError` can preserve safe `code` and `requestId` metadata. UI and feature hooks consume only the resulting `AppError`.
 
 ```typescript
 import type { ApiErrorResponse } from "@/lib/shared/kernel/response";
@@ -97,6 +99,7 @@ import {
   type PreviewGoogleLocationInput,
   type PreviewGoogleLocationResponse,
 } from "@/lib/modules/location/shared/contracts";
+import { invalidResponseError } from "@/common/errors/invalid-response-error";
 
 export class GoogleLocApi implements IGoogleLocApi {
   constructor(private readonly deps: {
@@ -127,6 +130,7 @@ export class GoogleLocApi implements IGoogleLocApi {
           },
           "Location preview response violated contract",
         );
+        throw invalidResponseError(error);
       }
 
       throw this.deps.toAppError(error);
@@ -144,6 +148,7 @@ import { useMutation } from "@tanstack/react-query";
 
 export function useMutGoogleLocPreview() {
   const analytics = useProductAnalytics();
+  const googleLocApi = getGoogleLocApi();
 
   return useMutation({
     mutationFn: (input: PreviewGoogleLocationInput) => googleLocApi.preview(input),
@@ -159,7 +164,7 @@ export function useMutGoogleLocPreview() {
 
 The typed product event is optional and belongs here only when this reusable mutation owns the successful user action. It is not an operational log.
 
-## Feature API Contract (Recommended)
+## Feature API Contract (Required)
 
 Do not expose raw transport functions directly to hooks long-term.
 Wrap them behind `I<Feature>Api` + class in `src/features/<feature>/api.ts`.
@@ -184,12 +189,21 @@ Testing implication:
 
 For non-tRPC adapters, query keys come from `src/common/query-keys/<feature>.ts`.
 
+```typescript
+export const googleLocQueryKeys = {
+  all: ["google-location"] as const,
+  preview: () => [...googleLocQueryKeys.all, "preview"] as const,
+  history: () => [...googleLocQueryKeys.all, "history"] as const,
+};
+```
+
 Variant A (preferred): hook-owned invalidation
 
 ```typescript
 export function useMutGoogleLocPreview() {
   const queryClient = useQueryClient();
   const analytics = useProductAnalytics();
+  const googleLocApi = getGoogleLocApi();
 
   return useMutation({
     mutationFn: ({ url }: { url: string }) => googleLocApi.preview({ url }),
@@ -200,35 +214,40 @@ export function useMutGoogleLocPreview() {
       });
 
       await queryClient.invalidateQueries({
-        queryKey: googleLocQueryKeys.preview._def,
+        queryKey: googleLocQueryKeys.preview(),
       });
     },
   });
 }
 ```
 
-Variant B (allowed): component-coordinator invalidation
+Variant B (allowed): component-coordinator sequencing through a cache-sync hook
 
 ```typescript
-const queryClient = useQueryClient();
-const previewMut = useMutGoogleLocPreview();
+export function useModGoogleLocSync() {
+  const queryClient = useQueryClient();
+  return {
+    invalidateAfterPreview: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.preview() }),
+        queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.history() }),
+      ]),
+  };
+}
 
-const onInvalidate = async () =>
-  Promise.all([
-    queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.preview._def }),
-    queryClient.invalidateQueries({ queryKey: googleLocQueryKeys.history._def }),
-  ]);
+const previewMut = useMutGoogleLocPreview();
+const googleLocSync = useModGoogleLocSync();
 
 const onSubmit = async ({ url }: { url: string }) => {
   await previewMut.mutateAsync({ url });
-  await onInvalidate();
+  await googleLocSync.invalidateAfterPreview();
 };
 ```
 
 Choose based on orchestration scope:
 
 - Shared mutation behavior across screens: hook-owned.
-- Route-local submit flow sequencing: component-coordinator.
+- Route-local submit flow sequencing: component coordinator calling a named `useMod*Sync` operation.
 
 Detailed scenario matrix:
 

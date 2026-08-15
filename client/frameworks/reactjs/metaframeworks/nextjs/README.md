@@ -20,9 +20,10 @@ Read order before using this folder:
 | [Testing with Vitest — Next.js Additions](./testing-vitest.md) | Next.js-specific runner additions (`jsdom`, React plugin, `server-only` shim, env bootstrapping). Core runner: `client/core/testing-vitest.md` |
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |
+| [Supabase Realtime Adapter](./realtime-supabase.md) | Provider-specific realtime adapter and server-setup boundary |
 | [Client Operational Logging](../../../../core/logging.md) | Structured client logs, `debug`, optional Sentry |
 | [Client Product Analytics](../../../../core/product-analytics.md) | Typed behavioral events and consent-aware adapters |
 | [Client Composition Root](../../../../core/composition-root.md) | Factories and browser/request lifetimes |
-| [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns (hook-owned/component-coordinator/hybrid) |
+| [React Server-State Cookbook](../../server-state-patterns-react.md) | Hook-owned cache effects plus coordinator sequencing through named sync operations |
 | [Query Keys](./query-keys.md) | Query key conventions (tRPC + non-tRPC) |
 | [Form Standards (Legacy)](../../../../../legacy/client/09-standard-form-components.md) | Historical StandardForm reference |

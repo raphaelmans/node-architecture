@@ -293,7 +293,7 @@ export class UserRepository implements IUserRepository {
   constructor(private db: DbClient) {}
 
   private getClient(options?: TransactionOptions): DbClient | DrizzleTransaction {
-    return (options?.tx as DrizzleTransaction) ?? this.db;
+    return (options?.tx as unknown as DrizzleTransaction) ?? this.db;
   }
 
   async findById(id: string, options?: TransactionOptions): Promise<User | null> {
@@ -322,7 +322,7 @@ For contended-state entities (reservations, availability slots), repositories ex
 
 ```typescript
 async findByIdForUpdate(id: string, options: TransactionOptions): Promise<Entity | null> {
-  const tx = options.tx as DrizzleTransaction;
+  const tx = options.tx as unknown as DrizzleTransaction;
   const result = await tx
     .select()
     .from(entities)
@@ -534,6 +534,7 @@ shared/kernel/
 ├─ public-error.ts    # Public message policy helpers (getPublicErrorMessage, isInternalAppError)
 ├─ pagination.ts      # Pagination types and schemas
 ├─ response.ts        # API response types
+├─ schemas.ts         # Browser-safe reusable Zod primitives
 └─ auth.ts            # Session, UserRole, Permission types
 ```
 
@@ -762,7 +763,7 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Interface `I<Entity>Repository` defined with all method signatures
 - [ ] Class implements interface: `implements I<Entity>Repository`
 - [ ] Constructor accepts `DbClient`
-- [ ] `getClient(options)` helper: `return (options?.tx as DrizzleTransaction) ?? this.db`
+- [ ] `getClient(options)` bridges the opaque context only at the repository boundary
 - [ ] Methods that may participate in a transaction accept `options?: TransactionOptions`
 - [ ] Returns `null` for not found (never throws)
 - [ ] Known database constraint violations caught and translated to domain errors

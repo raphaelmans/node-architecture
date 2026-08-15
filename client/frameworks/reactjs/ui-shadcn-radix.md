@@ -15,7 +15,7 @@ src/components/
 │   ├── StandardFormProvider.tsx
 │   ├── StandardFormInput.tsx
 │   └── ...
-└── custom-ui/             # Layer 3: Composed business components
+└── custom-ui/             # Layer 3: Composed application UI
     ├── data-table.tsx
     └── ...
 
@@ -212,7 +212,7 @@ className = "bg-blue-500";
 
 ### Business Component Example
 
-Both patterns below are valid. Prefer A for reuse; choose B when route-local orchestration needs to stay in the component.
+Both patterns below are valid. Prefer A for reuse; choose B when route-local sequencing belongs to the component while cache mechanics remain in a named sync hook.
 
 Variant A: hook-owned invalidation (preferred)
 
@@ -221,10 +221,8 @@ Variant A: hook-owned invalidation (preferred)
 'use client'
 
 export default function ProfileForm() {
-  const profileQuery = useQueryProfileCurrent()
-
   const form = useForm<ProfileFormShape>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(ProfileFormSchema),
     mode: "onSubmit",
   })
   const { isSubmitting } = form.formState
@@ -233,27 +231,31 @@ export default function ProfileForm() {
   const updateMut = useMutProfileUpdate()
 
   const onSubmit = async (data: ProfileFormShape) => {
-    await updateMut.mutateAsync(data)
+    await updateMut.mutateAsync(toUpdateProfileInput(data))
     router.push(appRoutes.dashboard)
   }
 }
 ```
 
-Variant B: component-coordinator invalidation (allowed)
+Variant B: component-coordinator sequencing (allowed)
 
 ```typescript
-export default function ProfileForm() {
+// sync.ts owns concrete cache mechanics
+export function useModProfileSync() {
   const queryClient = useQueryClient()
-  const updateMut = useMutProfileUpdate()
+  return {
+    invalidateAfterUpdate: () =>
+      queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() }),
+  }
+}
 
-  const onSubmitInvalidateQueries = async () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
-    ])
+export default function ProfileForm() {
+  const updateMut = useMutProfileUpdate()
+  const profileSync = useModProfileSync()
 
   const onSubmit = async (data: ProfileFormShape) => {
-    await updateMut.mutateAsync(data)
-    await onSubmitInvalidateQueries()
+    await updateMut.mutateAsync(toUpdateProfileInput(data))
+    await profileSync.invalidateAfterUpdate()
     router.push(appRoutes.dashboard)
   }
 }

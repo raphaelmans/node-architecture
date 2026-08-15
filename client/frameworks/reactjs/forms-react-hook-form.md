@@ -41,27 +41,29 @@ Form handling uses:
 
 ## Form State Subscriptions
 
-React Hook Form uses a Proxy-based subscription model for `formState`.
-To ensure updates are tracked correctly, destructure the values you read:
+React Hook Form uses a Proxy-based subscription model for `formState`. Read every state value needed by the render unconditionally so React Hook Form can subscribe to it. Destructuring is the preferred style because it makes those subscriptions visible:
 
 - ✅ `const { isSubmitting } = form.formState`
-- ❌ `disabled={form.formState.isSubmitting}`
+- ✅ `disabled={form.formState.isSubmitting}` when it is read unconditionally during render
+- ❌ `condition && form.formState.isValid` when `isValid` is not read on every render
 
-**Convention:** Destructure form helpers instead of calling through the form object.
+**Convention:** Destructure form helpers for readable dependencies and stable effect dependency lists.
 
 - ✅ `const { setValue, reset } = form`
 - ❌ `form.setValue(...)`
 
-These patterns match RHF docs and prevent missed subscriptions.
+Helper methods such as `setValue` and `reset` are not Proxy subscriptions; destructuring them is a readability convention, not a correctness requirement.
 
 ## Schema Architecture
+
+Examples target Zod 4. `safeExtend` preserves refinements from the shared input schema and prevents incompatible field overwrites.
 
 ### Three-Layer Schema Pattern
 
 ```
 Shared Input Contract
        │
-       ▼ .merge()
+       ▼ .safeExtend(UIOnlySchema.shape)
 Form Schema (UI-specific)
        │
        ▼ z.infer<>
@@ -74,14 +76,25 @@ TypeScript Type
 // src/features/profile/schemas.ts
 
 import { z } from "zod";
-import { UpdateProfileInputSchema } from "@/lib/modules/profile/shared/contracts";
+import {
+  UpdateProfileInputSchema,
+  type UpdateProfileInput,
+} from "@/lib/modules/profile/shared/contracts";
 import { ImageUploadSchema } from "@/features/profile/image-upload.schema";
 
 // Compose the shared wire input with UI-only fields.
 export const ProfileFormSchema =
-  UpdateProfileInputSchema.merge(ImageUploadSchema);
+  UpdateProfileInputSchema.safeExtend(ImageUploadSchema.shape);
 
 export type ProfileFormShape = z.infer<typeof ProfileFormSchema>;
+
+// UI-only fields never cross the feature API boundary.
+export function toUpdateProfileInput({
+  imageAsset: _imageAsset,
+  ...candidate
+}: ProfileFormShape): UpdateProfileInput {
+  return UpdateProfileInputSchema.parse(candidate);
+}
 ```
 
 ### UI-Only Schema
@@ -118,14 +131,14 @@ If the backend treats the field as optional, normalize `""` to `undefined` at th
 import { z } from "zod";
 import { emptyToUndefined, S } from "@/path/to/shared/schemas";
 
-export const profileFormSchema = z.object({
+export const ProfileContactFormSchema = z.object({
   displayName: S.profile.displayName,
 
   // Input might be "" while editing; submit should send undefined
   phoneNumber: emptyToUndefined(S.common.phone.optional()),
 });
 
-export type ProfileFormShape = z.infer<typeof profileFormSchema>; // phoneNumber: string | undefined
+export type ProfileContactFormShape = z.infer<typeof ProfileContactFormSchema>; // phoneNumber: string | undefined
 ```
 
 ## StandardForm Components
@@ -240,11 +253,11 @@ import {
   StandardFormError,
   StandardFormInput,
 } from '@/components/form'
-import { profileFormSchema, type ProfileFormShape } from '../schemas'
+import { ProfileFormSchema, type ProfileFormShape } from '../schemas'
 
 export default function ProfileForm() {
   const form = useForm<ProfileFormShape>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(ProfileFormSchema),
     mode: 'onSubmit',
     defaultValues: {
       firstName: '',
@@ -313,7 +326,7 @@ export default function ProfileForm() {
   const profileQuery = useQueryProfileCurrent();
 
   const form = useForm<ProfileFormShape>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(ProfileFormSchema),
     mode: "onSubmit",
     defaultValues: {
       firstName: "",
@@ -353,43 +366,42 @@ RHF note (Context7 refs):
 
 ### Async Options + Select Defaults
 
-If a select depends on async options (e.g. provinces/cities) and the record data
-is also async, React Hook Form will mount with empty defaults first. To avoid
-the select showing a placeholder on the first render, wait for both the record
-and the options to be ready, then `reset` and render the form after that reset.
+If a select depends on async options (e.g. provinces/cities) and the record data is also async, do not mount the form until both inputs are ready. Mount a child form with resolved defaults so no render occurs between data readiness and an effect-driven `reset`.
 
 ```typescript
-const emptyDefaults: FormValues = {
-  province: "",
-  city: "",
-  // ...other fields
+function EditScreen() {
+  if (!record || !options) return <FormSkeleton />
+
+  return (
+    <HydratedForm
+      key={record.id}
+      defaultValues={resolveDefaults(record, options)}
+    />
+  )
 }
 
-const form = useForm<FormValues>({
-  resolver: zodResolver(schema),
-  defaultValues: emptyDefaults,
-})
+function HydratedForm({ defaultValues }: { defaultValues: FormValues }) {
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues,
+  })
 
-useEffect(() => {
-  if (!record || !options) return
-  reset(resolveDefaults(record, options))
-}, [record, options, reset])
-
-if (!record || !options) return <FormSkeleton />
-
-return (
-  <StandardFormProvider form={form} onSubmit={onSubmit}>
-    {/* ... */}
-  </StandardFormProvider>
-)
+  return (
+    <StandardFormProvider form={form} onSubmit={onSubmit}>
+      {/* ... */}
+    </StandardFormProvider>
+  )
+}
 ```
+
+If the same mounted form must react continuously to external values, use React Hook Form's reactive `values` option with deliberate `resetOptions`, or retain the dedicated `reset` synchronization hook. Choose one hydration strategy per form.
 
 ### Form with Mutation
 
-Two ownership patterns are valid for invalidation:
+Two orchestration patterns are valid:
 
 - Hook-owned invalidation (preferred default)
-- Component-coordinator invalidation (allowed for route-local orchestration)
+- Component-coordinator sequencing through a named `useMod*Sync` operation (allowed for route-local orchestration)
 
 #### Variant A: Hook-Owned Invalidation (Preferred)
 
@@ -402,7 +414,7 @@ export function useMutProfileUpdate() {
     mutationFn: updateProfile,
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() }),
       ]);
     },
   });
@@ -417,7 +429,7 @@ const updateMut = useMutProfileUpdate();
 const onSubmit = async (data: ProfileFormShape) => {
   const result = await catchErrorToast(
     async () => {
-      await updateMut.mutateAsync(data);
+      await updateMut.mutateAsync(toUpdateProfileInput(data));
       router.push(appRoutes.dashboard);
     },
     { description: "Profile updated successfully!" },
@@ -429,44 +441,48 @@ const onSubmit = async (data: ProfileFormShape) => {
 
 Note:
 
-- If this is an edit/update form that stays on the page, add explicit `onSubmitRefetch` and re-sync defaults from refreshed `query.data`.
+- If this edit/update form stays on the page, await invalidation of its active query and re-sync defaults when refreshed `query.data` arrives.
 
-#### Variant B: Component-Coordinator Invalidation (Allowed)
+#### Variant B: Component-Coordinator Sequencing (Allowed)
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query";
-import { profileQueryKeys } from "@/common/query-keys/profile";
-
-export default function ProfileForm() {
+// src/features/profile/sync.ts
+export function useModProfileSync() {
   const queryClient = useQueryClient();
+
+  return {
+    invalidateAfterUpdate: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() }),
+      ]),
+  };
+}
+
+// src/features/profile/components/profile-form.tsx
+export default function ProfileForm() {
   const router = useRouter();
   const catchErrorToast = useCatchErrorToast();
 
   const profileQuery = useQueryProfileCurrent();
   const updateMut = useMutProfileUpdate();
+  const profileSync = useModProfileSync();
 
   const form = useForm<ProfileFormShape>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(ProfileFormSchema),
     mode: "onSubmit",
   });
+  const { reset } = form;
 
-  const onSubmitInvalidateQueries = async () => {
-    return Promise.all([
-      queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def }),
-      // Add more invalidations here as needed.
-    ]);
-  };
-
-  const onSubmitRefetch = async () => {
-    await profileQuery.refetch();
-  };
+  useProfileFormSyncFromQueryData({
+    data: profileQuery.data,
+    reset,
+  });
 
   const onSubmit = async (data: ProfileFormShape) => {
     const result = await catchErrorToast(
       async () => {
-        await updateMut.mutateAsync(data);
-        await onSubmitInvalidateQueries();
-        await onSubmitRefetch();
+        await updateMut.mutateAsync(toUpdateProfileInput(data));
+        await profileSync.invalidateAfterUpdate();
         // Optional route transition:
         // router.push(appRoutes.dashboard);
       },
@@ -494,19 +510,20 @@ export default function ProfileForm() {
 For edit/update forms that read external data:
 
 1. submit mutation
-2. run `onSubmitInvalidateQueries` (when needed)
-3. run `onSubmitRefetch` (`query.refetch()`)
-4. let the form-sync hook reset from refreshed `query.data`
-5. success toast comes from `useCatchErrorToast` after the async submit pipeline resolves
+2. await the named cache-sync operation, which invalidates the active current/detail query
+3. let the form-sync hook reset from refreshed `query.data`
+4. success toast comes from `useCatchErrorToast` after the async submit pipeline resolves
 
 Rule:
 
 - Do not reset edit/update forms to `EMPTY_DEFAULTS` on success.
 - Reset to refreshed external data so UI equals post-refresh server truth.
+- Do not call `query.refetch()` after normal active-query invalidation; invalidation already refetches active matches.
+- Use explicit `query.refetch()` only when invalidation was configured not to refetch, the target query is disabled/inactive but must refresh immediately, or the flow intentionally skips invalidation.
 
 #### Variant C: Hybrid
 
-Use shared default invalidation in the mutation hook, then add route-local invalidations in the form component.
+Use shared default invalidation in the mutation hook, then expose route-local additions through a named cache-sync hook that the form component sequences.
 
 ```typescript
 // hook (shared defaults)
@@ -515,17 +532,26 @@ export function useMutProfileUpdate() {
   return useMutation({
     mutationFn: updateProfile,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current._def });
+      await queryClient.invalidateQueries({ queryKey: profileQueryKeys.current() });
     },
   });
 }
 
-// component (route-local additions)
+// sync.ts (route-local cache operation)
+export function useModDashboardSync() {
+  const queryClient = useQueryClient();
+  return {
+    invalidateSummary: () =>
+      queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.summary() }),
+  };
+}
+
+// component (route-local sequencing)
+const dashboardSync = useModDashboardSync();
+
 const onSubmit = async (data: ProfileFormShape) => {
-  await updateMut.mutateAsync(data);
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.summary._def }),
-  ]);
+  await updateMut.mutateAsync(toUpdateProfileInput(data));
+  await dashboardSync.invalidateSummary();
   router.push(appRoutes.dashboard);
 };
 ```
@@ -540,7 +566,7 @@ const onSubmit = async (data: ProfileFormShape) => {
 ### Form Telemetry Ownership
 
 - Reusable completion analytics belong in the successful mutation hook.
-- Route/form-specific flow analytics may emit after the complete submit/invalidate/refetch sequence succeeds.
+- Route/form-specific flow analytics may emit after the complete submit/cache-sync sequence succeeds.
 - Validation failures remain UI/form concerns and are not operational errors by default.
 - Transport and contract failures are already logged by `clientApi`/`featureApi`; forms must not report them again.
 - Forms never import `debug`, Sentry, or analytics vendor SDKs.
@@ -667,12 +693,14 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 }
 ```
 
+This two-step flow can partially succeed: the entity may be created even if the upload fails. Make that state explicit in the UX and retry model. If create-plus-upload must be atomic from the user's perspective, expose one server-owned workflow endpoint instead of coordinating two mutations only in the browser.
+
 ## Conventions Summary
 
 | Convention         | Standard                                        |
 | ------------------ | ----------------------------------------------- |
 | Schema location    | `features/<feature>/schemas.ts`                 |
-| Schema composition | Shared input contract `.merge()` with UI schemas |
+| Schema composition | Shared input `.safeExtend(UIOnlySchema.shape)` + explicit form-to-wire mapper |
 | Type inference     | `z.infer<typeof schema>`                        |
 | Form wrapper       | `StandardFormProvider`                          |
 | Field components   | `StandardFormInput`, `StandardFormSelect`, etc. |
@@ -689,9 +717,10 @@ const onSubmit = async ({ imageAsset, ...data }: FormType) => {
 - [ ] `StandardFormError` included for API errors
 - [ ] Button disabled only when `isSubmitting` (default)
 - [ ] Edit/update forms may add `!isDirty` only for no-op prevention (optional exception)
-- [ ] Edit/update submit flow includes explicit `onSubmitRefetch` (`query.refetch()`)
+- [ ] Edit/update submit flow awaits active-query invalidation; explicit refetch is used only for a documented exception
 - [ ] Edit/update defaults are re-synced from refreshed `query.data` via a dedicated sync hook
+- [ ] UI-only form fields are removed by an explicit form-to-wire mapper before calling the mutation
 - [ ] Loading state shows skeleton
 - [ ] Server data sync logic is isolated (for example `useProfileFormSyncFromQueryData`)
-- [ ] Mutation invalidation strategy chosen (hook-owned, component-coordinator, or hybrid)
+- [ ] Mutation invalidation strategy chosen (hook-owned, coordinator sequencing through `useMod*Sync`, or hybrid)
 - [ ] Multi-key invalidation batched with `Promise.all(...)`

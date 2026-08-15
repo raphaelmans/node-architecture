@@ -1,4 +1,4 @@
-# Client API Architecture (`clientApi -> featureApi -> query adapter`)
+# Client API Architecture (`components -> query adapter -> featureApi -> clientApi`)
 
 Define the standard way the client calls backend endpoints with strict separation of concerns, DI-friendly boundaries, and predictable cache behavior.
 
@@ -89,6 +89,7 @@ import { ZodError } from "zod";
 
 import type { AppLogger } from "@/common/logging/types";
 import type { AppError } from "@/common/errors/app-error";
+import { invalidResponseError } from "@/common/errors/invalid-response-error";
 import {
   GetCurrentProfileResponseSchema,
   UpdateProfileResponseSchema,
@@ -124,6 +125,7 @@ export class ProfileApi implements IProfileApi {
           },
           "Profile response violated contract",
         );
+        throw invalidResponseError(err);
       }
       throw this.deps.toAppError(err);
     }
@@ -147,6 +149,7 @@ export class ProfileApi implements IProfileApi {
           },
           "Profile update response violated contract",
         );
+        throw invalidResponseError(err);
       }
       throw this.deps.toAppError(err);
     }
@@ -248,32 +251,36 @@ export { getReservationApi } from "@/common/runtime/browser";
 
 Tests mock `@/features/reservation/api.runtime` while keeping `api.ts` pure. The composition root owns construction/lifecycle; the runtime module only provides a stable feature-facing import and test boundary.
 
-### `useFeatureQuery` / `useFeatureMutation` — Custom Hook Wrappers
+### Optional tRPC-Interop Hook Wrappers
 
-Features using the `IFeatureApi` boundary use `useFeatureQuery` and `useFeatureMutation` from `src/common/feature-api-hooks.ts`:
+The `IFeatureApi` boundary does not require custom TanStack Query wrappers. Most query adapters call `useQuery`/`useMutation` directly with the key strategy for their transport.
+
+When an `IFeatureApi` is backed by tRPC and its cache entries must interoperate with tRPC utilities, the project may expose narrowly named wrappers such as `useTrpcFeatureQuery` from `src/common/trpc-feature-api-hooks.ts`:
 
 ```typescript
-// src/common/feature-api-hooks.ts
-export function useFeatureQuery<TData>(
+// src/common/trpc-feature-api-hooks.ts
+export function useTrpcFeatureQuery<TData>(
   path: string[],
   queryFn: () => Promise<TData>,
   input?: unknown,
   options?: UseQueryOptions,
 ): UseQueryResult<TData, AppError>;
 
-export function useFeatureMutation<TData, TInput>(
+export function useAppMutation<TData, TInput>(
   mutationFn: (input: TInput) => Promise<TData>,
   options?: UseMutationOptions,
 ): UseMutationResult<TData, AppError, TInput>;
 
-export function useFeatureQueryCache(): FeatureQueryCache;
+export function useTrpcFeatureQueryCache(): FeatureQueryCache;
 ```
 
-These wrappers:
+The tRPC-specific query wrapper:
 
 - Build query keys via `buildTrpcQueryKey(path, input)` for tRPC interop
 - Type errors as `AppError` throughout the hook chain
-- Provide `useFeatureQueryCache()` for imperative cache operations (invalidation, optimistic updates)
+- May provide a typed cache facade for imperative tRPC-interoperable operations
+
+For Ky, fetch, and realtime-backed features, use plain key factories from `src/common/query-keys/*`; do not route them through a tRPC-shaped wrapper. A generic mutation helper may standardize the `AppError` type because mutations do not create query keys, but it must not hide transport-specific cache behavior.
 
 ### `sync.ts` — Cache Sync Composition
 

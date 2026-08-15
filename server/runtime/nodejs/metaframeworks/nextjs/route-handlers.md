@@ -52,7 +52,7 @@ import { NextResponse } from "next/server";
 import { handleError } from "@/shared/infra/http/error-handler";
 import { parseJsonRequestBody } from "@/shared/infra/http/request";
 import { withRequestObservability } from "@/shared/infra/observability/request-context";
-import { validate } from "@/shared/utils/validation";
+import { parseRequestInput } from "@/shared/infra/http/validation";
 import type { ApiErrorResponse, ApiResponse } from "@/shared/kernel/response";
 import { wrapResponse } from "@/shared/utils/response";
 import {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   return withRequestObservability(request, async ({ requestId }) => {
     try {
       const body = await parseJsonRequestBody(request);
-      const input = validate(CreateUserInputSchema, body);
+      const input = parseRequestInput(CreateUserInputSchema, body);
       const actor = await authenticateNextRequest(request);
 
       const result = await makeCreateUserController().execute(input, actor);
@@ -87,7 +87,10 @@ export async function POST(request: Request) {
 
 `withRequestObservability` accepts or creates the application `requestId`, activates OpenTelemetry/async context, and logs the request lifecycle. The injected `AppLogger` reads that active context, so the route does not pass logging or tracing identifiers through controller, use-case, or service method parameters.
 
-`parseJsonRequestBody` translates malformed JSON into a transport-neutral `ValidationError`; `validate` translates Zod input failures into the same error family. A response-schema failure is intentionally not converted to a 4xx error—it indicates a server contract bug and is sanitized as a 500.
+`parseJsonRequestBody` translates malformed JSON into a transport-neutral
+`ValidationError`; `parseRequestInput` translates Zod input failures into the
+same error family. A response-schema failure is intentionally not converted to
+a 4xx error—it indicates a server contract bug and is sanitized as a 500.
 
 The client `UserApi` imports `CreateUserInputSchema` and `CreateUserResponseSchema` from the same `shared/contracts/` module. The framework-neutral controller owns entity/result-to-response mapping; the route validates the resulting shared response before serialization.
 

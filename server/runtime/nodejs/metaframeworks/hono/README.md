@@ -12,10 +12,37 @@ Hono route + middleware
 
 ```typescript
 import { zValidator } from "@hono/zod-validator";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { toValidationError } from "@/shared/utils/validation";
+
+const validateParams = zValidator("param", GetUserInputSchema, (result) => {
+  if (!result.success) {
+    throw toValidationError(result.error, "Invalid request parameters");
+  }
+});
+
+function toHonoErrorStatus(status: number): ContentfulStatusCode {
+  switch (status) {
+    case 400:
+    case 401:
+    case 403:
+    case 404:
+    case 409:
+    case 422:
+    case 429:
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return status;
+    default:
+      return 500;
+  }
+}
 
 app.get(
   "/users/:id",
-  zValidator("param", GetUserInputSchema),
+  validateParams,
   async (c) => {
     const input = c.req.valid("param");
     const actor = c.get("actor"); // established by typed auth middleware
@@ -27,13 +54,20 @@ app.get(
   },
 );
 
-// Registered once. It derives HTTP status from AppError.kind and sanitizes 5xx.
-app.onError(honoErrorHandler);
+// Registered once. Validator errors are thrown into the same central mapping.
+app.onError((error, c) => {
+  const { status, body } = handleError(error, c.get("requestId"));
+  return c.json(body, toHonoErrorStatus(status));
+});
 ```
 
 ## Rules
 
 - Hono middleware owns authentication, rate limiting, and observability scope.
+- Every `zValidator` uses a hook that throws the shared `ValidationError`; do
+  not allow its default response to bypass the canonical error envelope.
+- Narrow the framework-neutral numeric HTTP status at the Hono boundary before
+  passing it to typed response helpers such as `c.json()`.
 - The route validates shared input, calls one controller, validates the shared response, and serializes with `c.json()`.
 - Never pass Hono `Context` to a controller, use case, service, or repository.
 - Never store `TransactionContext` in Hono context variables.

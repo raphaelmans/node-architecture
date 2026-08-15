@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "sourceRoot": "../..",
+  "hashAlgorithm": "sha256(path-null-file-sha256-newline, sources sorted by path)",
+  "slices": {
+    "contracts": {
+      "reference": "server/skill/references/contracts.md",
+      "sources": [
+        "server/core/api-contracts-zod-first.md",
+        "server/core/api-response.md",
+        "server/core/endpoint-naming.md",
+        "server/core/error-handling.md",
+        "server/core/zod-openapi-generation.md",
+        "server/runtime/nodejs/libraries/openapi/README.md"
+      ],
+      "fingerprint": "6350f01b606e7df931ef02e6311f6a006f9c3dfa6f383ef8662b759b67ed68f0"
+    },
+    "data-flow": {
+      "reference": "server/skill/references/data-flow.md",
+      "sources": [
+        "server/core/README.md",
+        "server/core/controllers.md",
+        "server/core/conventions.md",
+        "server/core/id-generation.md",
+        "server/core/transaction.md",
+        "server/runtime/nodejs/libraries/supabase/integration.md",
+        "server/runtime/nodejs/libraries/trpc/integration.md"
+      ],
+      "fingerprint": "772d6ca5f90e650df8f98be568860836feef4f6f226e795d222600fd2c75c804"
+    },
+    "foundations": {
+      "reference": "server/skill/references/foundations.md",
+      "sources": [
+        "server/README.md",
+        "server/core/README.md",
+        "server/core/controllers.md",
+        "server/core/conventions.md",
+        "server/core/transaction.md",
+        "server/runtime/README.md",
+        "server/runtime/nodejs/README.md"
+      ],
+      "fingerprint": "938a851543b20c40c6f77f6adb5ac75e09b484ab63db0754d999aad829c42493"
+    },
+    "operations": {
+      "reference": "server/skill/references/operations.md",
+      "sources": [
+        "server/core/async-jobs-outbox.md",
+        "server/core/event-patterns.md",
+        "server/core/rate-limiting.md",
+        "server/core/webhook/README.md",
+        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md"
+      ],
+      "fingerprint": "2bd8362008c1e1954f1d8aec16f7cefa7f78e7eace07b9e10e296acc9bb56558"
+    },
+    "runtimes": {
+      "reference": "server/skill/references/runtimes.md",
+      "sources": [
+        "server/runtime/README.md",
+        "server/runtime/nodejs/README.md",
+        "server/runtime/nodejs/libraries/README.md",
+        "server/runtime/nodejs/libraries/openapi/README.md",
+        "server/runtime/nodejs/libraries/openapi/parity-testing.md",
+        "server/runtime/nodejs/libraries/pino/README.md",
+        "server/runtime/nodejs/libraries/supabase/README.md",
+        "server/runtime/nodejs/libraries/supabase/auth.md",
+        "server/runtime/nodejs/libraries/supabase/integration.md",
+        "server/runtime/nodejs/libraries/trpc/authentication.md",
+        "server/runtime/nodejs/libraries/trpc/integration.md",
+        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtime/nodejs/metaframeworks/README.md",
+        "server/runtime/nodejs/metaframeworks/express/README.md",
+        "server/runtime/nodejs/metaframeworks/hono/README.md",
+        "server/runtime/nodejs/metaframeworks/nestjs/README.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/README.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/caching-revalidation.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md"
+      ],
+      "fingerprint": "14399348578354cdf03cb077ef20b86e6735b645ff06ce431488f38dd4aa8bff"
+    },
+    "security": {
+      "reference": "server/skill/references/security.md",
+      "sources": [
+        "server/core/error-handling.md",
+        "server/core/rate-limiting.md",
+        "server/runtime/nodejs/libraries/supabase/README.md",
+        "server/runtime/nodejs/libraries/supabase/auth.md",
+        "server/runtime/nodejs/libraries/supabase/integration.md",
+        "server/runtime/nodejs/libraries/trpc/authentication.md",
+        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md"
+      ],
+      "fingerprint": "4032f5eccd5d3e43d5fbe5b154ae941d7b9b339327d18be6476d177e09f82cba"
+    },
+    "telemetry": {
+      "reference": "server/skill/references/telemetry.md",
+      "sources": [
+        "server/core/event-patterns.md",
+        "server/core/logging.md",
+        "server/core/observability.md",
+        "server/core/product-analytics.md",
+        "server/runtime/nodejs/libraries/pino/README.md"
+      ],
+      "fingerprint": "390e7b5b3477b083baa8930d13de46a02d567ff8800113e7252ff16137d030e3"
+    },
+    "testing": {
+      "reference": "server/skill/references/testing.md",
+      "sources": [
+        "server/core/testing-service-layer.md",
+        "server/core/transaction.md",
+        "server/core/webhook/testing/README.md",
+        "server/core/webhook/testing/testing-checklist.md",
+        "server/core/webhook/testing/testing-contract-and-regression.md",
+        "server/core/webhook/testing/testing-routing-and-business-logic.md",
+        "server/core/webhook/testing/testing-schema-validation.md",
+        "server/core/webhook/testing/testing-test-doubles.md",
+        "server/core/webhook/testing/testing-vendor-simulator.md",
+        "server/runtime/nodejs/libraries/openapi/README.md",
+        "server/runtime/nodejs/libraries/openapi/parity-testing.md",
+        "server/runtime/nodejs/libraries/trpc/integration.md",
+        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtime/nodejs/metaframeworks/express/README.md",
+        "server/runtime/nodejs/metaframeworks/hono/README.md"
+      ],
+      "fingerprint": "e2c08bad1a2b5da8aecefc777273db861866182e9294bb639e5ecaf0d70a2ee7"
+    }
+  }
+}

@@ -28,9 +28,9 @@ For each `event.type`, keep:
 
 Suggested structure (conceptual):
 
-- `tests/fixtures/webhooks/<provider>/<event.type>.golden.json`
-- `tests/fixtures/webhooks/<provider>/<event.type>.minimal.json`
-- `tests/fixtures/webhooks/<provider>/<event.type>.invalid-*.json`
+- `tests/fixtures/webhooks/<provider>/<event.type>/golden.json`
+- `tests/fixtures/webhooks/<provider>/<event.type>/minimal.json`
+- `tests/fixtures/webhooks/<provider>/<event.type>/invalid-<reason>.json`
 
 ---
 

@@ -25,6 +25,7 @@ src/
     layout.tsx
     page.tsx
   common/
+    clients/                       # HTTP/realtime provider adapters
     logging/                       # AppLogger + debug/Sentry adapters
     analytics/                     # ProductAnalytics + consent/vendor adapters
     runtime/
@@ -37,6 +38,8 @@ src/
   features/<feature>/
     api.ts                          # Parses shared response contracts
     hooks.ts                        # TanStack Query adapter
+    sync.ts                         # Optional named cache-sync operations
+    realtime-api.ts                 # Optional provider-to-domain event boundary
     schemas.ts                      # Client-only form/UI schemas
     components/
 ```

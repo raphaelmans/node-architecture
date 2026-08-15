@@ -249,24 +249,32 @@ Use a generic handler that transforms Zod errors into `ValidationError`:
 ```typescript
 // shared/utils/validation.ts
 
-import { ZodError, ZodSchema } from "zod";
+import type { ZodError, ZodSchema } from "zod";
 import { ValidationError } from "@/shared/kernel/errors";
+
+export function toValidationError(
+  error: ZodError,
+  message = "Invalid request",
+): ValidationError {
+  const publicDetails = {
+    issues: error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  };
+
+  return new ValidationError(
+    message,
+    { issueCount: error.issues.length },
+    publicDetails,
+  );
+}
 
 export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
 
   if (!result.success) {
-    const publicDetails = {
-      issues: result.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    };
-    throw new ValidationError(
-      "Validation failed",
-      { issueCount: result.error.issues.length },
-      publicDetails,
-    );
+    throw toValidationError(result.error, "Validation failed");
   }
 
   return result.data;
@@ -283,6 +291,35 @@ const input = validate(CreateUserInputSchema, req.body);
 ```
 
 Runtime HTTP adapters must also translate malformed request encoding/JSON into `ValidationError`. Keep that parser in transport infrastructure; do not make the kernel depend on `Request` or framework types. Response-schema failures remain internal errors because they indicate server contract drift, not invalid client input.
+
+Use one transport helper for Zod input parsing so Express, Hono, Next.js, and
+OpenAPI adapters produce the same error contract:
+
+```typescript
+// shared/infra/http/validation.ts
+
+import { z } from "zod";
+import { toValidationError } from "@/shared/utils/validation";
+
+export function parseRequestInput<T extends z.ZodTypeAny>(
+  schema: T,
+  value: unknown,
+): z.infer<T> {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    throw toValidationError(result.error);
+  }
+  return result.data;
+}
+```
+
+`details` remains internal logging context. Only the sanitized path/message
+projection in `publicDetails` is serialized in the 400 response; never expose
+the raw Zod issue objects.
+
+Framework validator middleware such as Hono's `zValidator` must use a custom
+hook that throws this shared `ValidationError`; otherwise it may return a
+framework-specific response before central error mapping runs.
 
 ## Error Response Structure
 
@@ -378,11 +415,13 @@ import type { ApiErrorResponse } from "@/shared/kernel/response";
 export function handleError(
   error: unknown,
   requestId: string,
+  logFields: Record<string, unknown> = {},
 ): { status: number; body: ApiErrorResponse } {
   // Known application error
   if (error instanceof AppError) {
     appLogger.warn(
       {
+        ...logFields,
         err: error,
         "error.type": error.code,
         [APP_ATTRIBUTES.errorDetails]: error.details,
@@ -405,6 +444,7 @@ export function handleError(
   // Unknown error - log full details, return generic response
   appLogger.error(
     {
+      ...logFields,
       err: error,
       "error.type":
         error instanceof Error ? error.constructor.name : "UnknownError",
@@ -422,6 +462,11 @@ export function handleError(
   };
 }
 ```
+
+The optional `logFields` argument is for allowlisted transport context such as
+the webhook provider/event ID and operational event name. Never pass raw
+request bodies, headers, cookies, or provider response objects. The logger
+adapter still overwrites trusted correlation fields from the active context.
 
 ## tRPC Error Formatter
 
@@ -444,6 +489,7 @@ import {
 } from "@/shared/kernel/public-error";
 import { appLogger } from "@/shared/infra/logger";
 import { APP_ATTRIBUTES } from "@/shared/infra/observability/attributes";
+import { getObservabilityContext } from "@/shared/infra/observability";
 import type { Context } from "./context";
 
 /**
@@ -462,7 +508,8 @@ function pickPublicTrpcShapeData(
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape, ctx }) {
     const cause = error.cause;
-    const requestId = ctx?.requestId ?? "unknown";
+    const requestId =
+      ctx?.requestId ?? getObservabilityContext()?.requestId ?? "unknown";
 
     // Known application error
     if (cause instanceof AppError) {

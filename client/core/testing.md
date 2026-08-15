@@ -13,7 +13,7 @@ src/
   __tests__/
     features/
       <feature>/
-        api.test.ts          # <Feature>Api class, mocks callTrpcQuery/callTrpcMutation
+        api.test.ts          # <Feature>Api class, mocks injected IClientApi/toAppError/logger
         hooks.test.ts        # query adapter, mocks I<Feature>Api
         helpers.test.ts      # pure function tests (no mocks)
         sync.test.ts         # cache sync composition (if sync.ts exists)
@@ -52,17 +52,19 @@ src/
 Every test follows **Arrange → Act → Assert**, one behavioral assertion per test.
 
 ```typescript
-it("returns AppError when clientApi rejects", () => {
+it("throws the normalized AppError when clientApi rejects", async () => {
   // Arrange
+  const appError: AppError = {
+    kind: "network",
+    message: "Unable to reach the service",
+  };
   const clientApi = stubClientApi({ rejects: networkError });
+  const toAppError = () => appError;
   const logger = createLoggerSpy();
   const api = createFeatureApi({ clientApi, toAppError, logger });
 
-  // Act
-  const result = await api.fetchItem("id-1");
-
-  // Assert
-  expect(result).toEqual(AppError.from(networkError));
+  // Act + Assert: rejection is the observable behavior.
+  await expect(api.fetchItem("id-1")).rejects.toEqual(appError);
 });
 ```
 
@@ -121,7 +123,7 @@ describe("calcLedgerBreakdown", () => {
 
 Rules:
 - Cover edge conditions: empty input, zero values, boundary values, type coercions.
-- Keep cases in source order matching the function's branching logic.
+- Order cases by readable behavior groups; do not couple the test table to private branching order.
 - Name `label` as the scenario, not the assertion.
 
 ## Shared Contract Tests (`shared/contracts/`)
@@ -145,6 +147,7 @@ describe("FeatureApi.fetchItem", () => {
   it("returns parsed data on success", async () => {
     // Arrange
     const raw = { id: "1", name: "Item" };
+    const expected: FeatureItem = { id: "1", name: "Item" };
     const clientApi = stubClientApi({ resolves: raw });
     const logger = createLoggerSpy();
     const api = createFeatureApi({ clientApi, toAppError, logger });
@@ -153,29 +156,32 @@ describe("FeatureApi.fetchItem", () => {
     const result = await api.fetchItem("1");
 
     // Assert
-    expect(result).toEqual(toFeatureItem(FeatureItemResponseSchema.parse(raw)));
+    expect(result).toEqual(expected);
   });
 
-  it("returns AppError when transport fails", async () => {
+  it("throws the normalized AppError when transport fails", async () => {
     // Arrange
     const error = new Error("network");
     const clientApi = stubClientApi({ rejects: error });
-    const toAppError = (e: unknown) => AppError.unknown(e);
+    const appError: AppError = {
+      kind: "network",
+      message: "Unable to reach the service",
+      cause: error,
+    };
+    const toAppError = (_error: unknown) => appError;
     const logger = createLoggerSpy();
     const api = createFeatureApi({ clientApi, toAppError, logger });
 
-    // Act
-    const result = await api.fetchItem("1");
-
-    // Assert
-    expect(result).toBeInstanceOf(AppError);
+    // Act + Assert
+    await expect(api.fetchItem("1")).rejects.toEqual(appError);
   });
 });
 ```
 
 Rules:
 - Mock at the injected interface boundary — not at the HTTP client or fetch level.
-- Do not test Zod schema behavior here; that belongs in schema-specific tests.
+- Do not repeat the schema's full acceptance/rejection matrix here; schema-specific tests own that behavior.
+- Do verify boundary integration: the API parses representative responses and maps a rejected response parse to the expected normalized contract error.
 - Assert returned values, not internal implementation details.
 - Inject a no-op/spy logger when required; assert records only for boundary-owned diagnostics, not provider formatting.
 

@@ -182,12 +182,13 @@ Recommended test split:
 
 ### Framework Adapter
 
-- Test request parsing and schema validation paths.
-- Test known domain errors and unknown errors map to correct response contracts.
+- Test procedure/handler delegation separately from the real HTTP boundary.
+- Test request parsing and schema validation through the real HTTP adapter.
+- Test known domain errors and unknown errors map to serialized response contracts.
 - Test response-schema drift is sanitized as an internal error, not reported as client validation failure.
 - Do not test command mapping or business rules here; stub the controller.
 
-**Concrete Pattern: `createCaller` + Factory Mock**
+#### Procedure test: `createCaller` + factory mock
 
 Router tests use `vi.mock` at the module level to replace factory functions, then invoke procedures via `createCaller`:
 
@@ -212,7 +213,7 @@ describe("reservationRouter", () => {
     const result = await caller.getById({ id: "res-1" });
 
     // Assert
-    expect(GetReservationResponseSchema.parse(result)).toEqual(
+    expect(GetReservationResponseSchema.parse(result.data)).toEqual(
       expect.objectContaining({ id: "res-1" }),
     );
   });
@@ -222,7 +223,36 @@ describe("reservationRouter", () => {
 Rules:
 - Mock controller factory functions, not controller/service/use-case constructors
 - Use `createCaller(fakeContext)` to invoke procedures without HTTP
-- Assert the shared response contract and central error mapping integration
+- Assert procedure input, controller delegation, and the success envelope
+- Do not claim `createCaller` verifies the HTTP adapter, context factory,
+  request observability scope, raw-body parsing, or serialized `errorFormatter`
+
+#### HTTP adapter integration test
+
+Exercise the actual fetch/Express/Hono entrypoint for transport behavior:
+
+```typescript
+it("serializes a known domain error with request correlation", async () => {
+  vi.mocked(makeGetReservationController).mockReturnValue({
+    execute: vi.fn().mockRejectedValue(new ReservationNotFoundError("res-1")),
+  });
+
+  const response = await fetchTestServer("/api/reservations/res-1", {
+    headers: { "x-request-id": "trusted-test-request" },
+  });
+
+  expect(response.status).toBe(404);
+  await expect(response.json()).resolves.toMatchObject({
+    code: "RESERVATION_NOT_FOUND",
+    requestId: expect.any(String),
+  });
+});
+```
+
+The HTTP-adapter suite owns malformed JSON/encoding, authentication attachment,
+observability setup, request-ID propagation, envelope serialization, and safe
+unknown-error behavior. A tRPC HTTP test must call its fetch handler or a test
+server—not `createCaller`—when asserting `errorFormatter` output.
 
 ### Controller
 
@@ -297,14 +327,8 @@ const useCase = new CreateUserUseCase(
 
 await useCase.execute(input);
 
-expect(logger.info).toHaveBeenCalledWith(
-  {
-    "otel.event.name": "user.created",
-    "code.function.name": "CreateUserUseCase.execute",
-    "user.id": "user-1",
-  },
-  "User created",
-);
+// `user.created` belongs to UserService; the use-case test does not require a
+// duplicate log from CreateUserUseCase.
 expect(analytics.track).toHaveBeenCalledWith({
   name: "user_created",
   userId: "user-1",
