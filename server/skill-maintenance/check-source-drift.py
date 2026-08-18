@@ -23,6 +23,7 @@ EXPECTED_SLICES = {
     "foundations",
     "operations",
     "runtimes",
+    "scaffolding",
     "security",
     "telemetry",
     "testing",

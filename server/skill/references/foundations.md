@@ -13,6 +13,8 @@ Use this slice for server layering, framework-neutral controllers, module struct
 
 ## Canonical Flow
 
+For scaffolding, treat this flow as a portable role contract rather than a universal language syntax or directory tree. A documented runtime specialization may map it to concrete paths; for an unlisted runtime/language, derive and approve that mapping from repository evidence and current official guidance before writing.
+
 ```text
 framework adapter
   -> framework-neutral controller
@@ -27,10 +29,10 @@ Return plain typed results in reverse. Keep HTTP, RPC, framework, vendor, and da
 
 | Layer | Owns | Must not own |
 | --- | --- | --- |
-| Adapter | request extraction, authentication, input parsing, observability scope, status/envelope, transport error mapping | command mapping, domain rules, direct repository calls |
+| Adapter | request extraction, authentication, coarse transport gates, input parsing, observability scope, status/envelope, transport error mapping | capability authorization, command mapping, domain rules, direct repository calls |
 | Controller | shared input-to-command mapping, actor mapping, one application call, null-to-domain-error decisions, public result mapping | framework types, transactions, multi-service orchestration |
 | Use case | multi-service workflow, transaction boundary, outbox and post-commit coordination | transport serialization, vendor SDK mechanics |
-| Service | one-domain rules and self-contained reads/writes | framework context, unrelated workflows |
+| Service | one-domain rules, capability authorization, and self-contained reads/writes | framework context, unrelated workflows |
 | Repository/provider adapter | persistence or vendor mechanics and known error translation | business policy or transport behavior |
 
 Every public capability enters through a framework-neutral controller. Internal workers may call a use case or service directly when they are not presenting the same public capability.
@@ -51,13 +53,16 @@ Do not create pass-through use cases for simple reads or single-domain writes. D
 
 ## Folder Contract
 
+The following tree is the documented Node.js/TypeScript specialization. Other runtimes and languages map the same roles to their native package, module, composition, and test conventions instead of copying these paths.
+
 ```text
 src/
+  env.ts                                app-owned validated runtime configuration
   app/api/ or routes/                 framework entrypoints
   lib/
     shared/
       kernel/                         dependency-light contracts and ports
-      infra/                          database, transport, logger, provider adapters
+      infra/                          database, runtime composition, logger, provider adapters
       utils/                          pure cross-module helpers
     modules/<module>/
       shared/contracts/               isomorphic request/response schemas
@@ -95,6 +100,8 @@ export function makeCreateUserController(): ICreateUserController {
 
 Adapters resolve controller factories only. Services and use cases receive narrow ports, never a service locator. Keep browser/request/runtime lifetimes in the composition root, not hidden inside modules.
 
+Treat validated environment configuration the same way: runtime composition may read the app-owned env module, but it passes only focused values such as `{ connectionString }` or `{ apiKey }` into infrastructure. Never inject `process.env`, the complete env object, or an environment service locator into controllers or application layers.
+
 ## Review Checklist
 
 - Framework types stop at the adapter.
@@ -106,6 +113,7 @@ Adapters resolve controller factories only. Services and use cases receive narro
 - Dependencies point inward; domain/application layers do not import infrastructure.
 - Shared kernel additions satisfy the stability and cross-module tests.
 - Factories make dependency graphs explicit and tests can substitute every boundary.
+- Runtime configuration is validated once and injected narrowly from composition.
 - New abstractions solve current complexity rather than anticipated complexity.
 
 ## Derivation Sources

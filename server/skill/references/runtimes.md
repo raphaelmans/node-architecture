@@ -1,6 +1,10 @@
 # Runtimes Slice
 
-Use this slice for Node.js composition and concrete tRPC, OpenAPI, Next.js, Express, Hono, NestJS, Supabase, Pino, FormData, caching, cron, metadata, and security adapter behavior.
+Use this slice for the documented Node.js composition and concrete tRPC, OpenAPI, Next.js, Express, Hono, NestJS, Supabase, Pino, FormData, caching, cron, metadata, and security adapter behavior.
+
+## Scaffolding
+
+Load the generic server scaffolding contract first. Node.js and its documented adapters are specializations, not an allowlist. Detect the installed runtime/language mode, module format, framework, host, packages, and build/test setup; retrieve version-applicable official resources before applying configuration, lifecycle, module, build, or deployment behavior. For another runtime/framework, keep the generic contract and derive its role mapping from repository evidence plus current primary sources.
 
 ## Runtime Rule
 
@@ -18,6 +22,8 @@ framework request/context
 
 No framework request/context type crosses the controller boundary. Adapters resolve controller factories only.
 
+Adapters authenticate and apply rate limits or transport-wide coarse gates. Ownership, tenant membership, domain roles, target-resource lookup, and operation-specific authorization remain in the selected service/use case so alternate transports cannot bypass them.
+
 ## Next.js Route Handlers
 
 - Keep `route.ts` as a thin Fetch/Next adapter.
@@ -31,6 +37,20 @@ With Cache Components enabled, use `use cache`, `cacheLife`, and `cacheTag`. Wit
 
 Validate FormData as untrusted input, including total size, file count, type, and storage path. Authenticate cron handlers and make them idempotent. Keep metadata/SEO generation deterministic and avoid leaking request secrets.
 
+## Next.js Environment Configuration
+
+Use one validated, app-owned environment module. `@t3-oss/env-nextjs` is the recommended Next.js adapter, not an inward architecture dependency.
+
+- Declare secrets under the server schema without a public prefix.
+- Declare browser-safe values under the client schema with `NEXT_PUBLIC_` and list them in the runtime map required by the installed Next.js/T3 Env versions.
+- Keep ordinary `process.env` access inside the env module and test/runtime bootstrap code.
+- Import validated values only at runtime composition and infrastructure factories; inject narrow configuration rather than the env object.
+- Keep controllers, services, use cases, repositories, entities, and isomorphic contracts free of environment access.
+- Parse strings, especially booleans, deliberately; JavaScript truthiness is not configuration validation.
+- Validate during `next.config.ts` loading when secrets exist at build time. When credentials are runtime-only, document and enforce validation before accepting traffic instead of silently disabling it.
+- For standalone output, verify and configure the T3 Env packages in `transpilePackages`.
+- Scope fake import-time values to Node/server test setup and retain a real Next.js build or boundary check in CI.
+
 ## Express and Hono
 
 For Express 5, async handler rejections reach the final error middleware. Parse input with shared normalization, call one controller, and register central error middleware once after routes.
@@ -41,7 +61,7 @@ The NestJS material is a placeholder only. If adopting NestJS, keep decorators, 
 
 ## tRPC and OpenAPI
 
-Treat tRPC as a transport, not the application architecture. Inline shared authentication, authorization, lifecycle logging, and `AppError` conversion middleware in the base procedure setup. Preserve domain errors as causes. Let procedures validate input and call capability controllers.
+Treat tRPC as a transport, not the application architecture. Inline shared authentication, coarse transport gates/context enrichment, lifecycle logging, and `AppError` conversion middleware in the base procedure setup. Preserve domain errors as causes. Let procedures validate input and call capability controllers; services/use cases retain capability authorization.
 
 Keep a capability router with its owning module at `src/lib/modules/<module>/<module>.router.ts`. Keep only tRPC initialization, shared middleware/context, and the root router under `src/lib/shared/infra/trpc/`. Do not create a parallel `src/server/trpc/` application tree.
 
@@ -76,7 +96,9 @@ Implement the kernel `AppLogger` port without exposing Pino types inward. Merge 
 - Framework and provider types stop at infrastructure boundaries.
 - Request-scoped state cannot leak through global singletons.
 - All adapters share controllers, contracts, and central error policy.
+- Capability authorization remains effective through HTTP, workers, CLIs, and other transports.
 - Version-sensitive Next.js/tRPC/Supabase behavior is verified against the target dependencies.
+- Next.js configuration is validated once and injected narrowly; public exposure is explicit.
 - Privileged provider paths are explicit and server-only.
 - Runtime tests cover actual parsing, context, serialization, and error formatting.
 

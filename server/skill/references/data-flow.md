@@ -54,6 +54,7 @@ Never add request IDs, actors, loggers, analytics, or arbitrary metadata to `Tra
 - Translate only recognized constraints/provider codes to typed errors.
 - Let unknown database failures propagate to central sanitization.
 - Keep authorization and cross-entity business rules in services/use cases.
+- Route workers, CLIs, and alternate transports through the same service/use-case capability authorization rather than duplicating ownership or tenant checks in adapters.
 - Keep the repository beside its domain module. Shared database infrastructure supplies clients, schemas, and transaction plumbing but does not own domain-specific queries.
 
 For known uniqueness failures, match the exact constraint name. Do not map every PostgreSQL `23505` to one domain conflict.

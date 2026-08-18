@@ -13,6 +13,8 @@ Use this slice for Next.js App Router ownership, SSR/RSC boundaries, route param
 
 ## App Router Ownership
 
+For scaffolding, load the generic and React contracts first, then detect the installed Next.js/React/Node versions, router mode, config module format, Server/Client boundaries, environment integration, and build setup. Retrieve version-applicable official Next.js documentation for configuration, lifecycle, caching, environment, and production-build behavior before generating those boundaries.
+
 - Routes live in `src/app/`; API route handlers live under `src/app/api/**/route.ts`.
 - Pages and layouts are metaframework composition boundaries, not feature business layers.
 - Route groups partition layouts and access policies; exact group names remain project-specific.
@@ -69,7 +71,18 @@ For Supabase realtime, construct the client in the composition root, keep channe
 
 ## Environment and Tests
 
-Use one validated environment module. Client-exposed variables require `NEXT_PUBLIC_`; secrets never do. Application code reads the validated module rather than scattered `process.env` calls. Parse string booleans explicitly so `"false"` does not become truthy.
+Use `@t3-oss/env-nextjs` as the validated environment boundary. Client-exposed variables require `NEXT_PUBLIC_`; secrets never do. Application code reads the validated module rather than scattered `process.env` calls. Parse string booleans explicitly so `"false"` does not become truthy.
+
+Keep runtime wiring compatible with the installed Next.js version:
+
+- Next.js `>= 13.4.4`: use `experimental__runtimeEnv` and explicitly enumerate every client variable.
+- Next.js `< 13.4.4`: use strict `runtimeEnv` and explicitly enumerate every server and client variable.
+
+Next.js statically analyzes environment-variable access for browser bundling, so do not replace explicit entries with dynamic property access. Import the env module from Next.js config to guarantee build-time validation: use a direct TypeScript import on Next.js 16+ and `jiti` on earlier versions. Preserve the detected config module format: CommonJS `next.config.js` on Next.js 12.1+ uses `require`, an async `module.exports`, and Jiti's async import API; ESM syntax belongs in `next.config.mjs`. For an older Next.js version without async config support, resolve a version-compatible strategy or block. Verify all behavior against the installed Next.js and Jiti versions before editing.
+
+Use a unified schema by default. Split client and server schemas when server variable names are sensitive, and prevent client-reachable modules from importing the server schema. In a split setup, give `client.ts` strict `runtimeEnv` entries for its public variables; on Next.js `>= 13.4.4`, give the server-only module `experimental__runtimeEnv: process.env`, never an empty object. Older versions require explicit strict server entries.
+
+For `output: "standalone"`, add `@t3-oss/env-nextjs` and `@t3-oss/env-core` to `transpilePackages`. Confirm TypeScript 5+, ESM, and package-exports-compatible module resolution before adopting the package.
 
 Extend core Vitest with:
 
@@ -89,7 +102,9 @@ The shim is not an import-safety check. Keep a Next.js build or equivalent bound
 - Shared contracts are isomorphic and imported by both server and client boundaries.
 - tRPC or Ky stays behind the feature/data-flow architecture.
 - Query/cache mechanics stay in feature hooks or sync modules.
-- Environment exposure is explicit and validated.
+- Environment exposure and version-specific runtime wiring are explicit and validated during the build.
+- Split environment schemas preserve the client/server import boundary when variable names are sensitive.
+- Standalone output transpiles both T3 Env packages.
 - Next.js tests extend, rather than replace, core behavioral and Vitest rules.
 
 ## Derivation Sources

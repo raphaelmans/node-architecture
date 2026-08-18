@@ -1,4 +1,4 @@
 interface:
   display_name: "Server Architecture"
-  short_description: "Apply modular server architecture guidance"
-  default_prompt: "Use $server to route this task through the relevant server architecture slices."
+  short_description: "Apply or scaffold modular server architecture"
+  default_prompt: "Use $server to route or scaffold this task through the relevant server architecture slices, deriving unlisted runtime/framework integrations from repository evidence and current official resources."

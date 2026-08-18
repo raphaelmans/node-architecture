@@ -2,6 +2,23 @@
   "version": 1,
   "algorithm": "sha256(path-null-content-null, sources sorted by path)",
   "slices": {
+    "scaffolding": {
+      "reference": "client/skill/references/scaffolding.md",
+      "sources": [
+        "client/core/architecture.md",
+        "client/core/client-api-architecture.md",
+        "client/core/composition-root.md",
+        "client/core/conventions.md",
+        "client/core/folder-structure.md",
+        "client/core/logging.md",
+        "client/core/product-analytics.md",
+        "client/core/scaffolding.md",
+        "client/core/server-state-tanstack-query.md",
+        "client/core/testing.md",
+        "client/core/validation-zod.md"
+      ],
+      "fingerprint": "5c92527c7b58650bbdd5f3b921f5499d7c357887069662be2f195963d1faa123"
+    },
     "foundations": {
       "reference": "client/skill/references/foundations.md",
       "sources": [
@@ -15,7 +32,7 @@
         "client/core/onboarding.md",
         "client/diagrams.md"
       ],
-      "fingerprint": "614da5718fd31a738bdd95fb95f58da23cd12fd80929a87083c29a075c8b95ad"
+      "fingerprint": "c24f83654aad5ad1bae004b778d9ad9b5ced154116822026db09afb4ab9e1193"
     },
     "contracts": {
       "reference": "client/skill/references/contracts.md",
@@ -81,11 +98,12 @@
         "client/frameworks/reactjs/composition-react.md",
         "client/frameworks/reactjs/conventions.md",
         "client/frameworks/reactjs/realtime-react.md",
+        "client/frameworks/reactjs/scaffolding.md",
         "client/frameworks/reactjs/server-state-patterns-react.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md"
       ],
-      "fingerprint": "f700f8de8fcf236d4de31a842250db190f7c9c9e835ef04504f15823307da89c"
+      "fingerprint": "1b01f3231ce452ee4fb96f867164e83ec69cce8402578a71705a60c6bcf5c629"
     },
     "react": {
       "reference": "client/skill/references/react.md",
@@ -101,7 +119,7 @@
         "client/frameworks/reactjs/state-zustand.md",
         "client/frameworks/reactjs/ui-shadcn-radix.md"
       ],
-      "fingerprint": "4f9561e13638747fb8f86c37c8ed8aa8f5487c8c3a735eab96c9f14a0f21b018"
+      "fingerprint": "2d87b443512a894a6a055a5db4ac05a63ba6ef3ae179923ad22e8d1ff113c905"
     },
     "nextjs": {
       "reference": "client/skill/references/nextjs.md",
@@ -114,11 +132,12 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/query-keys.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/scaffolding.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "b36fb24843017017c6c43a9b9e94ddbe039f8015eafb5547ea59ff8a4c12ce68"
+      "fingerprint": "bfdc00f8a8faa800ed3f64f49a581ed15f36b46db44a20a995e5c709f9af5257"
     }
   }
 }

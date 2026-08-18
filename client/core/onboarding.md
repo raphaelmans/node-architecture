@@ -1,5 +1,7 @@
 # Client Core Onboarding (Agnostic)
 
+For repository-aware bootstrapping, invoke `$client scaffold foundation` or `$client scaffold <feature>/<operation>` and follow the [Client Scaffolding Contract](./scaffolding.md). Scaffolding applies to listed and unlisted frameworks, performs evidence and dependency preflight before writing, and loads or derives the target stack specialization; the checklist below remains the architectural acceptance contract.
+
 Use this as the default startup path for new projects and new contributors.
 
 ## Read Order

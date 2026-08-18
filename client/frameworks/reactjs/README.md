@@ -14,6 +14,7 @@ Read core first:
 ## Start Here
 
 - [Overview](./overview.md)
+- [React Scaffolding](./scaffolding.md)
 - [Conventions](./conventions.md)
 - [Server State Patterns (Cookbook)](./server-state-patterns-react.md)
 - [Composition](./composition-react.md)

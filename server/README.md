@@ -39,6 +39,7 @@ This documentation emphasizes:
 | Document | Description |
 | -------- | ----------- |
 | [Core Index](./core/README.md) | Architecture summary, folder structure, quick reference |
+| [Server Scaffolding Contract](./core/scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./core/conventions.md) | Layer responsibilities, DI patterns, kernel rules |
 | [Framework-Neutral Controllers](./core/controllers.md) | Portable capability boundary shared by Next.js, Express, Hono, tRPC, OpenAPI, and other adapters |
 | [Error Handling](./core/error-handling.md) | Public error policy, translation rules, response structure |
@@ -64,6 +65,7 @@ This documentation emphasizes:
 | -------- | ----------- |
 | [Runtime Index](./runtime/README.md) | Runtime hierarchy |
 | [Node.js Runtime](./runtime/nodejs/README.md) | Node.js libraries and metaframework docs |
+| [Node.js Scaffolding](./runtime/nodejs/scaffolding.md) | Node.js implementation of the portable scaffolding contract |
 | [tRPC Integration](./runtime/nodejs/libraries/trpc/integration.md) | Routers, context, formatter, Drizzle setup |
 | [OpenAPI Integration](./runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter model over shared layers |
 | [OpenAPI Parity Testing](./runtime/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
@@ -71,16 +73,17 @@ This documentation emphasizes:
 | [tRPC Rate Limiting](./runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tiers and enforcement patterns |
 | [Authentication](./runtime/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
 | [Supabase](./runtime/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
-| [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route-handler conventions and server runtime specifics |
+| [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
 | [Express](./runtime/nodejs/metaframeworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
 | [Hono](./runtime/nodejs/metaframeworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |
 
 ## Quick Start
 
 1. Start with [./core/README.md](./core/README.md).
-2. Read [./core/conventions.md](./core/conventions.md), [./core/controllers.md](./core/controllers.md), and [./core/error-handling.md](./core/error-handling.md) before adding new endpoints or repositories.
-3. Add runtime-specific details from [./runtime/nodejs/README.md](./runtime/nodejs/README.md) only when the project actually uses them.
-4. Use [../legacy/server/overview.md](../legacy/server/overview.md) only for historical context.
+2. Use [./core/scaffolding.md](./core/scaffolding.md) or `$server scaffold ...` when bootstrapping missing foundations or a complete capability in any listed or unlisted runtime.
+3. Read [./core/conventions.md](./core/conventions.md), [./core/controllers.md](./core/controllers.md), and [./core/error-handling.md](./core/error-handling.md) before adding new endpoints or repositories.
+4. Add a documented runtime specialization when available; otherwise derive it from repository evidence and current official resources.
+5. Use [../legacy/server/overview.md](../legacy/server/overview.md) only for historical context.
 
 ## Layer Decision Flow
 

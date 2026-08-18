@@ -2,6 +2,8 @@
 
 > Express is an optional inbound adapter. It does not replace or redefine the core controller/use-case/service/repository architecture.
 
+For repository-aware generation, apply the [Express Scaffolding](./scaffolding.md) specialization.
+
 ## Canonical Flow
 
 ```text
@@ -52,6 +54,7 @@ wrapper that forwards rejected promises to `next(error)`.
 - Validate with module-owned shared Zod contracts.
 - Normalize Zod failures to `ValidationError` before central HTTP mapping.
 - Establish request/trace observability middleware before routes.
+- Keep ownership, tenant, domain-role, and operation-specific authorization in the selected service/use case.
 - Resolve one capability controller factory per public route.
 - Never resolve a service, use case, repository, or vendor directly from the route.
 - Keep `TransactionContext` out of the Express request object.

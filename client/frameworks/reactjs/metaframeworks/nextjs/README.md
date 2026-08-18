@@ -12,6 +12,7 @@ Read order before using this folder:
 
 | Document | Description |
 | --- | --- |
+| [Next.js Client Scaffolding](./scaffolding.md) | Next.js specialization of the portable client scaffolding contract |
 | [Overview](./overview.md) | App Router conventions, guards, route registry |
 | [Routing + SSR + Params](./routing-ssr-params.md) | Where route parsing/validation belongs |
 | [Environment Variables](./environment.md) | Type-safe env vars (`@t3-oss/env-nextjs`) |

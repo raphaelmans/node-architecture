@@ -31,3 +31,6 @@ Added one installable `$server` architecture router derived from the canonical s
 - Initialized from the official skill scaffold and validated the finished skill with the official quick validator.
 - Verified source drift, source coverage, internal links, UI metadata, temporary installation, and disabled-copy behavior.
 - Forward-tested cross-cutting runtime, security, operations, telemetry, contracts, and testing requests in isolated skill invocations.
+- Added a dedicated Skill tab to the standalone server architecture HTML with
+  the portable package boundary, eight routed slices, Skills.sh/GitHub install
+  and update commands, and links to the package and installation guide.

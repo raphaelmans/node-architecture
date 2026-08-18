@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive guide to the canonical client architecture: UI composition, TanStack Query adapters, feature APIs, client transport, runtime factories, operational logging, product analytics, and testing.">
+  <meta name="description" content="Interactive guide to the canonical client architecture: UI composition, TanStack Query adapters, feature APIs, client transport, runtime factories, telemetry, testing, and the installable client architecture skill.">
   <title>Client Architecture — Field Guide</title>
   <style>
     :root {
@@ -354,6 +354,29 @@
     .check-box { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid var(--line-hot); color: var(--cyan); font: 700 9px/1 var(--mono); }
     .check-item strong { display: block; font-size: 12px; }
     .check-item small { color: var(--muted); font-size: 10px; }
+
+    .skill-overview { display: grid; grid-template-columns: minmax(300px, .75fr) minmax(460px, 1.25fr); gap: 22px; align-items: stretch; }
+    .skill-entry { display: flex; min-width: 0; flex-direction: column; padding: 30px; border: 1px solid var(--line-hot); background: linear-gradient(145deg, rgba(18, 29, 28, .95), rgba(8, 12, 12, .85)); box-shadow: var(--shadow); }
+    .skill-command { margin: 34px 0 20px; color: var(--cyan); font: 800 clamp(42px, 6vw, 74px)/.9 var(--mono); letter-spacing: -.06em; }
+    .skill-entry > p { max-width: 560px; color: var(--muted); font-size: 13px; }
+    .skill-route { display: grid; gap: 0; margin-top: auto; padding-top: 26px; }
+    .skill-route span { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); color: #bdc8c4; font-size: 12px; }
+    .skill-route b { color: var(--cyan); font: 700 9px/1.7 var(--mono); }
+    .skill-tree { min-width: 0; }
+    .skill-slice-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 24px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .skill-slice { min-width: 0; padding: 22px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .skill-slice dt { color: var(--tone); font: 750 17px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+    .skill-slice dd { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+    .route-list { border-top: 1px solid var(--line); }
+    .route-item { display: grid; grid-template-columns: minmax(180px, .7fr) 32px minmax(0, 1.3fr); gap: 18px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--line); }
+    .route-item::after { grid-row: 1; grid-column: 2; color: var(--line-hot); content: "→"; font: 700 12px/1 var(--mono); text-align: center; }
+    .route-item dt { grid-row: 1; grid-column: 1; color: var(--ink); font: 750 18px/1.1 var(--display); text-transform: uppercase; }
+    .route-item dd { grid-row: 1; grid-column: 3; min-width: 0; margin: 0; color: var(--cyan); overflow-wrap: anywhere; font: 600 10px/1.6 var(--mono); }
+    .skill-boundary { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 32px; border: 1px solid var(--line); background: var(--line); }
+    .skill-boundary > div { min-width: 0; padding: 26px; background: var(--panel); }
+    .skill-boundary h3 { margin-top: 28px; color: var(--tone); }
+    .skill-boundary p { margin-bottom: 20px; color: var(--muted); font-size: 12px; }
+    .skill-boundary code { color: var(--tone); overflow-wrap: anywhere; font-size: 11px; }
     .tone-cyan { --tone: var(--cyan); }
     .tone-mint { --tone: var(--mint); }
     .tone-lime { --tone: var(--lime); }
@@ -376,9 +399,11 @@
       .flow-workbench { grid-template-columns: 1fr 1.15fr; }
       .key-grid, .adapter-grid, .test-grid { grid-template-columns: repeat(2, 1fr); }
       .signal-map { grid-template-columns: repeat(2, 1fr); }
+      .skill-slice-grid { grid-template-columns: repeat(2, 1fr); }
       .signal:nth-child(2) { border-right: 0; }
       .signal:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
       .structure-layout { grid-template-columns: 1fr; }
+      .skill-overview { grid-template-columns: 1fr; }
     }
     @media (max-width: 780px) {
       .masthead { position: relative; grid-template-columns: 1fr auto; min-height: 62px; }
@@ -406,11 +431,12 @@
       .runtime-layer, .runtime-layer:nth-child(n) { grid-template-columns: 88px 1fr; margin: 0; }
       .runtime-layer .direction { display: none; }
       .structure-layout { grid-template-columns: minmax(0, 1fr); }
+      .route-item { grid-template-columns: minmax(150px, .7fr) 26px minmax(0, 1.3fr); }
       .tree { font-size: 9px; }
       footer { grid-template-columns: 1fr; }
     }
     @media (max-width: 560px) {
-      .hero-index, .responsibility-grid, .do-dont, .decision, .signal-map, .tdd-loop { grid-template-columns: 1fr; }
+      .hero-index, .responsibility-grid, .do-dont, .decision, .signal-map, .tdd-loop, .skill-slice-grid, .skill-boundary { grid-template-columns: 1fr; }
       .metric { border-right: 0; border-bottom: 1px solid var(--line); }
       .metric:last-child { border-bottom: 0; }
       .truth-grid { grid-template-columns: 1fr; }
@@ -428,6 +454,12 @@
       .tdd-step { border-right: 0; border-bottom: 1px solid var(--line); }
       .tdd-step:last-child { border-bottom: 0; }
       .tdd-step:not(:last-child)::after { top: auto; right: 50%; bottom: -12px; transform: translateX(50%) rotate(90deg); }
+      .route-item { grid-template-columns: 1fr; gap: 9px; }
+      .route-item::after, .route-item dt, .route-item dd { grid-column: 1; }
+      .route-item dt { grid-row: 1; }
+      .route-item::after { grid-row: 2; text-align: left; }
+      .route-item dd { grid-row: 3; font-size: 14px; }
+      .skill-entry > p, .skill-route span, .skill-slice dd, .skill-boundary p { font-size: 16px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -469,6 +501,7 @@
       <button class="nav-button" id="tab-runtime" role="tab" aria-selected="false" aria-controls="panel-runtime" data-panel="runtime">Runtime</button>
       <button class="nav-button" id="tab-tests" role="tab" aria-selected="false" aria-controls="panel-tests" data-panel="tests">Tests</button>
       <button class="nav-button" id="tab-structure" role="tab" aria-selected="false" aria-controls="panel-structure" data-panel="structure">Structure</button>
+      <button class="nav-button" id="tab-skills" role="tab" aria-selected="false" aria-controls="panel-skills" data-panel="skills">Skills</button>
     </nav>
     <div class="status"><span class="status-dot"></span>Core rules active</div>
   </header>
@@ -694,7 +727,7 @@
               </article>
 
               <article class="slice-step tone-cyan">
-                <div class="slice-step-meta"><span class="ordinal">Owner / 04</span><h3>Client API</h3><p>Contains Ky construction and shared transport policy. Its implementation decodes the envelope, correlates, logs once, and returns only payload data.</p><span class="slice-file">common/api/client-api.ts</span></div>
+                <div class="slice-step-meta"><span class="ordinal">Owner / 04</span><h3>Client API</h3><p>Contains Ky construction and shared transport policy. Its implementation decodes the envelope, correlates, logs once, and returns only payload data.</p><span class="slice-file">common/clients/client-api.ts</span></div>
                 <div class="code-block"><div class="code-head"><span>createClientApi</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-key">export function</span> <span class="tok-type">createClientApi</span>(deps: ClientApiDeps): IClientApi {
   <span class="tok-key">const</span> transport = ky.create({
     baseUrl: deps.baseUrl,
@@ -815,8 +848,8 @@ analytics.track({
         </div>
         <div class="adapter-grid">
           <article class="adapter-card tone-pink"><div class="adapter-top"><span>UI runtime</span><span>01</span></div><h3>React</h3><p>Coordinates rendering and passes focused ports through explicit framework integration.</p><code>app/providers.tsx</code></article>
-          <article class="adapter-card tone-violet"><div class="adapter-top"><span>Server state</span><span>02</span></div><h3>TanStack Query</h3><p>Query adapters expose feature-specific hooks; one application-scoped QueryClient serves the browser.</p><code>features/*/queries/</code></article>
-          <article class="adapter-card tone-cyan"><div class="adapter-top"><span>Transport</span><span>03</span></div><h3>Ky or tRPC</h3><p>The provider-specific client is constructed inside <code>createClientApi</code> and hidden behind the client contract.</p><code>common/api/client-api.ts</code></article>
+          <article class="adapter-card tone-violet"><div class="adapter-top"><span>Server state</span><span>02</span></div><h3>TanStack Query</h3><p>Query adapters expose feature-specific hooks; one application-scoped QueryClient serves the browser.</p><code>features/*/hooks.ts</code></article>
+          <article class="adapter-card tone-cyan"><div class="adapter-top"><span>Transport</span><span>03</span></div><h3>Ky or tRPC</h3><p>The provider-specific client is constructed inside <code>createClientApi</code> and hidden behind the client contract.</p><code>common/clients/client-api.ts</code></article>
           <article class="adapter-card tone-mint"><div class="adapter-top"><span>Operational logs</span><span>04</span></div><h3>debug + Sentry</h3><p>Adapters implement <code>AppLogger</code>; namespace routing, redaction, and sink policy remain infrastructure.</p><code>common/logging/</code></article>
           <article class="adapter-card tone-violet"><div class="adapter-top"><span>Product events</span><span>05</span></div><h3>Analytics vendors</h3><p>A no-op, composite, or provider adapter implements the typed analytics port behind consent.</p><code>common/analytics/</code></article>
           <article class="adapter-card tone-amber"><div class="adapter-top"><span>Construction</span><span>06</span></div><h3>Factories</h3><p>Tests call the same factories with fakes, spies, or no-op adapters. Feature modules create no hidden singletons.</p><code>common/runtime/</code></article>
@@ -863,7 +896,7 @@ analytics.track({
 │   ├── providers.tsx              <span class="comment"># focused framework providers</span>
 │   └── routes/
 ├── <span class="folder">common/</span>
-│   ├── <span class="adapter">api/</span>
+│   ├── <span class="adapter">clients/</span>
 │   │   ├── client-api.ts          <span class="comment"># contract + createClientApi</span>
 │   │   └── errors.ts
 │   ├── <span class="adapter">logging/</span>
@@ -881,14 +914,12 @@ analytics.track({
 ├── <span class="folder">features/</span>
 │   └── <span class="folder">users/</span>
 │       ├── components/
-│       ├── queries/
-│       │   └── hooks.ts           <span class="comment"># query adapters</span>
-│       ├── api/
-│       │   ├── api.ts             <span class="comment"># UserApi contract</span>
-│       │   ├── create-user-api.ts <span class="comment"># factory</span>
-│       │   └── schemas.ts         <span class="contract"># Zod boundary</span>
-│       └── domain.ts              <span class="comment"># pure policy</span>
-└── <span class="folder">shared/contracts/</span>          <span class="contract"># canonical wire schemas</span></div>
+│       ├── api.ts                     <span class="comment"># IUserApi + class + factory</span>
+│       ├── api.runtime.ts             <span class="comment"># composition-root accessor</span>
+│       ├── hooks.ts                   <span class="comment"># query adapters</span>
+│       ├── schemas.ts                 <span class="comment"># UI/form validation</span>
+│       └── domain.ts                  <span class="comment"># pure policy</span>
+└── <span class="folder">lib/modules/users/shared/contracts/</span> <span class="contract"># canonical wire schemas</span></div>
           <div class="checklist">
             <div class="checklist-head"><span class="label">Feature readiness checklist</span></div>
             <div class="check-item"><span class="check-box">01</span><span><strong>Component submits intent</strong><small>No direct transport or inline query key.</small></span></div>
@@ -913,6 +944,90 @@ analytics.track({
       → queryClient.invalidateQueries({ queryKey: userKeys.lists() })</code></pre></div>
       </div>
     </section>
+
+    <section class="guide-panel" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills" tabindex="0" hidden>
+      <div class="page">
+        <div class="section-head">
+          <div><p class="section-kicker">Agent interface / 09</p><h2>One router. Nine focused slices.</h2></div>
+          <p>The <code>$client</code> skill turns the canonical client architecture into a portable, progressively loaded interface. Invoke one router to explain, review, implement, or scaffold; it selects the smallest useful combination of references for the task.</p>
+        </div>
+
+        <div class="skill-overview">
+          <div class="skill-entry">
+            <span class="label">Single entry point</span>
+            <div class="skill-command">$client</div>
+            <p>Use it for any client framework. React and Next.js are documented specializations; unlisted stacks derive integration from repository evidence and current official resources.</p>
+            <div class="skill-route">
+              <span><b>01</b>Inspect the task and target stack.</span>
+              <span><b>02</b>Load only the matching architecture slices.</span>
+              <span><b>03</b>Apply shared invariants before framework details.</span>
+            </div>
+          </div>
+          <div class="tree skill-tree"><span class="folder">client/skill/</span>                 <span class="comment"># installed package</span>
+├── SKILL.md                     <span class="comment"># $client router + shared rules</span>
+├── <span class="runtime">agents/</span>
+│   └── openai.yaml              <span class="comment"># skill UI metadata</span>
+└── <span class="adapter">references/</span>
+    ├── scaffolding.md           <span class="comment"># preflight, dependencies, generation</span>
+    ├── foundations.md           <span class="comment"># boundaries, DI, factories</span>
+    ├── contracts.md             <span class="comment"># Zod, DTOs, AppError</span>
+    ├── data-flow.md             <span class="comment"># clientApi → featureApi → hooks</span>
+    ├── state-realtime.md        <span class="comment"># cache, state, subscriptions</span>
+    ├── telemetry.md             <span class="comment"># logging, analytics, Sentry</span>
+    ├── testing.md               <span class="comment"># tests by owned boundary</span>
+    ├── react.md                 <span class="comment"># components, hooks, forms</span>
+    └── nextjs.md                <span class="comment"># App Router, SSR, adapters</span></div>
+        </div>
+
+        <dl class="skill-slice-grid">
+          <div class="skill-slice tone-coral"><dt>Scaffolding</dt><dd>Portable preflight, primary-source retrieval, dependency approval, atomic generation, and idempotent reruns.</dd></div>
+          <div class="skill-slice tone-cyan"><dt>Foundations</dt><dd>Layers, folders, composition roots, dependency injection, and factories.</dd></div>
+          <div class="skill-slice tone-mint"><dt>Contracts</dt><dd>Zod wire schemas, DTO mapping, validation, and normalized errors.</dd></div>
+          <div class="skill-slice tone-amber"><dt>Data flow</dt><dd>Client transport, feature APIs, query adapters, and component intent.</dd></div>
+          <div class="skill-slice tone-violet"><dt>State + realtime</dt><dd>TanStack Query, query keys, local state, URL state, and subscriptions.</dd></div>
+          <div class="skill-slice tone-cyan"><dt>Telemetry</dt><dd>Structured logs, browser debug scopes, Sentry, analytics, and consent.</dd></div>
+          <div class="skill-slice tone-lime"><dt>Testing</dt><dd>Mirrored tests, fakes, spies, factory seams, and boundary ownership.</dd></div>
+          <div class="skill-slice tone-pink"><dt>React</dt><dd>Component roles, hooks, forms, presentation boundaries, and error UX.</dd></div>
+          <div class="skill-slice tone-amber"><dt>Next.js</dt><dd>App Router, server/client boundaries, SSR lifetimes, Ky, and tRPC.</dd></div>
+        </dl>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Progressive routing</p><h2>Ask once. Load what matters.</h2></div>
+          <p>Slices are not separate user-facing skills. The router composes them when a feature crosses concerns, keeping the default context small without losing architectural coherence.</p>
+        </div>
+        <dl class="route-list">
+          <div class="route-item"><dt>Scaffold users/create</dt><dd>scaffolding + foundations + contracts + data-flow + react + testing</dd></div>
+          <div class="route-item"><dt>Scaffold in Vue or Svelte</dt><dd>scaffolding + capability slices + evidence-derived framework integration</dd></div>
+          <div class="route-item"><dt>Create a React feature</dt><dd>foundations + contracts + data-flow + react + testing</dd></div>
+          <div class="route-item"><dt>Add Next.js telemetry</dt><dd>telemetry + nextjs</dd></div>
+          <div class="route-item"><dt>Synchronize realtime cache</dt><dd>state-realtime + data-flow + react + testing</dd></div>
+          <div class="route-item"><dt>Review a feature API</dt><dd>contracts + data-flow + testing</dd></div>
+        </dl>
+
+        <div class="code-block"><div class="code-head"><span>Invocation examples</span><button class="copy-button" type="button">Copy</button></div><pre><code><span class="tok-type">$client</span> scaffold users/create
+<span class="tok-type">$client</span> scaffold foundation using canonical layout
+<span class="tok-type">$client</span> design a create-user data flow
+<span class="tok-type">$client</span> review this feature API and its tests
+<span class="tok-type">$client</span> add structured telemetry to this Next.js flow
+<span class="tok-type">$client</span> implement realtime cache synchronization</code></pre></div>
+
+        <div class="skill-boundary">
+          <div class="tone-mint">
+            <span class="label">Consumer scope</span>
+            <h3>Install the skill</h3>
+            <p>Consumer projects receive only the router, metadata, and architecture references required by the agent.</p>
+            <code>.agents/skills/client/</code>
+          </div>
+          <div class="tone-amber">
+            <span class="label">Source repository only</span>
+            <h3>Maintain provenance</h3>
+            <p>The source map and drift checker stay outside the installed package, where maintainers can compare derived slices with canonical guides.</p>
+            <code>client/skill-maintenance/</code>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="shell">
@@ -925,6 +1040,7 @@ analytics.track({
       <a href="../client/core/product-analytics.md">Analytics</a>
       <a href="../client/core/server-state-tanstack-query.md">Server state</a>
       <a href="../client/core/testing.md">Testing</a>
+      <a href="../client/skill/SKILL.md">Client skill</a>
     </div>
   </footer>
 

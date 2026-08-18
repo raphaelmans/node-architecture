@@ -17,6 +17,8 @@ libraries and metaframeworks
 - Libraries adapt vendor APIs behind kernel/application interfaces.
 - Metaframeworks own entrypoints and lifecycle hooks; they call module-owned framework-neutral controllers.
 
-Current runtime:
+Known runtime specialization (not an allowlist):
 
 - [Node.js](./nodejs/README.md)
+
+For another runtime or language, apply the core scaffolding contract and derive its specialization from repository evidence plus current official resources.

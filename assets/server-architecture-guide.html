@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive guide to the canonical layered server architecture: framework adapters, portable controllers, kernel, use cases, services, repositories, testing, observability, and transactions.">
+  <meta name="description" content="Interactive guide to the canonical layered server architecture: framework adapters, portable controllers, kernel, use cases, services, repositories, testing, observability, transactions, and the installable server architecture skill.">
   <title>Server Architecture — Field Guide</title>
   <style>
     :root {
@@ -549,6 +549,7 @@
     .signal .mode { color: var(--faint); font: 700 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 
     .contract-pipe { display: grid; grid-template-columns: repeat(7, auto); align-items: center; gap: 8px; margin-top: 24px; overflow-x: auto; padding-bottom: 8px; }
+    .environment-pipe { grid-template-columns: repeat(9, auto); }
     .pipe-node { min-width: 140px; padding: 16px; border: 1px solid var(--line); background: var(--panel); }
     .pipe-node strong { display: block; font: 750 14px/1.1 var(--display); text-transform: uppercase; }
     .pipe-node small { display: block; margin-top: 6px; color: var(--muted); font: 500 8px/1.3 var(--mono); }
@@ -662,6 +663,87 @@
     .legend span { color: var(--muted); font: 600 9px/1 var(--mono); }
     .legend i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; background: var(--tone); }
 
+    .skill-overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+    .skill-intro {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+      padding: clamp(28px, 5vw, 54px);
+      border: 1px solid var(--line-hot);
+      background: linear-gradient(145deg, rgba(18, 28, 25, .94), rgba(8, 12, 11, .82));
+      box-shadow: var(--shadow);
+    }
+    .skill-intro h1 { max-width: 760px; margin-bottom: 24px; font-size: clamp(48px, 7vw, 100px); }
+    .skill-intro .lede { max-width: 680px; }
+    .skill-identity { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 42px; }
+    .skill-badge {
+      padding: 8px 10px;
+      border: 1px solid var(--line-hot);
+      color: var(--muted);
+      background: rgba(255, 255, 255, .018);
+      font: 700 9px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .skill-badge:first-child { border-color: var(--acid); color: var(--acid); }
+    .skill-package { min-width: 0; padding: 28px; border: 1px solid var(--line); background: #070a09; }
+    .skill-package-head { display: flex; justify-content: space-between; gap: 18px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+    .skill-package-head strong { font: 750 20px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+    .skill-package-head span { color: var(--mint); font: 700 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .skill-tree { margin: 24px 0 0; color: #c7d4cd; overflow-x: auto; font: 500 11px/1.85 var(--mono); white-space: pre; }
+    .skill-tree .portable { color: var(--acid); }
+    .skill-tree .reference { color: var(--cyan); }
+    .skill-tree .excluded { color: var(--faint); }
+
+    .install-flow { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 38px; border: 1px solid var(--line); background: var(--panel); }
+    .install-step { position: relative; min-height: 210px; padding: 26px; border-right: 1px solid var(--line); }
+    .install-step:last-child { border-right: 0; }
+    .install-step:not(:last-child)::after {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      right: -12px;
+      display: grid;
+      width: 23px;
+      height: 23px;
+      place-items: center;
+      border: 1px solid var(--line);
+      color: var(--acid);
+      background: var(--base);
+      content: "→";
+      font: 700 10px/1 var(--mono);
+      transform: translateY(-50%);
+    }
+    .install-step .ordinal { color: var(--tone); font: 800 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .install-step strong { display: block; margin: 34px 0 9px; color: var(--tone); font: 750 24px/1 var(--display); text-transform: uppercase; }
+    .install-step p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .skill-command-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); gap: 22px; }
+    .skill-command-grid > * { min-width: 0; }
+    .skill-command-grid .code-block { margin-top: 0; }
+    .skill-command-grid .code-block + .code-block { margin-top: 14px; }
+    .skill-notes { border: 1px solid var(--line); background: var(--panel); }
+    .skill-note { padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .skill-note:last-child { border-bottom: 0; }
+    .skill-note strong { display: block; margin-bottom: 7px; font: 750 16px/1 var(--display); text-transform: uppercase; }
+    .skill-note p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .skill-slices { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .skill-slice { min-height: 190px; padding: 22px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(14, 21, 19, .62); }
+    .skill-slice dt { color: var(--tone); font: 750 19px/1 var(--display); letter-spacing: .025em; text-transform: uppercase; }
+    .skill-slice dd { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
+    .skill-slice code { display: block; margin-top: 28px; color: var(--tone); font-size: 10px; }
+
+    .skill-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .skill-link { padding: 10px 13px; border: 1px solid var(--line-hot); color: var(--ink); text-decoration: none; font: 700 9px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .skill-link:hover { border-color: var(--acid); color: var(--acid); }
+
     footer {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -689,6 +771,8 @@
       .signal:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
       .adapter-grid, .test-grid { grid-template-columns: repeat(2, 1fr); }
       .structure-layout { grid-template-columns: 1fr; }
+      .skill-overview, .skill-command-grid { grid-template-columns: 1fr; }
+      .skill-slices { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 780px) {
@@ -713,6 +797,10 @@
       .adapter-grid, .test-grid { grid-template-columns: 1fr; }
       .structure-layout { grid-template-columns: minmax(0, 1fr); }
       .tree { font-size: 9px; }
+      .install-flow { grid-template-columns: 1fr; }
+      .install-step { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .install-step:last-child { border-bottom: 0; }
+      .install-step:not(:last-child)::after { top: auto; right: 50%; bottom: -12px; transform: translateX(50%) rotate(90deg); }
       footer { grid-template-columns: 1fr; }
     }
 
@@ -733,6 +821,8 @@
       .tdd-step:last-child { border-bottom: 0; }
       .tdd-step:not(:last-child)::after { top: auto; right: 50%; bottom: -12px; transform: translateX(50%) rotate(90deg); }
       .trace-line { grid-template-columns: 1fr; }
+      .skill-slices { grid-template-columns: 1fr; }
+      .skill-intro, .skill-package { padding: 22px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -776,6 +866,7 @@
       <button class="nav-button" id="tab-runtime" role="tab" aria-selected="false" aria-controls="panel-runtime" data-panel="runtime">Runtime</button>
       <button class="nav-button" id="tab-tests" role="tab" aria-selected="false" aria-controls="panel-tests" data-panel="tests">Tests</button>
       <button class="nav-button" id="tab-structure" role="tab" aria-selected="false" aria-controls="panel-structure" data-panel="structure">Structure</button>
+      <button class="nav-button" id="tab-skill" role="tab" aria-selected="false" aria-controls="panel-skill" data-panel="skill">Skill</button>
     </nav>
     <div class="status"><span class="status-dot"></span>Core rules active</div>
   </header>
@@ -1042,6 +1133,36 @@
           <div class="runtime-layer"><span class="ordinal">02 / Libraries</span><div><strong>tRPC · OpenAPI · Pino · Supabase</strong><p>Concrete adapters and transport integration</p></div><span class="direction">maps vendors</span></div>
           <div class="runtime-layer"><span class="ordinal">03 / Edge</span><div><strong>Framework Entry</strong><p>Next.js, Express, Hono, tRPC, or another inbound adapter</p></div><span class="direction">accepts traffic</span></div>
         </div>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Next.js configuration boundary</p><h2>Validate once. Inject only what is needed.</h2></div>
+          <p>T3 Env adapts <code>process.env</code> to typed runtime configuration. It stays outside the application core; factories pass narrow values inward.</p>
+        </div>
+        <div class="contract-pipe environment-pipe" aria-label="Validated environment configuration flow">
+          <div class="pipe-node"><strong>process.env</strong><small>untyped deployment input</small></div><span class="pipe-arrow">→</span>
+          <div class="pipe-node pipe-canonical"><strong>Validated env</strong><small>server + NEXT_PUBLIC_ schemas</small></div><span class="pipe-arrow">→</span>
+          <div class="pipe-node"><strong>Composition root</strong><small>reads typed values</small></div><span class="pipe-arrow">→</span>
+          <div class="pipe-node"><strong>Narrow config</strong><small>{ connectionString }</small></div><span class="pipe-arrow">→</span>
+          <div class="pipe-node"><strong>Infrastructure</strong><small>application stays env-free</small></div>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>src/env.ts → runtime composition</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code><span class="tok-key">export const</span> env = createEnv({
+  server: { DATABASE_URL: z.string().url() },
+  client: { NEXT_PUBLIC_APP_URL: z.string().url() },
+  experimental__runtimeEnv: {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  },
+  emptyStringAsUndefined: <span class="tok-key">true</span>,
+});
+
+<span class="tok-comment">// Runtime composition owns env access; inner layers receive focused values.</span>
+<span class="tok-key">export const</span> database = makeDatabase({
+  connectionString: env.DATABASE_URL,
+});</code></pre>
+        </div>
+        <div class="callout">Controllers, services, use cases, repositories, entities, and shared contracts never receive <code>process.env</code> or the complete env object. See the <a href="../server/runtime/nodejs/metaframeworks/nextjs/environment-variables.md">canonical Next.js environment guide</a>.</div>
 
         <div class="adapter-grid">
           <article class="adapter-card" style="--tone: var(--cyan)"><div class="adapter-top"><span>Primary transport</span><span>01</span></div><h3>tRPC</h3><p>Procedures validate shared Zod contracts, call one capability controller, and rely on shared middleware/error formatting.</p><code>modules/user/user.router.ts</code></article>
@@ -1341,6 +1462,138 @@ app.onError((error, c) =&gt; {
         </div>
       </div>
     </section>
+
+    <section class="guide-panel" id="panel-skill" role="tabpanel" aria-labelledby="tab-skill" tabindex="0" hidden>
+      <div class="page">
+        <div class="skill-overview">
+          <div class="skill-intro">
+            <div>
+              <p class="section-kicker">Portable architecture router / 09</p>
+              <h1>Carry the <span class="outline">guide.</span><br>Into the repo.</h1>
+              <p class="lede">The <code>$server</code> skill turns this architecture into an installable, progressive-disclosure package for Codex and other compatible coding agents.</p>
+            </div>
+            <div class="skill-identity" aria-label="Skill characteristics">
+              <span class="skill-badge">$server</span>
+              <span class="skill-badge">9 concern slices</span>
+              <span class="skill-badge">Framework-neutral core</span>
+              <span class="skill-badge">GitHub installable</span>
+            </div>
+          </div>
+
+          <div class="skill-package">
+            <div class="skill-package-head"><strong>Portable package</strong><span>Ships to consumers</span></div>
+            <div class="skill-tree" aria-label="Server skill package tree"><span class="portable">server/skill/</span>
+├─ <span class="portable">SKILL.md</span>                  router + core invariants
+├─ <span class="portable">agents/openai.yaml</span>       UI metadata
+└─ <span class="reference">references/</span>
+   ├─ scaffolding.md
+   ├─ foundations.md
+   ├─ contracts.md
+   ├─ data-flow.md
+   ├─ operations.md
+   ├─ security.md
+   ├─ telemetry.md
+   ├─ testing.md
+   └─ runtimes.md
+
+<span class="excluded">server/skill-maintenance/         repository-only; not installed</span></div>
+          </div>
+        </div>
+
+        <div class="install-flow" aria-label="GitHub skill installation flow">
+          <div class="install-step" style="--tone: var(--cyan)"><span class="ordinal">01 / Publish</span><strong>Push</strong><p>Commit the complete <code>server/skill/</code> directory and push it to the public GitHub repository.</p></div>
+          <div class="install-step" style="--tone: var(--acid)"><span class="ordinal">02 / Install</span><strong>Add</strong><p>The Skills CLI resolves the direct GitHub tree URL and installs the package for the selected agent.</p></div>
+          <div class="install-step" style="--tone: var(--mint)"><span class="ordinal">03 / Route</span><strong>Invoke</strong><p>Use <code>$server</code> to explain, audit, implement, or scaffold. The router loads only the concern slices needed.</p></div>
+        </div>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Skills.sh + GitHub</p><h2>One source. One install command.</h2></div>
+          <p>Use the direct tree URL as the stable public entrypoint. The skill name comes from its frontmatter, so the installed invocation remains <code>$server</code> even though the source directory is named <code>skill</code>.</p>
+        </div>
+
+        <div class="skill-command-grid">
+          <div>
+            <div class="code-block">
+              <div class="code-head"><span>Install globally for Codex</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>npx skills add \
+  https://github.com/raphaelmans/node-architecture/tree/main/server/skill \
+  --agent codex \
+  --global \
+  --yes</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>Whole-repository discovery</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>npx skills add raphaelmans/node-architecture \
+  --skill server \
+  --agent codex \
+  --global \
+  --yes</code></pre>
+            </div>
+          </div>
+
+          <div class="skill-notes">
+            <div class="skill-note"><strong>Verify discovery</strong><p>Run <code>npx skills add raphaelmans/node-architecture --list</code>. The repository should report both <code>client</code> and <code>server</code>.</p></div>
+            <div class="skill-note"><strong>Update deliberately</strong><p>Run <code>npx skills update server --global --yes</code> after reviewing a newer repository revision.</p></div>
+            <div class="skill-note"><strong>Keep it portable</strong><p>Install the whole package, not only <code>SKILL.md</code>. Every routed concern depends on files under <code>references/</code>.</p></div>
+            <div class="skill-note"><strong>Invoke naturally</strong><p>Example: <code>Use $server scaffold users/create with Hono.</code></p></div>
+          </div>
+        </div>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Repository-aware scaffolding</p><h2>Preflight first. Write once.</h2></div>
+          <p>The ninth slice applies a runtime-neutral contract to listed and unlisted stacks. It adapts to the repository, retrieves current primary sources for version-sensitive choices, preserves dirty files, and never leaves a partial capability.</p>
+        </div>
+
+        <div class="skill-command-grid">
+          <div class="code-block">
+            <div class="code-head"><span>Supported scaffold commands</span><button class="copy-button" type="button">Copy</button></div>
+            <pre><code><span class="tok-comment"># Missing server foundations only</span>
+$server scaffold foundation
+
+<span class="tok-comment"># One real vertical capability</span>
+$server scaffold users/create
+
+<span class="tok-comment"># Explicit placement override; never an overwrite grant</span>
+$server scaffold users/create using canonical layout</code></pre>
+          </div>
+
+          <div class="skill-notes">
+            <div class="skill-note"><strong>Gate the write</strong><p>Detect the language, runtime, framework, dependency/build manager, contracts, access policy, persistence, tests, layout, and dirty targets; verify version-sensitive choices from official sources.</p></div>
+            <div class="skill-note"><strong>Preserve the flow</strong><p><code>adapter → controller → one service or use case → repository/provider port</code>.</p></div>
+            <div class="skill-note"><strong>Select by behavior</strong><p>Use a service for one domain. Add a use case only for cross-service transactions, outbox work, or post-commit effects.</p></div>
+            <div class="skill-note"><strong>Verify real boundaries</strong><p>Test the contract, controller, service/use case authorization, and the actual detected or evidence-derived adapter.</p></div>
+          </div>
+        </div>
+
+        <hr class="rule">
+        <div class="section-head">
+          <div><p class="section-kicker">Progressive disclosure</p><h2>Load the smallest useful slice set.</h2></div>
+          <p>The router composes concerns when a task crosses boundaries. Canonical source guides stay under <code>server/core/</code> and <code>server/runtime/</code>; the installed references are curated, portable derivatives.</p>
+        </div>
+
+        <dl class="skill-slices">
+          <div class="skill-slice" style="--tone: var(--amber)"><dt>Scaffolding</dt><dd>Portable preflight, primary-source retrieval, stack-relative placement, dependencies, atomicity, and complete vertical generation.</dd><code>$server scaffold …</code></div>
+          <div class="skill-slice" style="--tone: var(--acid)"><dt>Foundations</dt><dd>Kernel boundaries, modules, controllers, services, use cases, repositories, factories, and DI.</dd><code>$server foundations</code></div>
+          <div class="skill-slice" style="--tone: var(--cyan)"><dt>Contracts</dt><dd>Zod wire contracts, envelopes, pagination, validation, public errors, naming, and OpenAPI generation.</dd><code>$server contracts</code></div>
+          <div class="skill-slice" style="--tone: var(--mint)"><dt>Data flow</dt><dd>Adapter-to-controller execution, reads, writes, transactions, persistence, IDs, and result mapping.</dd><code>$server data-flow</code></div>
+          <div class="skill-slice" style="--tone: var(--amber)"><dt>Operations</dt><dd>Jobs, outbox, events, webhooks, retries, idempotency, cron, and side-effect timing.</dd><code>$server operations</code></div>
+          <div class="skill-slice" style="--tone: var(--coral)"><dt>Security</dt><dd>Authentication, authorization, sessions, cookies, redirects, keys, RLS, and secret handling.</dd><code>$server security</code></div>
+          <div class="skill-slice" style="--tone: var(--violet)"><dt>Telemetry</dt><dd>Operational logging, Pino, OpenTelemetry, correlation, event naming, analytics, and privacy.</dd><code>$server telemetry</code></div>
+          <div class="skill-slice" style="--tone: var(--cyan)"><dt>Testing</dt><dd>Contract, adapter, controller, application, repository, concurrency, and transport-parity tests.</dd><code>$server testing</code></div>
+          <div class="skill-slice" style="--tone: var(--mint)"><dt>Runtimes</dt><dd>Node.js, typed environment configuration, tRPC, OpenAPI, Next.js, Express, Hono, Supabase, Pino, FormData, and caching.</dd><code>$server runtimes</code></div>
+        </dl>
+
+        <div class="skill-links">
+          <a class="skill-link" href="../server/skill/SKILL.md">Read SKILL.md</a>
+          <a class="skill-link" href="../server/core/scaffolding.md">Scaffolding policy</a>
+          <a class="skill-link" href="../consumer/INSTALL-SKILLS.md">Installation guide</a>
+          <a class="skill-link" href="https://github.com/raphaelmans/node-architecture/tree/main/server/skill">GitHub package</a>
+          <a class="skill-link" href="https://skills.sh/">Browse Skills.sh</a>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="shell">
@@ -1348,12 +1601,14 @@ app.onError((error, c) =&gt; {
     <div class="footer-links">
       <a href="../server/core/README.md">Core</a>
       <a href="../server/core/controllers.md">Controllers</a>
+      <a href="../server/core/scaffolding.md">Scaffolding</a>
       <a href="../server/core/conventions.md">Conventions</a>
       <a href="../server/core/observability.md">Observability</a>
       <a href="../server/core/testing-service-layer.md">Testing</a>
       <a href="../server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md">Next.js routes</a>
       <a href="../server/runtime/nodejs/metaframeworks/express/README.md">Express</a>
       <a href="../server/runtime/nodejs/metaframeworks/hono/README.md">Hono</a>
+      <a href="../server/skill/SKILL.md">$server skill</a>
     </div>
   </footer>
 

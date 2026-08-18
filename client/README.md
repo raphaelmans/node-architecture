@@ -46,6 +46,7 @@ This documentation emphasizes:
 | Document | Description |
 | -------- | ----------- |
 | [Client Skill Router](./skill/SKILL.md) | Routes `$client` tasks through the smallest relevant architecture slices |
+| [Scaffolding Slice](./skill/references/scaffolding.md) | Runs portable `$client scaffold` preflight and derives listed or unlisted stack integration from current evidence |
 | [Skill References](./skill/references/) | Portable concern-based derivatives of the canonical client docs |
 
 ### Core
@@ -54,6 +55,7 @@ This documentation emphasizes:
 | -------- | ----------- |
 | [Core Index](./core/README.md) | Core contracts and reading order |
 | [Onboarding](./core/onboarding.md) | New project + contributor startup checklist |
+| [Scaffolding Contract](./core/scaffolding.md) | Framework-agnostic safety, evidence, atomicity, and boundary contract |
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
 | [Composition Root](./core/composition-root.md) | Factories, dependency injection, runtime lifetimes |
@@ -77,7 +79,9 @@ This documentation emphasizes:
 | -------- | ----------- |
 | [Frameworks Index](./frameworks/README.md) | Framework-specific docs |
 | [ReactJS Index](./frameworks/reactjs/README.md) | React-specific implementation |
+| [React Scaffolding](./frameworks/reactjs/scaffolding.md) | React implementation of the portable scaffolding contract |
 | [Next.js Index](./frameworks/reactjs/metaframeworks/nextjs/README.md) | Next.js App Router + SSR/params + adapters |
+| [Next.js Scaffolding](./frameworks/reactjs/metaframeworks/nextjs/scaffolding.md) | Next.js specialization for repository-aware generation |
 
 ### Supplemental
 
@@ -89,7 +93,7 @@ This documentation emphasizes:
 
 1. Start with [./core/onboarding.md](./core/onboarding.md).
 2. Read [./core/README.md](./core/README.md) and [./core/conventions.md](./core/conventions.md).
-3. Add framework details from [./frameworks/reactjs/README.md](./frameworks/reactjs/README.md) and [./frameworks/reactjs/metaframeworks/nextjs/README.md](./frameworks/reactjs/metaframeworks/nextjs/README.md) only when they apply.
+3. Add a documented framework specialization when available; otherwise derive it from repository evidence and current official resources.
 4. Use [../legacy/client/overview.md](../legacy/client/overview.md) only for historical examples.
 
 ## Core Principles

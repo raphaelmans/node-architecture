@@ -14,6 +14,7 @@ Added an installable `$client` architecture router with eight composable concern
 - Added Codex and repository-local installation guidance.
 - Disabled `copy-guides.sh`; it now exits without changing a consumer repository and explains the skill migration.
 - Replaced active consumer-copy instructions with skill installation, maintenance, AGENTS alignment, and OpenCode migration guidance.
+- Added a Skills page to the standalone client architecture field guide showing the router, slice map, routing examples, and install-versus-maintenance boundary.
 
 ## Compatibility
 

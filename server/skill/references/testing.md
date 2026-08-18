@@ -21,10 +21,10 @@ Use Arrange, Act, Assert; one observable behavior per test; and deterministic do
 ## Test by Layer
 
 - Contract: representative valid/invalid wire values and serialization; own the full schema matrix once.
-- Framework adapter: real framework request/response integration with a stub controller; assert extraction, validation normalization, auth/rate-limit boundary, status/envelope, and one controller call.
+- Framework adapter: real framework request/response integration with a stub controller; assert extraction, validation normalization, authentication/coarse-gate/rate-limit behavior, status/envelope, and one controller call.
 - Controller: stub one service/use case; assert input/actor mapping, null-to-domain-error policy, and public response mapping.
 - Use case: fake/stub ports; assert orchestration, transaction boundary, outbox/post-commit ordering, compensation, logs, and analytics ownership.
-- Service: fake repositories/providers; assert domain policy and self-contained reads/writes.
+- Service: fake repositories/providers; assert domain policy, ownership/tenant/operation-specific capability authorization, and self-contained reads/writes.
 - Repository: real test database when SQL, constraints, transaction visibility, upserts, or concurrency matter.
 - Runtime adapter: assert provider mapping, redaction, retry/failure policy, and translated error causes without live network access.
 

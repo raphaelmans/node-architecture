@@ -8,22 +8,23 @@ Framework docs must implement these contracts, not replace them.
 Use this order for a new project or contributor onboarding:
 
 1. `client/core/onboarding.md`
-2. `client/core/architecture.md`
-3. `client/core/conventions.md`
-4. `client/core/folder-structure.md`
-5. `client/core/composition-root.md`
-6. `client/core/client-api-architecture.md`
-7. `client/core/validation-zod.md`
-8. `client/core/domain-logic.md`
-9. `client/core/query-keys.md`
-10. `client/core/server-state-tanstack-query.md`
-11. `client/core/state-management.md`
-12. `client/core/error-handling.md`
-13. `client/core/logging.md`
-14. `client/core/product-analytics.md`
-15. `client/core/realtime.md`
-16. `client/core/testing.md`
-17. `client/core/testing-vitest.md`
+2. `client/core/scaffolding.md` when bootstrapping infrastructure or a feature
+3. `client/core/architecture.md`
+4. `client/core/conventions.md`
+5. `client/core/folder-structure.md`
+6. `client/core/composition-root.md`
+7. `client/core/client-api-architecture.md`
+8. `client/core/validation-zod.md`
+9. `client/core/domain-logic.md`
+10. `client/core/query-keys.md`
+11. `client/core/server-state-tanstack-query.md`
+12. `client/core/state-management.md`
+13. `client/core/error-handling.md`
+14. `client/core/logging.md`
+15. `client/core/product-analytics.md`
+16. `client/core/realtime.md`
+17. `client/core/testing.md`
+18. `client/core/testing-vitest.md`
 
 Then read framework details:
 
@@ -65,6 +66,7 @@ Rule:
 | Document | Description |
 | --- | --- |
 | [Onboarding](./onboarding.md) | New project + contributor startup checklist |
+| [Scaffolding Contract](./scaffolding.md) | Framework-agnostic safety, evidence, atomicity, and boundary policy |
 | [Architecture](./architecture.md) | Core principles and boundaries |
 | [Conventions](./conventions.md) | Layer ownership + decision flows |
 | [Folder Structure](./folder-structure.md) | Directory and feature starter contracts |

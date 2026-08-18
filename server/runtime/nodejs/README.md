@@ -18,6 +18,11 @@ Node.js infrastructure and vendor adapters
 
 No Node.js adapter may be imported by client code or by browser-safe shared contracts.
 
+## Scaffolding
+
+- [Node.js Scaffolding](./scaffolding.md) implements the runtime-agnostic core contract for existing Node.js repositories.
+- Its Next.js, Express, and Hono adapter guides are known specializations, not an allowlist.
+
 ## Libraries
 
 - [Libraries Index](./libraries/README.md)

@@ -56,7 +56,7 @@ node-architecture/
 1. Read [consumer/INSTALL-SKILLS.md](./consumer/INSTALL-SKILLS.md).
 2. Install GitHub path `client/skill` from `raphaelmans/node-architecture` with destination name `client`.
 3. Install GitHub path `server/skill` with destination name `server`.
-4. Invoke `$client` or `$server` with a concern or task, such as `$server contracts review this route`.
+4. Invoke `$client` or `$server` with a concern or task, such as `$server contracts review this route` or `$server scaffold users/create`.
 
 `copy-guides.sh` is disabled. Installable skills are the supported agent-facing distribution path.
 

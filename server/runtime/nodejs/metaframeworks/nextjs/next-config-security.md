@@ -38,4 +38,4 @@ Production-only additions:
 
 - Security policy can differ by environment, but defaults must be safe.
 - Do not disable critical security headers in production.
-
+- Read deployment mode from the validated [Next.js environment boundary](./environment-variables.md), not from scattered `process.env` access.

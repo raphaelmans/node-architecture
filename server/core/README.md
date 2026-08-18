@@ -242,6 +242,7 @@ src/
 
 | Document                                    | Description                                 |
 | ------------------------------------------- | ------------------------------------------- |
+| [Server Scaffolding Contract](./scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
 | [Framework-Neutral Controllers](./controllers.md) | Portable boundary between framework adapters and application logic |
 | [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
@@ -340,6 +341,8 @@ These remain out of scope:
 - A mandated OpenTelemetry exporter/backend (the propagation contract is defined; runtime exporter choice remains project-specific)
 
 ## Checklist for New Modules
+
+Use `$server scaffold <feature>/<operation>` to apply this checklist through repository-aware preflight, or follow it manually.
 
 - [ ] Create module folder under `src/lib/modules/<module>/`
 - [ ] Define entities in `src/lib/shared/infra/db/schema.ts`

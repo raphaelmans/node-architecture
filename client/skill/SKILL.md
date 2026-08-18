@@ -1,6 +1,6 @@
 ---
 name: client
-description: Apply this repository's client architecture when designing, explaining, reviewing, testing, implementing, or refactoring frontend features. Use for React or Next.js client work involving feature boundaries, shared contracts, client APIs, TanStack Query, state, realtime, operational logging, product analytics, composition roots, dependency injection, error handling, forms, or Vitest. Route each request through the smallest relevant architecture slices and do not use for backend-only work.
+description: Apply this repository's client architecture when designing, explaining, reviewing, scaffolding, testing, implementing, or refactoring frontend features. Use for any client framework when work involves repository bootstrapping, feature scaffolds, feature boundaries, shared contracts, client APIs, state synchronization, telemetry, composition roots, dependency injection, errors, forms, or tests. Known React and Next.js slices are specializations, not an allowlist. Route each request through the smallest relevant architecture slices and do not use for backend-only work.
 ---
 
 # Client Architecture
@@ -14,12 +14,15 @@ Route client work through modular architecture slices. Load only the references 
 3. Select the smallest relevant slice set from the routing table.
 4. Read every selected reference completely before acting.
 5. Inspect existing project conventions and dependencies. Apply framework or vendor guidance only when that technology is present or explicitly requested.
-6. For implementation, verify the result at the narrowest meaningful boundary and report unrelated drift without changing it.
+6. For version-sensitive framework, dependency, configuration, lifecycle, module-format, build, or deployment decisions, retrieve current version-applicable primary documentation before acting.
+7. If the detected stack has no named slice, apply core guidance and derive the integration from repository evidence and official stack resources; do not reject it merely because it is unlisted.
+8. For implementation, verify the result at the narrowest meaningful boundary and report unrelated drift without changing it.
 
 ## Route Slices
 
 | Slice | Load when the task involves | Reference |
 | --- | --- | --- |
+| `scaffolding` | `$client scaffold`, repository preflight, missing infrastructure, dependency approval, vertical feature generation | [references/scaffolding.md](references/scaffolding.md) |
 | `foundations` | boundaries, folders, composition roots, factories, feature structure, domain placement | [references/foundations.md](references/foundations.md) |
 | `contracts` | Zod wire contracts, validation, DTO mapping, `AppError`, safe error UX | [references/contracts.md](references/contracts.md) |
 | `data-flow` | `clientApi`, `featureApi`, query adapters, TanStack Query, query keys, HTTP, tRPC | [references/data-flow.md](references/data-flow.md) |
@@ -29,16 +32,21 @@ Route client work through modular architecture slices. Load only the references 
 | `react` | React composition, hooks, forms, presentation boundaries, UI and toast facades | [references/react.md](references/react.md) |
 | `nextjs` | App Router, SSR/RSC, params, environment, tRPC/Ky adapters, Next.js tests | [references/nextjs.md](references/nextjs.md) |
 
-Treat `core` and `architecture` as aliases for `foundations`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
+Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core` and `architecture` as aliases for `foundations`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 
 When the user names multiple concerns, load all matching references. Examples:
 
+- `$client scaffold foundation`: `scaffolding` + `foundations` + capability slices discovered during preflight
+- `$client scaffold users/create`: `scaffolding` + `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `nextjs`, `telemetry`, or state slices only when detected/requested capabilities require them
+- `$client scaffold users/create` in Vue or Svelte: `scaffolding` + capability slices; derive framework integration from repository evidence and current official docs
 - Next.js logging or Sentry: `telemetry` + `nextjs`
 - Create a React feature: `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `telemetry` when the implementation emits operational records or product events
 - Realtime React cache synchronization: `state-realtime` + `data-flow` + `react` + `testing`
 - Form validation and error UX: `contracts` + `react` + `testing`
 
 When invoked without a task, show the slice menu with two or three context-aware examples. Do not start an audit or implementation automatically.
+
+When invoked as `$client scaffold`, read `scaffolding` first, then every capability slice selected by preflight. Load `react` or `nextjs` only when detected or requested. For an unlisted framework, retain the generic slice and retrieve the official resources needed to derive its specialization. Complete evidence, atomicity, and dependency approval before writing. Keep the user-facing command under `$client`; do not redirect to another skill.
 
 ## Preserve These Invariants
 

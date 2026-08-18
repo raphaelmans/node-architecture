@@ -13,6 +13,8 @@ Use this slice for architecture boundaries, feature placement, composition roots
 
 ## Decision Order
 
+For scaffolding, treat the roles below as portable contracts rather than universal filenames. Preserve compatible placement in the target repository. A documented framework specialization may supply a canonical mapping; for an unlisted framework, derive and approve that mapping from repository evidence and current official guidance before writing.
+
 Place behavior by asking, in order:
 
 1. Is it transport-specific? Put it behind `clientApi` or the metaframework transport adapter.
@@ -48,6 +50,8 @@ route/page
 Do not add a client controller merely to add another hop. Add a workflow abstraction only when a real multi-step UX flow benefits from an independently testable coordinator.
 
 ## Feature Structure
+
+The following TypeScript/React-shaped paths are the documented React specialization. Other frameworks map the same ownership roles to their native view, state, composition, and test conventions instead of copying these filenames.
 
 Keep cross-feature infrastructure under `src/common/`:
 

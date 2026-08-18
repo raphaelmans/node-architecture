@@ -1,4 +1,4 @@
 interface:
   display_name: "Client Architecture"
   short_description: "Apply modular client architecture guidance"
-  default_prompt: "Use $client to route this task through the relevant client architecture slices."
+  default_prompt: "Use $client to route or scaffold this task through the relevant client architecture slices, deriving unlisted framework integrations from repository evidence and current official resources."

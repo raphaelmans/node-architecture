@@ -40,6 +40,18 @@ For tools that discover project skills under `.agents/skills/`, place the comple
 
 Copy or vendor the directory only after confirming the destination does not contain local changes. Do not install only `SKILL.md`; the router requires its references.
 
+## Server Scaffolding
+
+Scaffolding remains an action of the installed `$server` router:
+
+```text
+$server scaffold foundation
+$server scaffold <feature>/<operation>
+$server scaffold <feature>/<operation> using canonical layout
+```
+
+It applies the generic foundation and capability contract to listed and unlisted runtimes/frameworks. The skill completes repository, authoritative-source, and dependency preflight before writing; documented Node.js adapters are specializations rather than an allowlist, and it does not bootstrap an arbitrary application or framework merely to fit an example.
+
 ## Updating
 
 The installer intentionally refuses to overwrite an existing skill. Review local changes, remove or archive the old installed directory deliberately, and reinstall from the desired repository revision.

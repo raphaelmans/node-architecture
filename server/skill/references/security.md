@@ -29,6 +29,8 @@ Use HTTP-only, secure production cookies with an intentional SameSite policy. Ro
 
 Keep privileged clients out of ordinary factories so code review can identify bypass-RLS paths immediately.
 
+Declare secret keys only in the validated server environment schema. Declare browser-safe provider values explicitly under the public client schema and require the framework's public prefix. Runtime factories import validated values and pass only the key needed by each provider adapter; neither application code nor generic context objects receive the env module.
+
 ## Redirects and Request Trust
 
 Build OAuth, PKCE, and other security-sensitive redirects from a validated application origin. Accept only validated relative next paths and reject protocol-relative paths. Resolve the sanitized path with the URL parser and compare the final origin so backslash normalization cannot bypass prefix checks. OAuth exchange failures must be logged through the central error policy and redirected to a safe same-origin error destination. Do not derive trusted hosts from forwarded headers unless a configured trusted-proxy boundary has validated them.
@@ -57,6 +59,7 @@ Branch on stable provider error codes, never localized message text. Translate p
 - Publishable and privileged Supabase clients are separate.
 - RLS and privileged bypass paths are tested.
 - Secrets, credentials, cookies, and raw tokens cannot reach logs or public errors.
+- Secret/public environment exposure is validated centrally and configuration is injected narrowly.
 - Security headers and upload limits match the deployed runtime.
 
 ## Derivation Sources

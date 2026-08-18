@@ -1212,9 +1212,9 @@ const loggerMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
     "Request started",
   );
 
-  if (process.env.NODE_ENV !== "production") {
-    ctx.log.debug({}, "Request processing");
-  }
+  // The logger adapter's configured level suppresses debug records in
+  // environments where they are disabled.
+  ctx.log.debug({}, "Request processing");
 
   try {
     const result = await next({ ctx });
@@ -1394,6 +1394,7 @@ Session refresh and route protection:
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { env } from "@/env";
 
 const PROTECTED_ROUTES = ["/dashboard", "/settings", "/profile"];
 const AUTH_ROUTES = ["/login", "/register", "/magic-link"];
@@ -1412,8 +1413,8 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
       cookies: {
         getAll() {
@@ -1747,6 +1748,11 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 ---
 
 ## Environment Variables
+
+In a Next.js application, declare and validate these names in the canonical
+[environment boundary](../../metaframeworks/nextjs/environment-variables.md).
+The values below document deployment configuration; application code imports
+the validated `env` object instead of reading `process.env` directly.
 
 ```bash
 # .env.local

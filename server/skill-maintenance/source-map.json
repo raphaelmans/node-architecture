@@ -26,7 +26,7 @@
         "server/runtime/nodejs/libraries/supabase/integration.md",
         "server/runtime/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "772d6ca5f90e650df8f98be568860836feef4f6f226e795d222600fd2c75c804"
+      "fingerprint": "00017f1813f55be0fd842c3e880bf53ed9cde04054f290e49d7492f0db00566f"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
@@ -39,7 +39,7 @@
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md"
       ],
-      "fingerprint": "938a851543b20c40c6f77f6adb5ac75e09b484ab63db0754d999aad829c42493"
+      "fingerprint": "294c1c59c4478ede8477a82716288bae0ae00608ac319d30ed1f0035905f9369"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -70,17 +70,39 @@
         "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
         "server/runtime/nodejs/metaframeworks/README.md",
         "server/runtime/nodejs/metaframeworks/express/README.md",
+        "server/runtime/nodejs/metaframeworks/express/scaffolding.md",
         "server/runtime/nodejs/metaframeworks/hono/README.md",
+        "server/runtime/nodejs/metaframeworks/hono/scaffolding.md",
         "server/runtime/nodejs/metaframeworks/nestjs/README.md",
         "server/runtime/nodejs/metaframeworks/nextjs/README.md",
         "server/runtime/nodejs/metaframeworks/nextjs/caching-revalidation.md",
         "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/environment-variables.md",
         "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
         "server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md",
         "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md"
+        "server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md",
+        "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
+        "server/runtime/nodejs/scaffolding.md"
       ],
-      "fingerprint": "14399348578354cdf03cb077ef20b86e6735b645ff06ce431488f38dd4aa8bff"
+      "fingerprint": "5d13a27109e886665eb01eed6e482d2257589ba018cccf43da34aa0542dac4c8"
+    },
+    "scaffolding": {
+      "reference": "server/skill/references/scaffolding.md",
+      "sources": [
+        "server/README.md",
+        "server/core/README.md",
+        "server/core/api-contracts-zod-first.md",
+        "server/core/api-response.md",
+        "server/core/controllers.md",
+        "server/core/error-handling.md",
+        "server/core/logging.md",
+        "server/core/observability.md",
+        "server/core/scaffolding.md",
+        "server/core/testing-service-layer.md",
+        "server/core/transaction.md"
+      ],
+      "fingerprint": "7093567e4887e740da8eeedfb28639c6201bab17c7f2dd1c4a00d87e845fe05b"
     },
     "security": {
       "reference": "server/skill/references/security.md",
@@ -95,7 +117,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
         "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md"
       ],
-      "fingerprint": "4032f5eccd5d3e43d5fbe5b154ae941d7b9b339327d18be6476d177e09f82cba"
+      "fingerprint": "02e70ae4ab0ba03547a3dd883e9baa94dfaa686ad1cb38d8f3ff344cff486a94"
     },
     "telemetry": {
       "reference": "server/skill/references/telemetry.md",
@@ -127,7 +149,7 @@
         "server/runtime/nodejs/metaframeworks/express/README.md",
         "server/runtime/nodejs/metaframeworks/hono/README.md"
       ],
-      "fingerprint": "e2c08bad1a2b5da8aecefc777273db861866182e9294bb639e5ecaf0d70a2ee7"
+      "fingerprint": "b2d238ebca075f0b7408493ef43b10d2d7f9d0e8dfa5a08bc1ef01f9eef5c2ba"
     }
   }
 }

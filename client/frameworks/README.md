@@ -8,6 +8,8 @@ Start with:
 - [Client Core Onboarding](../core/onboarding.md)
 - [Client Core README](../core/README.md)
 
-Current frameworks:
+Known framework specialization (not an allowlist):
 
 - [ReactJS](./reactjs/README.md)
+
+For another client framework, apply the core scaffolding contract and derive its specialization from repository evidence plus current official resources.

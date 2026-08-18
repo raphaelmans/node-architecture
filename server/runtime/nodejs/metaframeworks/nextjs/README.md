@@ -28,9 +28,11 @@ Next.js owns the request lifecycle and response adapter. It never becomes the co
 
 | Document | Description |
 | --- | --- |
+| [Scaffolding](./scaffolding.md) | Next.js implementation of the portable server capability adapter contract |
 | [Route Handlers](./route-handlers.md) | Patterns for non-tRPC `route.ts` handlers (response envelope + `requestId` + `handleError`) |
 | [FormData Transport](./formdata-transport.md) | FormData transport conventions + `zod-form-data` for Next.js + tRPC |
 | [Caching + Revalidation](./caching-revalidation.md) | `revalidate`, tagged cache, on-demand invalidation |
+| [Environment Configuration](./environment-variables.md) | Typed server/client variables, T3 Env, composition-boundary injection, build validation, and tests |
 | [Metadata + SEO](./metadata-seo.md) | `generateMetadata`, `robots.ts`, `sitemap.ts` patterns |
 | [Next Config Security](./next-config-security.md) | Security headers, CSP/HSTS, redirects and rewrites |
 | [Cron Routes](./cron-routes.md) | Authenticated cron endpoint conventions and failure handling |

@@ -4,12 +4,19 @@ Use this slice for React component boundaries, composition, server-state hooks, 
 
 ## Contents
 
+- [Scaffolding](#scaffolding)
 - [Component layers](#component-layers)
 - [Hooks and composition](#hooks-and-composition)
 - [Forms](#forms)
 - [Error and toast handling](#error-and-toast-handling)
 - [UI and state](#ui-and-state)
 - [Review checklist](#review-checklist)
+
+## Scaffolding
+
+Load the generic scaffolding contract first. Detect the installed React version, renderer, build tool/metaframework, language and module mode, source layout, JSX transform, providers, state/query layer, and test environment. Retrieve current official documentation for version-sensitive lifecycle, peer, configuration, and build decisions. React and Next.js are documented specializations, not requirements for other client frameworks.
+
+Adaptive placement preserves compatible repository conventions. React canonical mode maps the generic contract to `common`, `features`, shared contracts, a composition root, and mirrored tests. Resolve concrete packages only after capability activation, installed-graph inspection, exact-version selection, and approval.
 
 ## Component Layers
 
@@ -93,4 +100,4 @@ For realtime, subscribe in an effect, return teardown, use a stable feature real
 
 ## Derivation Sources
 
-Derived from all source repository documents under the React framework directory: overview, conventions, composition, error handling, forms, server-state patterns, Zustand, UI patterns, and realtime lifecycle. These paths are provenance only in an installed skill.
+Derived from all source repository documents under the React framework directory: scaffolding, overview, conventions, composition, error handling, forms, server-state patterns, Zustand, UI patterns, and realtime lifecycle. These paths are provenance only in an installed skill.

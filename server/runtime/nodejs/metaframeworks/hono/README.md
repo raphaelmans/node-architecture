@@ -2,6 +2,8 @@
 
 > Hono is an optional inbound adapter. Hono `Context`, request helpers, middleware, and response helpers remain outside application code.
 
+For repository-aware generation, apply the [Hono Scaffolding](./scaffolding.md) specialization.
+
 ## Canonical Flow
 
 ```text
@@ -64,6 +66,7 @@ app.onError((error, c) => {
 ## Rules
 
 - Hono middleware owns authentication, rate limiting, and observability scope.
+- Services/use cases own ownership, tenant, domain-role, and operation-specific authorization.
 - Every `zValidator` uses a hook that throws the shared `ValidationError`; do
   not allow its default response to bypass the canonical error envelope.
 - Narrow the framework-neutral numeric HTTP status at the Hono boundary before

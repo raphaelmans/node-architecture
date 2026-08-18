@@ -78,7 +78,7 @@ Every externally exposed HTTP/RPC capability has a plain TypeScript controller u
 
 **Guard placement:**
 
-- Cross-cutting authentication/authorization context enrichment belongs in reusable transport middleware.
+- Cross-cutting authentication and coarse authorization-context enrichment belongs in reusable transport middleware.
 - A capability-specific lookup or invariant belongs in the selected service/use case.
 - If a capability needs two services, create a use case and inject it into the controller; do not add an ad-hoc pre-fetch in the framework adapter.
 
