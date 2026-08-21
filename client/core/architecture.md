@@ -12,7 +12,7 @@ Core rules that should survive framework changes (React/Vue/Svelte) and metafram
   - presentation remains render-only
 - **Explicit boundaries:** IO happens behind interfaces; cache behavior is defined in one place.
 - **Testable feature APIs:** feature endpoints are exposed via `I<Feature>Api` + class implementations with injected dependencies.
-- **One wire contract:** client and server import the same Zod input/response schemas from `src/lib/modules/<module>/shared/contracts/`.
+- **One wire contract:** client and server import the same Zod input/response schemas from the resolved shared-contract boundary (`src/lib/modules/<module>/shared/contracts/` in one project or an activated contract package in a monorepo).
 - **Separate telemetry ports:** operational diagnostics use `AppLogger`; behavioral events use `ProductAnalytics`.
 - **Context at boundaries:** correlation, release, route, and safe actor context are enriched by adapters instead of traveling in business DTOs.
 - **Composition-root ownership:** dependency-heavy infrastructure is built through factories and assembled once with explicit browser/SSR lifetimes.

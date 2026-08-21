@@ -20,9 +20,11 @@ featureApi ---------> AppLogger          # contract/mapping diagnostics only
 mutation/workflow --> ProductAnalytics   # typed event after meaningful success
 ```
 
-Public request/response schemas are not owned by any of these client layers. They are imported from the owning module's isomorphic contract directory:
+Public request/response schemas are not owned by any of these client layers. In the single-project topology, they are imported from the owning module's isomorphic contract directory:
 
 `src/lib/modules/<module>/shared/contracts/`
+
+In a monorepo topology, import the same contract role from an activated contract package through its public exports when the contract crosses package boundaries.
 
 ## Layers
 

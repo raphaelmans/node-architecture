@@ -13,7 +13,7 @@ Use this slice for client test layout, behavioral unit tests, test doubles, feat
 
 ## Mirror Layout
 
-Keep every test under `src/__tests__/` and mirror the source path exactly:
+Within each client app/package, keep every test under its `src/__tests__/` and mirror the source path exactly. The example below is the single-project mapping:
 
 ```text
 src/

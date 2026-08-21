@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "entries": {
+    "turborepo": {
+      "source": "https://github.com/vercel/turborepo/skills/turborepo",
+      "type": "github-subdir",
+      "installed_at": "2026-08-19T15:10:36.705938+08:00",
+      "repo_url": "https://github.com/vercel/turborepo.git",
+      "subdir": "skills/turborepo",
+      "version": "fc02d72",
+      "tree_hash": "1570c1080ac1a64a0ec7e0b53cf79a5815692bc8",
+      "file_hashes": {
+        "SKILL.md": "sha256:150b2d2dfbc7f1e6c1990827a8debd9bd2756320c8a0c439f69f7b54cdd57ced",
+        "command/turborepo.md": "sha256:ad4437d5dd02aa30835c556504ef836f43c29e660d9ed7dd5865b7daf3b8b4fd",
+        "references/best-practices/RULE.md": "sha256:ab7d339168386107d0a6b9259f2e6586b1526d53975682a08442babfa1b7bb58",
+        "references/best-practices/dependencies.md": "sha256:422cbba88be554e857fd2bce4bd60983198bfd48e253f8b57ac833741077f3d3",
+        "references/best-practices/packages.md": "sha256:eb393cfc4e2824612e862db5d30868948952e22c48b9885b20ef43f5d982732e",
+        "references/best-practices/structure.md": "sha256:4ff5b82b785d83852f337e5994befe6534d99b9db862dbff8b7d950cf00d3369",
+        "references/boundaries/RULE.md": "sha256:70d66f5ba31c0caa788b68b99b8f010eb71d1ab1a55d1d6faec024d4a86afb56",
+        "references/caching/RULE.md": "sha256:cb68d066937eb4a91999236d2afb685b623ae641e44c8e839cb993b4c8f66527",
+        "references/caching/gotchas.md": "sha256:4a301996476b0b140a7ff434767c6f9b1ac91559222706cf56987d520fdcf2ab",
+        "references/caching/remote-cache.md": "sha256:aadde0562fd51fb6593c890af25851419730b714d84e9477d8c190479d31e530",
+        "references/ci/RULE.md": "sha256:f78461824b21955f702c24a4fbf287c71a4f9eec79d79e9fc0fd11b014a2eaf1",
+        "references/ci/github-actions.md": "sha256:050b34c6488c08a5738afa6eb5060cc0aee3208bb85f924f08a8727a0eb3c80e",
+        "references/ci/patterns.md": "sha256:fdaa9fa17dae3f4849efa9a9312dfb2929181609b0ed428224db03bb4fcbe6d7",
+        "references/ci/vercel.md": "sha256:cf47de0da926980841aebd9cbfc649f49e0d18a108afc622386825705538b946",
+        "references/cli/RULE.md": "sha256:7f323ad405086b17fbafa516a9feec597ad94323492954329e9aafb5b51f8e18",
+        "references/cli/commands.md": "sha256:2fcaae0230e350340655787b5c9116f535bc7f1abaa317111d492226cdb139c4",
+        "references/configuration/RULE.md": "sha256:0d977a8eb3f247c9d5dc134acbf5997ce2acf1779108e9a76b8315e85235ea0e",
+        "references/configuration/global-options.md": "sha256:a9cda5ba17756d82944b8f085f41790fcfcae26554ab5637476394c868c141a7",
+        "references/configuration/gotchas.md": "sha256:5623c00a9b0ff15fe4e769a7cd5a447d3c4af356fbe053799523353976812d38",
+        "references/configuration/tasks.md": "sha256:d41b3a6efc6852206aa2bf39778727fdc2f9dd84521b13702a403cb18f84fd55",
+        "references/environment/RULE.md": "sha256:6c950440c2a7ab69cf006ad85f62e360352d705eb4593ab975c73055782217e5",
+        "references/environment/gotchas.md": "sha256:91196dc9169b1f4bc297a9473bd500ddc66f2e0f8438acbc98af6399dbc5b299",
+        "references/environment/modes.md": "sha256:e62247076f8b84d6897ab3ec835642736074fc36da10980ede69c23c1c923fd8",
+        "references/filtering/RULE.md": "sha256:2d73e0190586e233cce7dd4599eb368d7d8f846fdc68f0d19ce06a7e3ec6166c",
+        "references/filtering/patterns.md": "sha256:c03f856b8c76f137a1ef31efdbc9796b18c0a2b096e48aff6ce2ee5ff4cac4f0",
+        "references/watch/RULE.md": "sha256:9f0706f10dc7cf3a9115214f31195d6dadf237966cba13fe7ff8b264ba993c2b"
+      }
+    }
+  }
+}

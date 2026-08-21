@@ -18,9 +18,9 @@ Keep domain and service code transport-agnostic while supporting:
 - Reuse the same schemas in the client and every enabled transport adapter
 - Never hand-maintain a second client copy of a server contract
 
-## Canonical Location
+## Topology Mapping
 
-Module-owned contracts that cross the client/server boundary live here:
+In the single-project topology, module-owned contracts that cross the client/server boundary use this mapping:
 
 ```text
 src/lib/modules/<module>/shared/contracts/
@@ -54,6 +54,8 @@ export type CreateUserResponse = z.infer<typeof CreateUserResponseSchema>;
 
 Application-wide transport primitives such as response envelopes and pagination remain in `src/lib/shared/kernel/`. Do not move a module-owned contract into the kernel merely because both client and server use it.
 
+In a monorepo topology, activate a contract package when the schema crosses package boundaries. Consumers import its public exports; the package remains isomorphic and does not own server capability behavior.
+
 ### Payload vs Envelope
 
 `<Capability>ResponseSchema` validates the capability payload carried in `ApiResponse.data`; it does not redefine the universal envelope. The full success body is the composition of:
@@ -70,7 +72,7 @@ These are different types with different owners:
 
 | Type | Canonical location | Purpose |
 | --- | --- | --- |
-| Shared API input/response payload contract | `src/lib/modules/<module>/shared/contracts/` | Capability data serialized across the network |
+| Shared API input/response payload contract | Resolved isomorphic boundary: module-local in one project or an activated contract package when cross-package | Capability data serialized across the network |
 | Server-only command/internal DTO | `src/lib/modules/<module>/dtos/` or beside its use case | Internal orchestration data that is not a public wire contract |
 | Client feature model | `src/features/<feature>/types.ts` | Client-friendly model after DTO mapping |
 | Client form schema | `src/features/<feature>/schemas.ts` | UI-only fields and normalization composed from shared input schemas |
@@ -108,7 +110,7 @@ A framework adapter parses the shared input and passes the inferred type to the 
                                       usecase OR service -> repository
 ```
 
-## Contract Location Guidance
+## Single-Project Location Guidance
 
 - Module-specific cross-runtime contracts: `src/lib/modules/<module>/shared/contracts/*`
 - Universal cross-module primitives: `src/lib/shared/kernel/*`
@@ -116,6 +118,8 @@ A framework adapter parses the shared input and passes the inferred type to the 
 - Client-only form/view schemas: `src/features/<feature>/schemas.ts`
 
 Sharing is determined by the runtime boundary, not by the number of modules using the type. A contract used by one client feature and one server module is still cross-runtime and belongs in that module's `shared/contracts/`.
+
+For monorepo placement and activation, see [Monorepo Package Boundaries](../../monorepo/core/package-boundaries.md).
 
 ## Isomorphic Contract Rules
 

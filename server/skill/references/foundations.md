@@ -15,6 +15,10 @@ Use this slice for server layering, framework-neutral controllers, module struct
 
 For scaffolding, treat this flow as a portable role contract rather than a universal language syntax or directory tree. A documented runtime specialization may map it to concrete paths; for an unlisted runtime/language, derive and approve that mapping from repository evidence and current official guidance before writing.
 
+Single-project and monorepo topologies are equal canonical mappings. Load `workspace` when roles cross package boundaries; the Node.js/TypeScript tree below is one mapping, not a requirement to colocate deployable apps and reusable packages.
+
+For a new monorepo module, the workspace slice defaults activated capability and adapter roles to packages. The folder tree below still applies to a cohesive existing app-local module until migration is explicitly requested.
+
 ```text
 framework adapter
   -> framework-neutral controller

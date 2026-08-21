@@ -27,6 +27,7 @@ EXPECTED_SLICES = {
     "security",
     "telemetry",
     "testing",
+    "workspace",
 }
 
 
@@ -109,8 +110,12 @@ def validate_entry(repo_root: Path, name: str, entry: Any) -> str:
     if len(sources) != len(set(sources)):
         raise DriftError(f"Slice {name!r} declares duplicate source paths")
     if any(
-        not source.startswith("server/")
+        (
+            not source.startswith("server/")
+            and not source.startswith("monorepo/")
+        )
         or source.startswith("server/skill/")
+        or source.startswith("monorepo/skill/")
         or not source.endswith(".md")
         for source in sources
     ):
@@ -143,7 +148,8 @@ def validate_coverage(repo_root: Path, slices: dict[str, Any]) -> None:
     }
     canonical = canonical_sources(repo_root)
     missing = canonical - mapped
-    unknown = mapped - canonical
+    external = {source for source in mapped if source.startswith("monorepo/")}
+    unknown = mapped - canonical - external
     if missing or unknown:
         parts = []
         if missing:

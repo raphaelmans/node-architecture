@@ -90,6 +90,8 @@ tests                      -> ...
 
 Canonical mode changes placement, never overwrite authority. Architectural roles take precedence over exact filenames.
 
+When the resolved placement crosses workspace packages, `$monorepo` owns package creation, manifests, exports, dependency edges, and atomic cross-package coordination. Stop before partial server writes, resolve the topology through `monorepo/core/scaffolding.md`, then resume this contract inside the selected server app/package boundaries. A server-only change contained within existing packages remains owned here.
+
 ## Capability and Dependency Policy
 
 Activate capabilities from requested behavior, not package presence:

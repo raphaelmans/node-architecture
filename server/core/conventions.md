@@ -581,11 +581,13 @@ export type User = z.infer<typeof UserSchema>;
 - Shaped for API consumers
 - Validated at both sides of the network boundary
 
-For a Next.js repository containing both client and server code, module-owned wire contracts have one canonical location:
+For a single-project Next.js repository containing both client and server code, module-owned wire contracts use this mapping:
 
 ```text
 src/lib/modules/<module>/shared/contracts/
 ```
+
+For a monorepo topology, move the same role to `packages/contracts/<module>/` when it crosses package boundaries. A new module places capability application behavior in `packages/capabilities/<module>/` and concrete infrastructure in activated adapter packages by default; preserve cohesive existing app-local ownership until migration is explicit. Deployable composition roots select the adapters. See [Monorepo Package Boundaries](../../monorepo/core/package-boundaries.md).
 
 **Zod-based contract pattern:**
 
@@ -649,7 +651,7 @@ Some modules need **shared, reusable code** that is still domain-specific (not k
 
 Convention:
 
-- Put module-owned shared code in `lib/modules/<module>/shared/`.
+- Put module-owned shared code in the topology's resolved isomorphic boundary (`lib/modules/<module>/shared/` in one project or an activated contract/domain package when cross-package).
 - Treat it as potentially **isomorphic**: safe to import from both server and client code when needed.
 
 Typical contents:
@@ -662,7 +664,7 @@ Rules:
 
 - Must not import `shared/infra/*` (DB, logger, auth, tRPC init).
 - Must not depend on framework-only code.
-- Keep it pure and portable so it can be extracted to a workspace package later.
+- Keep it pure and portable. Extract a workspace package only when current reuse, ownership, or runtime isolation activates that boundary.
 - Cross-runtime API contracts specifically belong in `shared/contracts/`; do not duplicate them in client feature folders or server `dtos/`.
 
 Example:

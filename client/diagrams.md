@@ -2,6 +2,8 @@
 
 This file is a visual companion to the written docs in `client/core/` and `client/frameworks/`.
 
+Path labels use the single-project topology. In a monorepo, substitute activated contract/domain/UI packages and keep client features plus composition in the deployable client app; the arrows and ownership do not change.
+
 ---
 
 ## 1) Documentation Structure (This Repo)
@@ -96,7 +98,7 @@ UI interaction
 [featureApi boundary]
   - one per feature domain: I<Feature>Api + class <Feature>Api + create<Feature>Api(...)
   - owns endpoint paths + contract parsing/mapping
-  - imports canonical schemas from lib/modules/<module>/shared/contracts/
+  - imports schemas from the resolved isomorphic contract boundary
   - parses network responses at the boundary (Zod)
   - maps DTO -> feature model
   - normalizes unknown -> AppError via toAppError
@@ -122,7 +124,7 @@ Zod parsing boundary:      featureApi
 Cache + invalidation:      query adapter
 Transport details:         clientApi (implementation varies)
 Route parsing + SSR:       metaframework docs (Next.js)
-Wire contract source:      lib/modules/<module>/shared/contracts/
+Wire contract source:      resolved module-local or contract-package boundary
 Operational logging:       AppLogger -> debug/Sentry adapters
 Product analytics:         ProductAnalytics -> consent-aware adapter(s)
 Dependency lifecycle:      client composition root + named factories

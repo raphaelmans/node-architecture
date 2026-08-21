@@ -40,9 +40,9 @@ Then read framework details:
 - Product analytics uses a separate typed `ProductAnalytics` port with consent-aware vendor adapters.
 - Feature APIs use `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api` for testable boundaries.
 - A client composition root owns `createAppLogger`, `createProductAnalytics`, `createClientApi`, and feature API factories plus their runtime lifetimes.
-- Public request/response contracts have one Zod source in `src/lib/modules/<module>/shared/contracts/`, imported by both client and server.
+- Public request/response contracts have one Zod source in the resolved shared-contract boundary: `src/lib/modules/<module>/shared/contracts/` in the single-project topology or an activated contract package in the monorepo topology.
 - Client form schemas compose shared input contracts; client feature models remain separate from wire DTOs and ORM entities.
-- Domain transforms use precedence: `src/lib/modules/<module>/shared/*` first, then `src/features/<feature>/*`.
+- Domain transforms use ownership precedence: the module's isomorphic shared boundary first, then the client feature. In a monorepo, extract an optional domain package only for genuine cross-runtime/package reuse.
 
 ## Common Mistakes
 

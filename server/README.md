@@ -2,9 +2,13 @@
 
 > Canonical backend architecture for Node.js services with layered domain logic, Zod-first contracts, and transport-specific adapters.
 
+Server roles apply in both canonical repository topologies. Single-project examples use `src/lib/*`; monorepo placement follows the shared [monorepo architecture](../monorepo/core/architecture.md) without changing inward dependency direction.
+
 See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
 
 Interactive companion: [Server Architecture Field Guide](../assets/server-architecture-guide.html).
+
+Installable agent interface: [Server Architecture Skill](./skill/SKILL.md), including its [workspace coordination slice](./skill/references/workspace.md).
 
 ## Focus
 
@@ -98,7 +102,7 @@ Framework adapter -> capability controller
 
 ## Folder Contract
 
-All server-side code lives under `src/lib/`.
+The tree below is the single-project topology mapping, where server-side code lives under `src/lib/`.
 
 Examples throughout the docs may use alias shortcuts such as `@/shared/*` and `@/modules/*`.
 Those refer to `src/lib/shared/*` and `src/lib/modules/*`.
@@ -116,7 +120,9 @@ src/
 
 Choose the entrypoint folder for the framework in use. The inward `lib/shared/` and `lib/modules/` architecture does not change.
 
-Client and server import public request/response contracts from the owning module's `shared/contracts/` directory. Client code never imports database entities, repositories, services, or server-only command DTOs.
+In a monorepo topology, a new module places activated capability behavior in `packages/capabilities/<module>/`, concrete infrastructure in activated adapter packages, and cross-package wire schemas in `packages/contracts/<module>/` by default—even with one deployable consumer. Preserve a cohesive existing app-local module unless migration is explicit; shared pure rules use an optional domain package only for genuine cross-runtime/package consumers. See [Monorepo Package Boundaries](../monorepo/core/package-boundaries.md).
+
+Client and server import public request/response contracts from one resolved shared-contract boundary. Client code never imports capability packages, database entities, repositories, services, adapters, or server-only command DTOs.
 
 ## Error Contract Summary
 

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Monorepo Architecture"
+  short_description: "Coordinate portable monorepo architecture"
+  default_prompt: "Use $monorepo to scaffold or review this workspace through portable package, topology, and version-resolved build-system conventions."
+

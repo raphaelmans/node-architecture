@@ -66,6 +66,8 @@ tests                      -> stack-native location
 
 Canonical mode changes placement, never overwrite authority.
 
+In a workspace, load `workspace`. `$client` owns work inside resolved client app/package boundaries; `$monorepo` owns package creation, manifests, exports, dependency edges, and atomic cross-package changes. Stop before partial client writes when that coordination is required.
+
 ## Capability Resolution
 
 Activate only behavior the requested scaffold needs:

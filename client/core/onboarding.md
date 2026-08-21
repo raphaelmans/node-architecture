@@ -41,7 +41,7 @@ Then move to framework/metaframework docs.
 - [ ] Inject specific ports; never inject the complete runtime container.
 - [ ] Adopt client call chain: `components -> query adapter -> featureApi -> clientApi` (typed results return in the opposite direction).
 - [ ] Enforce feature API contract: `I<Feature>Api` + `class <Feature>Api` + `create<Feature>Api`.
-- [ ] Put public Zod input/response contracts in `src/lib/modules/<module>/shared/contracts/`.
+- [ ] Put public Zod input/response contracts in the resolved shared-contract boundary: the module path for one project or an activated contract package when cross-package.
 - [ ] Import the same contracts from client `featureApi` and server transport adapters.
 - [ ] Keep domain transform precedence: `src/lib/modules/<module>/shared/*` first, then feature-local.
 - [ ] Set up Vitest as the unit test runner per `client/core/testing-vitest.md`.

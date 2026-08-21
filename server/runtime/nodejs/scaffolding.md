@@ -2,6 +2,8 @@
 
 This guide implements the [server scaffolding contract](../../core/scaffolding.md) for an existing Node.js repository. It is a known specialization, not a requirement for other runtimes or languages.
 
+When Node.js is inside a workspace, apply server roles within the resolved app/capability/adapter packages. `$monorepo` coordinates package creation, exports, workspace dependency edges, task ownership, and cross-package atomicity before Node.js-specific files are written.
+
 ## Preflight
 
 In addition to core preflight:

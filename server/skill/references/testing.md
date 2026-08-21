@@ -2,6 +2,8 @@
 
 Use this slice for server test placement, behavioral tests by layer, test doubles, real database/provider boundaries, webhook fixtures and simulators, transaction tests, and tRPC/OpenAPI parity.
 
+In a monorepo, each contract, capability, domain, and adapter package owns tests for its public boundary. Deployable apps test composition and transports rather than duplicating package validation matrices.
+
 ## Mirror the Source Tree
 
 Keep tests under a mirrored `src/__tests__/` tree:

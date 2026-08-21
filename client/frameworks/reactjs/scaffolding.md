@@ -2,6 +2,8 @@
 
 This guide implements the [client scaffolding contract](../../core/scaffolding.md) for an existing React repository. It is a known specialization, not a requirement for other client frameworks.
 
+When React is inside a workspace, apply this mapping within the resolved client application/package. Package creation, exports, workspace dependency edges, and cross-package contracts/domain/UI extraction are coordinated by [monorepo scaffolding](../../../monorepo/core/scaffolding.md) before React files are written.
+
 ## Preflight
 
 In addition to core preflight:

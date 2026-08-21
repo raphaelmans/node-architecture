@@ -1,6 +1,6 @@
-# Node.js Architecture Documentation
+# Client, Server, and Monorepo Architecture Documentation
 
-> Source repository for client/server architecture guides and installable agent skills derived from them.
+> Source repository for portable architecture guides and installable agent skills derived from them.
 
 This repo documents patterns and conventions, not package versions. Check the target project's `package.json` for actual versions.
 
@@ -10,8 +10,10 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | ------- | ------- |
 | [server/README.md](./server/README.md) | Canonical backend architecture docs |
 | [client/README.md](./client/README.md) | Canonical frontend architecture docs |
+| [monorepo/README.md](./monorepo/README.md) | Canonical workspace topology and package-boundary docs |
 | [client/skill/SKILL.md](./client/skill/SKILL.md) | Installable `$client` router derived from the client docs |
 | [server/skill/SKILL.md](./server/skill/SKILL.md) | Installable `$server` router derived from the server docs |
+| [monorepo/skill/SKILL.md](./monorepo/skill/SKILL.md) | Installable `$monorepo` router derived from the monorepo docs |
 | [legacy/README.md](./legacy/README.md) | Historical, non-canonical reference material |
 | [consumer/INSTALL-SKILLS.md](./consumer/INSTALL-SKILLS.md) | Install and update the architecture skills in another repository |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Source-doc and derived-skill maintenance rules |
@@ -25,6 +27,7 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | ----- | ------------ |
 | Server | Next.js, tRPC, Drizzle ORM, PostgreSQL, Zod, Pino |
 | Client | Next.js/React, TanStack Query, Zod, adapter-based API/telemetry ports, `debug`, optional Sentry |
+| Monorepo | Tool-agnostic workspace conventions with a thin, version-resolved Turborepo specialization |
 | Testing | Vitest (unit), Playwright (E2E) |
 | Auth | Supabase Auth or custom auth |
 | Storage | Supabase Storage or custom storage |
@@ -35,6 +38,7 @@ This repo documents patterns and conventions, not package versions. Check the ta
 node-architecture/
   client/       canonical frontend docs + portable skill + maintenance metadata
   server/       canonical backend docs + portable skill + maintenance metadata
+  monorepo/     canonical workspace docs + thin build-system mappings + portable skill
   legacy/       historical references, not source of truth
   consumer/     skill installation and migration guidance
   assets/       supplemental artifacts
@@ -47,7 +51,7 @@ node-architecture/
 
 1. Read [CONTRIBUTING.md](./CONTRIBUTING.md).
 2. Start with the relevant canonical index:
-   [client/core/README.md](./client/core/README.md) or [server/core/README.md](./server/core/README.md).
+   [client/core/README.md](./client/core/README.md), [server/core/README.md](./server/core/README.md), or [monorepo/core/README.md](./monorepo/core/README.md).
 3. Keep framework/runtime details inside framework/runtime folders; keep core docs agnostic.
 4. Treat [legacy/](./legacy/README.md) as reference-only material.
 
@@ -56,13 +60,16 @@ node-architecture/
 1. Read [consumer/INSTALL-SKILLS.md](./consumer/INSTALL-SKILLS.md).
 2. Install GitHub path `client/skill` from `raphaelmans/node-architecture` with destination name `client`.
 3. Install GitHub path `server/skill` with destination name `server`.
-4. Invoke `$client` or `$server` with a concern or task, such as `$server contracts review this route` or `$server scaffold users/create`.
+4. Install GitHub path `monorepo/skill` with destination name `monorepo` when working across workspace packages.
+5. Invoke `$client`, `$server`, or `$monorepo` with a concern or task, such as `$server contracts review this route` or `$monorepo scaffold slice users/create`.
 
 `copy-guides.sh` is disabled. Installable skills are the supported agent-facing distribution path.
 
-## Project Folder Contract
+## Repository Topology Contract
 
-This documentation assumes a core-aligned application structure. It is a reference contract, not a literal required tree.
+Single-project and monorepo topologies are equal canonical mappings. The roles and dependency direction stay fixed; physical placement follows repository evidence and the applicable topology guide.
+
+### Single-project mapping
 
 ```text
 src/
@@ -74,6 +81,18 @@ src/
   lib/modules/<module>/shared/ shared pure domain transforms
   lib/modules/<module>/controllers/ framework-neutral server capability boundaries
 ```
+
+### Monorepo mapping
+
+```text
+apps/<client|server|worker>/     deployable application composition roots
+packages/contracts/<module>/     serialized client/server contracts when cross-package
+packages/domain/<module>/        optional cross-runtime pure domain rules
+packages/capabilities/<module>/  portable server application behavior and ports
+packages/adapters/<module>-<provider>/ concrete infrastructure implementations
+```
+
+See [Monorepo Architecture](./monorepo/core/architecture.md) for activation and dependency rules. A workspace package is not automatically one onion layer.
 
 ## Principles
 

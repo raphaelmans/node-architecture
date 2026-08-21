@@ -2,6 +2,8 @@
 
 This document contains Next.js App Router-specific folder and file conventions.
 
+The tree is relative to the selected Next.js application root, which may be `apps/<client>/` in a monorepo. Shared contracts, domain rules, or UI move to packages only when activated by the monorepo package-boundary contract.
+
 ## App Router Conventions
 
 - Routes live in `src/app/`.

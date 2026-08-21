@@ -1,6 +1,6 @@
 # Folder Structure (Agnostic)
 
-This document describes framework-agnostic client directory conventions.
+This document describes framework-agnostic client directory conventions. The trees below are the single-project topology mapping; [monorepo architecture](../../monorepo/core/architecture.md) maps the same roles to deployable apps and activated packages.
 
 ## High-Level Structure
 
@@ -23,6 +23,18 @@ src/
       contracts/       # Canonical client/server Zod wire contracts
       domain.ts        # Optional cross-runtime pure domain logic
 ```
+
+## Topology Mapping
+
+| Client role | Single-project topology | Monorepo topology |
+| --- | --- | --- |
+| Client routes/features/common infrastructure | `src/*` | `apps/<client>/src/*` |
+| Shared wire contracts | `src/lib/modules/<module>/shared/contracts/*` | `packages/contracts/<module>/*` when the contract crosses packages |
+| Shared pure domain rules | `src/lib/modules/<module>/shared/*` | `packages/domain/<module>/*` only when genuinely cross-runtime/package |
+| Shared UI | `src/components/*` | `packages/ui/<system>/*` only when multiple client apps consume it |
+| Client composition root | `src/common/runtime/*` | Remains owned by `apps/<client>` |
+
+Do not extract app-local feature code merely because a workspace exists. Cross-package creation, manifests, exports, and dependency edges follow the [monorepo scaffolding contract](../../monorepo/core/scaffolding.md).
 
 Metaframework-specific routing conventions:
 
@@ -68,7 +80,7 @@ Optional (add when the feature's complexity justifies them):
 - `machines/` for XState state machines (complex UI interaction logic)
 - `hooks/` sub-folder when root `hooks.ts` becomes too large
 
-Domain transform precedence:
+Domain transform precedence (using the resolved topology mapping):
 
 - import public API schemas/types from `lib/modules/<module>/shared/contracts/`
 - prefer `lib/modules/<module>/shared/domain.ts` for cross-runtime reusable logic
@@ -80,7 +92,7 @@ See Testing Layout below and `client/core/testing.md`.
 ## Ownership Boundaries by Path
 
 - `src/features/<feature>/api.ts`: endpoint-scoped data access for one feature via `I<Feature>Api` + class implementation.
-- `src/lib/modules/<module>/shared/contracts/*`: single source for serialized API request/response schemas and inferred types.
+- Resolved shared-contract boundary: single source for serialized API request/response schemas and inferred types; use the local module path in one project or an activated contract package when cross-package.
 - `src/features/<feature>/schemas.ts`: client-only form/UI schemas; may compose shared input contracts but must not redefine wire responses.
 - `src/features/<feature>/types.ts`: client models/view models; never ORM entities.
 - `src/features/<feature>/api.runtime.ts`: stable re-export of a composition-root-owned API accessor for test mocking; it does not construct the instance.

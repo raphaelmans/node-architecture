@@ -2,6 +2,8 @@
 
 > High-level overview of the backend architecture, linking to detailed documentation for each concern.
 
+Architecture roles below are topology-neutral. Folder examples show the single-project Node.js mapping; [monorepo architecture](../../monorepo/core/architecture.md) maps the same inward layers into activated applications and packages.
+
 ## Architecture Summary
 
 This backend follows a **disciplined layered architecture** with explicit boundaries, manual dependency injection, and clear separation of concerns.
@@ -97,7 +99,7 @@ Controller receives validated shared input
 | Type | Source | Used By | Purpose |
 | --- | --- | --- | --- |
 | **Entity** | Drizzle/ORM schema | Repository, service | Internal persistence/domain representation |
-| **Shared API contract** | Zod in `modules/<module>/shared/contracts/` | Client feature API, server adapter, controller | Serialized request/response boundary |
+| **Shared API contract** | Resolved module/package contract boundary | Client feature API, server adapter, controller | Serialized request/response boundary |
 | **Internal command DTO** | Server module/use case | Use case/service | Optional server-only orchestration shape |
 
 **Rule:** Never expose an entity as the API contract implicitly. Public endpoints validate/map through a shared response contract. A server-only command is introduced only when its shape differs from the public input contract.
@@ -141,11 +143,13 @@ Client Request
   Shared Response Contract
 ```
 
-## Folder Structure
+## Folder Structure (Single-Project Mapping)
 
 Server-side code is organized under `src/lib/`, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
 Examples may use alias shortcuts such as `@/shared/*` and `@/modules/*`; those refer to `src/lib/shared/*` and `src/lib/modules/*`.
 Choose the entrypoint branch for the framework in use; a project does not need all adapter folders.
+
+For the monorepo mapping, keep transports and composition in deployable apps. New modules use package placement for activated contracts, capabilities, and adapters by default; domain packages remain conditional on genuine sharing, and cohesive existing app-local modules remain until explicitly migrated. A workspace package may contain several onion layers and must preserve their inward source dependencies.
 
 ```
 src/

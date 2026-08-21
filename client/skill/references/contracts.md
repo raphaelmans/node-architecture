@@ -16,10 +16,12 @@ Use this slice for Zod wire contracts, form/schema composition, response validat
 Define each public capability once:
 
 ```text
-src/lib/modules/<module>/shared/contracts/
+src/lib/modules/<module>/shared/contracts/   # single-project mapping
   <capability>.contract.ts
   index.ts
 ```
+
+In a monorepo, use an activated `packages/contracts/<module>/` boundary when the schema crosses packages. Import through public exports; never reach into a server application or capability package for wire schemas.
 
 Both client and server import the same input and response schemas. Do not import wire contracts from routes, routers, services, repositories, DTO folders, or ORM schemas.
 

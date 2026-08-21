@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "hashAlgorithm": "sha256(path-null-file-sha256-newline, sources sorted by path)",
+  "sourceRoot": "../..",
+  "slices": {
+    "foundations": {
+      "reference": "monorepo/skill/references/foundations.md",
+      "sources": [
+        "monorepo/README.md",
+        "monorepo/core/README.md",
+        "monorepo/core/architecture.md"
+      ],
+      "fingerprint": "8bafcf07eb9844e6e36f1d19e3ad3e298d0c5d0790713ce5788bb946c85e2a38"
+    },
+    "packages": {
+      "reference": "monorepo/skill/references/packages.md",
+      "sources": [
+        "monorepo/core/architecture.md",
+        "monorepo/core/package-boundaries.md"
+      ],
+      "fingerprint": "30f84c08aa819d6d4f5849b4aa8b8b608d51f9eedbe40021a08f6cc6a07ce212"
+    },
+    "scaffolding": {
+      "reference": "monorepo/skill/references/scaffolding.md",
+      "sources": [
+        "monorepo/core/package-boundaries.md",
+        "monorepo/core/scaffolding.md",
+        "monorepo/build-systems/turborepo/scaffolding.md"
+      ],
+      "fingerprint": "ab4e2f6ce8323047b4ba0c25ad3dec8360e17c6af6718b0412f1629af234f63e"
+    },
+    "turborepo": {
+      "reference": "monorepo/skill/references/turborepo.md",
+      "sources": [
+        "monorepo/build-systems/README.md",
+        "monorepo/build-systems/turborepo/README.md",
+        "monorepo/build-systems/turborepo/scaffolding.md",
+        "monorepo/core/scaffolding.md"
+      ],
+      "fingerprint": "8ba312f0d2a9951e29ab72ce1aa34086e032e2a34f15e33c45c04d49a62b997c"
+    }
+  }
+}

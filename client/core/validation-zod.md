@@ -10,9 +10,9 @@ Use Zod at **boundaries** to validate and normalize data.
 - Keep UI-only composition and normalization in the client feature.
 - Infer TypeScript types from Zod; do not maintain parallel client interfaces for the same wire contract.
 
-## Canonical Cross-Runtime Location
+## Topology Mapping
 
-In a Next.js repository containing both client and server code:
+In a single-project Next.js repository containing both client and server code:
 
 ```text
 src/lib/modules/<module>/shared/contracts/
@@ -31,13 +31,15 @@ import {
 } from "@/lib/modules/user/shared/contracts";
 ```
 
+In a monorepo topology, use an activated contract package when the schema crosses package boundaries. Client and server consumers import its intentional public exports; they do not reach into another package's files.
+
 Do not import a contract from a server route, router, service, repository, `dtos/` directory, or ORM schema. The shared contract module must remain safe to include in the browser bundle.
 
 ## Schema Layers
 
 | Layer | Location | Owns |
 | --- | --- | --- |
-| Shared wire contract | `src/lib/modules/<module>/shared/contracts/` | Serialized request and response shape |
+| Shared wire contract | Resolved isomorphic boundary: module-local in one project or an activated contract package when cross-package | Serialized request and response shape |
 | Feature/UI schema | `src/features/<feature>/schemas.ts` | Form-only fields, empty-value normalization, UI validation |
 | Feature model | `src/features/<feature>/types.ts` | Client-friendly type after wire-to-model mapping |
 

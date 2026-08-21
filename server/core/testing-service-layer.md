@@ -2,6 +2,8 @@
 
 > Canonical testing standard for framework-adapter/controller/usecase/service/repository layers.
 
+The layout below is relative to the selected server app/package. In a monorepo, contracts, capabilities, domain packages, and adapters own tests for their public boundaries; deployable apps test composition and transports rather than duplicating package test matrices.
+
 ## Folder Structure: `__tests__` Mirror Layout
 
 All test files live in `src/__tests__/` and mirror the source tree exactly.
@@ -123,7 +125,7 @@ Bugfix rule:
 
 - each bug fix MUST add/adjust a fixture or test case that would have caught the bug.
 
-The shared Zod payload contract is tested once in `src/__tests__/lib/modules/<module>/shared/contracts/`. Client and server transport tests verify envelope + payload integration with that schema but do not maintain competing copies of its validation cases.
+The shared Zod payload contract is tested once at its owner: `src/__tests__/lib/modules/<module>/shared/contracts/` in the single-project mapping, or inside the activated contract package when cross-package. Client and server transport tests verify envelope + payload integration with that schema but do not maintain competing copies of its validation cases.
 
 ## Contract Testing Scope
 

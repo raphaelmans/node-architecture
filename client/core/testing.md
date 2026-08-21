@@ -3,6 +3,8 @@
 > Framework/library-agnostic. Applies to all client-side code regardless of test runner.
 > For server-side layers see `server/core/testing-service-layer.md`.
 
+The layout below is relative to the selected client app/package. In a monorepo, each activated package owns and verifies its tests; do not centralize package tests under another deployable application.
+
 ## Folder Structure: `__tests__` Mirror Layout
 
 All test files live in a `__tests__/` directory that **mirrors the source tree exactly**.

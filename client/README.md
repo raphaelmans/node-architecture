@@ -2,6 +2,8 @@
 
 > Canonical frontend architecture for feature-based React/Next.js applications with a framework-agnostic core and framework-specific layers.
 
+Client roles apply in both canonical repository topologies. Single-project examples use `src/*`; monorepo placement follows the shared [monorepo architecture](../monorepo/core/architecture.md) without changing client dependency direction.
+
 See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
 
 Interactive companion: [Client Architecture Field Guide](../assets/client-architecture-guide.html).
@@ -47,6 +49,7 @@ This documentation emphasizes:
 | -------- | ----------- |
 | [Client Skill Router](./skill/SKILL.md) | Routes `$client` tasks through the smallest relevant architecture slices |
 | [Scaffolding Slice](./skill/references/scaffolding.md) | Runs portable `$client scaffold` preflight and derives listed or unlisted stack integration from current evidence |
+| [Workspace Slice](./skill/references/workspace.md) | Maps client roles across equal canonical single-project and monorepo topologies |
 | [Skill References](./skill/references/) | Portable concern-based derivatives of the canonical client docs |
 
 ### Core
@@ -94,7 +97,8 @@ This documentation emphasizes:
 1. Start with [./core/onboarding.md](./core/onboarding.md).
 2. Read [./core/README.md](./core/README.md) and [./core/conventions.md](./core/conventions.md).
 3. Add a documented framework specialization when available; otherwise derive it from repository evidence and current official resources.
-4. Use [../legacy/client/overview.md](../legacy/client/overview.md) only for historical examples.
+4. When the client lives in a workspace, resolve its app/package boundaries through [Monorepo Package Boundaries](../monorepo/core/package-boundaries.md).
+5. Use [../legacy/client/overview.md](../legacy/client/overview.md) only for historical examples.
 
 ## Core Principles
 
@@ -110,8 +114,8 @@ This documentation emphasizes:
 
 ## Feature Checklist
 
-- [ ] Create `src/features/<feature>/`
-- [ ] Define public input/response schemas in `src/lib/modules/<module>/shared/contracts/`
+- [ ] Create the feature in the selected client application's feature boundary (`src/features/<feature>/` in the single-project mapping)
+- [ ] Define public input/response schemas once in the resolved shared-contract boundary (`src/lib/modules/<module>/shared/contracts/` in one project or a contract package when cross-package)
 - [ ] Define `api.ts` with `I<Feature>Api`, `<Feature>Api`, and `create<Feature>Api`
 - [ ] Define client-only form/UI schemas in `schemas.ts` by composing shared inputs
 - [ ] Keep transport and cache ownership out of presentation components

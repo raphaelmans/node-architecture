@@ -7,9 +7,11 @@ Use this slice for shared Zod wire contracts, validation boundaries, commands an
 Define each public capability once under its owning module:
 
 ```text
-src/lib/modules/<module>/shared/contracts/
+src/lib/modules/<module>/shared/contracts/   # single-project mapping
   create-<entity>.contract.ts
 ```
+
+In a monorepo, use an activated `packages/contracts/<module>/` boundary when the schema crosses packages. Capability controllers and transport apps consume its public exports; client code never imports a server app or capability package for wire schemas.
 
 Keep these schemas isomorphic: no server-only imports, database entities, environment reads, provider types, or transforms with hidden runtime dependencies.
 

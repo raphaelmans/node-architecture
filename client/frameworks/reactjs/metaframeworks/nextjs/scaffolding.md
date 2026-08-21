@@ -2,6 +2,8 @@
 
 This guide extends [React scaffolding](../../scaffolding.md) for an existing Next.js repository. Core safety, evidence, atomicity, and boundary rules remain authoritative.
 
+In a monorepo, the Next.js application remains the owner of routes, client/server composition, and app environment validation. Consume activated internal packages through public exports; resolve cross-package changes and build-system behavior through the monorepo contract and current version-matched official sources.
+
 ## Preflight
 
 Detect before planning:

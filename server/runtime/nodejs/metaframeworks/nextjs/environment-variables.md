@@ -2,6 +2,8 @@
 
 > Validate configuration once at the Next.js runtime boundary, then inject narrow values through composition roots and factories.
 
+In a monorepo, that boundary remains owned by the deployable Next.js application. Reusable packages never read a workspace-root environment file or receive the complete validated app environment.
+
 This guide recommends [`@t3-oss/env-nextjs`](https://env.t3.gg/docs/nextjs) as the Next.js adapter for typed environment configuration. It is a runtime concern, not a core architecture dependency: Express, Hono, workers, and other runtimes may implement the same boundary with a different validator.
 
 ## Architecture Boundary

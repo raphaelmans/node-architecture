@@ -11,11 +11,16 @@ When contributing, treat these docs as a system of contracts, not isolated notes
 - Server canonical base: `server/core/*`
 - Server runtime layer: `server/runtime/*`
 - Server agent skill: curated derivatives under `server/skill/references/*`
+- Monorepo canonical base: `monorepo/core/*`
+- Monorepo build-system layer: `monorepo/build-systems/*`
+- Monorepo agent skill: curated derivatives under `monorepo/skill/references/*`
 
 Rule:
 
 - Keep `core/*` framework/runtime-agnostic.
 - Put framework/runtime-specific behavior in framework/runtime folders.
+- Keep `monorepo/core/*` build-system and package-manager agnostic.
+- Keep build-system specializations thin and resolve version-sensitive behavior from matching authoritative sources.
 
 ## Contribution Types
 
@@ -76,6 +81,21 @@ Do not:
 - move runtime-specific details into `server/core/*`
 - couple server core rules to one runtime/framework
 
+### 4) Add a new monorepo build system (example: Nx)
+
+Create:
+
+- `monorepo/build-systems/<build-system>/README.md`
+- A scaffolding mapping only when the build system is executable through the generic contract
+
+Must align with:
+
+- `monorepo/core/architecture.md`
+- `monorepo/core/package-boundaries.md`
+- `monorepo/core/scaffolding.md`
+
+Do not copy a vendor manual or freeze version-sensitive configuration in this repository. Detect the target version, retrieve matching official sources, map the durable core outcomes, and verify with the actual tool.
+
 ## Cross-Layer Consistency Requirements
 
 When adding any new stack/framework/runtime, validate these contracts remain consistent:
@@ -84,6 +104,9 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 - Query key strategy (direct tRPC generated keys, `buildTrpcQueryKey` for wrapper interop, plain keys for non-tRPC adapters)
 - Error normalization boundary (`unknown -> AppError`)
 - Logging/correlation boundary ownership (`requestId` and related metadata at transport boundaries)
+- Equal canonical single-project and monorepo topology mappings
+- Cross-package ownership (`$monorepo`) versus resolved client/server package ownership
+- Package and onion dependency direction
 
 ## Documentation Style Rules
 
@@ -94,6 +117,7 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 ## Pull Request Checklist
 
 - [ ] Updated the correct layer (`core` vs framework/runtime)
+- [ ] Updated the correct topology/build-system layer (`monorepo/core` vs specialization)
 - [ ] Kept canonical contracts unchanged unless intentionally evolving them
 - [ ] Updated indices/README links for new folders
 - [ ] Added/updated changelog for non-trivial changes
@@ -106,6 +130,8 @@ Use this rule of thumb:
 - Works across frameworks/runtimes: put it in `core/*`
 - Depends on specific framework/runtime behavior: put it in framework/runtime docs
 - If both apply: define the contract in `core/*`, then add implementation details in framework/runtime docs
+- Works across monorepo build systems/package managers: put it in `monorepo/core/*`
+- Depends on a build-system version: keep only a thin mapping under `monorepo/build-systems/*` and retrieve current official behavior at execution time
 
 ## Maintaining the Client Skill
 
@@ -132,3 +158,16 @@ When changing a mapped server source document:
 4. Run the drift check again and validate `server/skill/` with the official skill validator.
 
 Do not refresh a fingerprint without reviewing the associated reference. Update `server/skill-maintenance/source-map.json` when a source document starts or stops informing a slice. Every canonical `server/**/*.md` guide outside `server/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside `server/skill/` so it is not copied into consumer installations.
+
+## Maintaining the Monorepo Skill
+
+The monorepo docs remain canonical. The `$monorepo` skill reorganizes their guidance into topology, package, scaffolding, and build-system slices.
+
+When changing a mapped monorepo source document:
+
+1. Run `python3 monorepo/skill-maintenance/check-source-drift.py`.
+2. Review every stale slice against the changed source.
+3. Refresh one reviewed slice with `python3 monorepo/skill-maintenance/check-source-drift.py refresh <slice>`.
+4. Run the drift check again and validate `monorepo/skill/` with the official skill validator.
+
+Do not refresh a fingerprint without reviewing its reference. Every canonical `monorepo/**/*.md` guide outside `monorepo/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside the portable skill.

@@ -11,9 +11,10 @@
         "server/core/endpoint-naming.md",
         "server/core/error-handling.md",
         "server/core/zod-openapi-generation.md",
-        "server/runtime/nodejs/libraries/openapi/README.md"
+        "server/runtime/nodejs/libraries/openapi/README.md",
+        "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "6350f01b606e7df931ef02e6311f6a006f9c3dfa6f383ef8662b759b67ed68f0"
+      "fingerprint": "94faae7765d517b44cdfc995006a58385997d6ae729c4b20f3cc00bb9423d5e5"
     },
     "data-flow": {
       "reference": "server/skill/references/data-flow.md",
@@ -26,7 +27,7 @@
         "server/runtime/nodejs/libraries/supabase/integration.md",
         "server/runtime/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "00017f1813f55be0fd842c3e880bf53ed9cde04054f290e49d7492f0db00566f"
+      "fingerprint": "96303a2b1f57f7763eb1cb5c22761aa90922f851e1f4db045dd13d17f0fc9cd9"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
@@ -39,7 +40,20 @@
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md"
       ],
-      "fingerprint": "294c1c59c4478ede8477a82716288bae0ae00608ac319d30ed1f0035905f9369"
+      "fingerprint": "bc64146bc37c1fb1405ad8e67c7c62fefc5ba54cfef7b6e7562966ea39e5b41a"
+    },
+    "workspace": {
+      "reference": "server/skill/references/workspace.md",
+      "sources": [
+        "server/README.md",
+        "server/core/README.md",
+        "server/core/conventions.md",
+        "server/core/scaffolding.md",
+        "monorepo/core/architecture.md",
+        "monorepo/core/package-boundaries.md",
+        "monorepo/core/scaffolding.md"
+      ],
+      "fingerprint": "38322d1c3c72e3da8458377e51425ed2b3d8778e653858bdc393a6d3f19ccf91"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -85,7 +99,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
         "server/runtime/nodejs/scaffolding.md"
       ],
-      "fingerprint": "5d13a27109e886665eb01eed6e482d2257589ba018cccf43da34aa0542dac4c8"
+      "fingerprint": "b398982d9240bec0a6d513bb5aeb8f1a6acc3eca4030c29038415f941baf7d6a"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -102,7 +116,7 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "7093567e4887e740da8eeedfb28639c6201bab17c7f2dd1c4a00d87e845fe05b"
+      "fingerprint": "be0e74758e9d9e3c6355df112ac11985f4b67266f3de3e0e852813175078131b"
     },
     "security": {
       "reference": "server/skill/references/security.md",
@@ -149,7 +163,7 @@
         "server/runtime/nodejs/metaframeworks/express/README.md",
         "server/runtime/nodejs/metaframeworks/hono/README.md"
       ],
-      "fingerprint": "b2d238ebca075f0b7408493ef43b10d2d7f9d0e8dfa5a08bc1ef01f9eef5c2ba"
+      "fingerprint": "d7843704c4a81dd32502ffb1e5206f2e30eac5082628f6d1b6a90bb6e59df8e7"
     }
   }
 }

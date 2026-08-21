@@ -24,6 +24,7 @@ Route client work through modular architecture slices. Load only the references 
 | --- | --- | --- |
 | `scaffolding` | `$client scaffold`, repository preflight, missing infrastructure, dependency approval, vertical feature generation | [references/scaffolding.md](references/scaffolding.md) |
 | `foundations` | boundaries, folders, composition roots, factories, feature structure, domain placement | [references/foundations.md](references/foundations.md) |
+| `workspace` | single-project/monorepo topology, client app ownership, shared packages, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, validation, DTO mapping, `AppError`, safe error UX | [references/contracts.md](references/contracts.md) |
 | `data-flow` | `clientApi`, `featureApi`, query adapters, TanStack Query, query keys, HTTP, tRPC | [references/data-flow.md](references/data-flow.md) |
 | `state-realtime` | state ownership, Zustand, URL state, cache patches, subscriptions, reconnection | [references/state-realtime.md](references/state-realtime.md) |
@@ -32,11 +33,12 @@ Route client work through modular architecture slices. Load only the references 
 | `react` | React composition, hooks, forms, presentation boundaries, UI and toast facades | [references/react.md](references/react.md) |
 | `nextjs` | App Router, SSR/RSC, params, environment, tRPC/Ky adapters, Next.js tests | [references/nextjs.md](references/nextjs.md) |
 
-Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core` and `architecture` as aliases for `foundations`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
+Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core` and `architecture` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 
 When the user names multiple concerns, load all matching references. Examples:
 
 - `$client scaffold foundation`: `scaffolding` + `foundations` + capability slices discovered during preflight
+- `$client scaffold foundation` in a workspace: add `workspace`; remain inside resolved packages unless cross-package coordination is activated
 - `$client scaffold users/create`: `scaffolding` + `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `nextjs`, `telemetry`, or state slices only when detected/requested capabilities require them
 - `$client scaffold users/create` in Vue or Svelte: `scaffolding` + capability slices; derive framework integration from repository evidence and current official docs
 - Next.js logging or Sentry: `telemetry` + `nextjs`
@@ -46,13 +48,13 @@ When the user names multiple concerns, load all matching references. Examples:
 
 When invoked without a task, show the slice menu with two or three context-aware examples. Do not start an audit or implementation automatically.
 
-When invoked as `$client scaffold`, read `scaffolding` first, then every capability slice selected by preflight. Load `react` or `nextjs` only when detected or requested. For an unlisted framework, retain the generic slice and retrieve the official resources needed to derive its specialization. Complete evidence, atomicity, and dependency approval before writing. Keep the user-facing command under `$client`; do not redirect to another skill.
+When invoked as `$client scaffold`, read `scaffolding` first, then every capability slice selected by preflight. Load `workspace` when a package/workspace boundary exists and load `react` or `nextjs` only when detected or requested. For an unlisted framework, retain the generic slice and retrieve the official resources needed to derive its specialization. Complete evidence, atomicity, and dependency approval before writing. If required changes cross packages, stop before partial writes and apply the `$monorepo` coordination contract; otherwise remain within `$client`.
 
 ## Preserve These Invariants
 
 - Use the call chain `components -> query adapter -> featureApi -> clientApi -> network`; typed results return in reverse.
 - Keep presentation components render-only. Business components coordinate UI flows but do not own transport or concrete cache mechanics.
-- Define one shared Zod request/response contract under the owning module's isomorphic `shared/contracts` boundary. Do not duplicate wire DTOs.
+- Define one shared Zod request/response contract under the topology's resolved isomorphic contract boundary. Do not duplicate wire DTOs or import it from a server application package.
 - Normalize provider errors once to `AppError`. Preserve only user-safe messages and assign one operational reporting owner per failure.
 - Keep server state in TanStack Query, client coordination state in an appropriate store, shareable state in the URL, and local ephemeral state in the component.
 - Use factories for dependency-heavy infrastructure and assemble it in one composition root. Inject specific ports, never the complete runtime container.

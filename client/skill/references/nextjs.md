@@ -15,6 +15,8 @@ Use this slice for Next.js App Router ownership, SSR/RSC boundaries, route param
 
 For scaffolding, load the generic and React contracts first, then detect the installed Next.js/React/Node versions, router mode, config module format, Server/Client boundaries, environment integration, and build setup. Retrieve version-applicable official Next.js documentation for configuration, lifecycle, caching, environment, and production-build behavior before generating those boundaries.
 
+In a workspace, also load `workspace`. Treat all `src/*` paths below as relative to the selected Next.js app, and consume activated internal packages through public exports using current version-matched Next.js/build-system guidance.
+
 - Routes live in `src/app/`; API route handlers live under `src/app/api/**/route.ts`.
 - Pages and layouts are metaframework composition boundaries, not feature business layers.
 - Route groups partition layouts and access policies; exact group names remain project-specific.
@@ -42,7 +44,7 @@ common/runtime/request.ts
 
 Provider and feature runtime modules expose specific ports/accessors. They never construct hidden singletons or return the complete runtime container.
 
-Place shared client/server capability contracts under `src/lib/modules/<module>/shared/contracts/`. Both `route.ts` or tRPC procedures and the client feature API import the same schema.
+Place shared client/server capability contracts in the resolved topology boundary: the local module path in one project or an activated contract package when cross-package. Both `route.ts` or tRPC procedures and the client feature API import the same schema.
 
 ## Transport Integration
 

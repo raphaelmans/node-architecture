@@ -75,7 +75,7 @@ Use this decision chain:
 2. Is this endpoint-scoped request/response orchestration?
    - Put in `src/features/<feature>/api.ts` (`featureApi`).
 3. Is this a serialized request/response contract shared with the server?
-   - Put it in `src/lib/modules/<module>/shared/contracts/`.
+   - Put it in the resolved shared-contract boundary (`src/lib/modules/<module>/shared/contracts/` in one project or an activated contract package when cross-package).
 4. Is this an operational transport log or correlation field?
    - Emit through `AppLogger` at `clientApi`; enrich context in the logging adapter.
 5. Is this a contract parsing/mapping diagnostic?
@@ -93,8 +93,8 @@ Use this decision chain:
 
 1. Used by multiple features and no feature ownership? Put in `src/common/*`.
 2. Owned by one feature even if reused nearby? Keep in that feature.
-3. A request/response contract used by client and server? Use `src/lib/modules/<module>/shared/contracts/*` even when only one feature consumes it.
-4. Other logic reusable across server + client for one module? Use `src/lib/modules/<module>/shared/*` first.
+3. A request/response contract used by client and server? Use the resolved shared-contract boundary even when only one client feature consumes it.
+4. Other logic reusable across server + client for one module? Use the module's isomorphic shared boundary first; extract a domain package only for genuine cross-runtime/package reuse.
 
 ### 3) Does it need a factory?
 

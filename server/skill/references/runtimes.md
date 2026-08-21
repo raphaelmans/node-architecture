@@ -6,6 +6,8 @@ Use this slice for the documented Node.js composition and concrete tRPC, OpenAPI
 
 Load the generic server scaffolding contract first. Node.js and its documented adapters are specializations, not an allowlist. Detect the installed runtime/language mode, module format, framework, host, packages, and build/test setup; retrieve version-applicable official resources before applying configuration, lifecycle, module, build, or deployment behavior. For another runtime/framework, keep the generic contract and derive its role mapping from repository evidence plus current primary sources.
 
+In a workspace, also load `workspace`. Apply runtime behavior inside resolved app/capability/adapter packages, keep environment validation with deployable apps, and retrieve current build-system/framework guidance for exact package consumption and build behavior.
+
 ## Runtime Rule
 
 Choose only the adapters present in the target project. Every runtime entrypoint must preserve:

@@ -132,9 +132,13 @@ export function toLedgerBreakdownViewModel(/* breakdown */) {
 }
 ```
 
-## Monorepo Extraction (Future)
+## Monorepo Mapping
 
-If/when you move to a monorepo:
+In a monorepo topology:
 
-- `src/lib/modules/<module>/shared/*` becomes the seed that can be extracted into `packages/<module>/src/*`
-- imports move from `@/lib/modules/<module>/shared` to `@acme/<module>` (placeholder scope)
+- serialized wire contracts move to an activated contract package when they cross package boundaries;
+- pure shared rules move to an optional domain package only when client/server runtimes or multiple packages genuinely consume them;
+- app-local transforms remain inside the client feature;
+- package names and exports derive from the target workspace rather than a hard-coded scope.
+
+See [Monorepo Package Boundaries](../../monorepo/core/package-boundaries.md). Do not move an entire server capability into a browser-importable package merely to share one pure function.

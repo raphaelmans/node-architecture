@@ -68,6 +68,8 @@ tests                      -> stack-native location
 
 Canonical mode changes placement, never overwrite authority.
 
+In a workspace, load `workspace`. `$server` owns work inside resolved server app/package boundaries; `$monorepo` owns placement, package creation, manifests, exports, dependency edges, and atomic cross-package changes. Placement resolves explicit scope first, then cohesive existing module ownership, then package defaults for a new monorepo module. Stop before partial server writes when that coordination is required.
+
 ## Capability Resolution
 
 Activate only behavior the requested scaffold needs:

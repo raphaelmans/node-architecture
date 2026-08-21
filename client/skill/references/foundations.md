@@ -15,13 +15,15 @@ Use this slice for architecture boundaries, feature placement, composition roots
 
 For scaffolding, treat the roles below as portable contracts rather than universal filenames. Preserve compatible placement in the target repository. A documented framework specialization may supply a canonical mapping; for an unlisted framework, derive and approve that mapping from repository evidence and current official guidance before writing.
 
+Single-project and monorepo topologies are equal canonical mappings. Load `workspace` when roles cross package boundaries; the TypeScript/React paths below remain the single-project specialization rather than a requirement to colocate a workspace.
+
 Place behavior by asking, in order:
 
 1. Is it transport-specific? Put it behind `clientApi` or the metaframework transport adapter.
 2. Is it endpoint-scoped parsing or mapping? Put it in the feature API.
-3. Is it a serialized client/server contract? Put it in the owning module's `shared/contracts` directory.
+3. Is it a serialized client/server contract? Put it in the resolved shared-contract boundary: the owning module locally or an activated contract package when cross-package.
 4. Is it query, mutation, or cache behavior? Put it in the query adapter.
-5. Is it a pure cross-runtime rule? Put it in the owning module's `shared` domain module.
+5. Is it a pure cross-runtime rule? Put it in the owning module's shared domain boundary; extract a domain package only for genuine cross-runtime/package reuse.
 6. Is it client-only view-model logic? Keep it in the feature's `domain.ts` or `helpers.ts`.
 7. Is it UI workflow orchestration? Keep it in the business component or a justified composed hook.
 8. Is it render-only? Keep it in a presentation component.
@@ -126,8 +128,8 @@ Never create factories for React components, Zod schemas, pure helpers, simple h
 
 Use this precedence:
 
-1. Wire input/response: `src/lib/modules/<module>/shared/contracts/`.
-2. Cross-runtime pure rule or transform: `src/lib/modules/<module>/shared/`.
+1. Wire input/response: the resolved isomorphic contract boundary (`src/lib/modules/<module>/shared/contracts/` in the single-project mapping or an activated contract package when cross-package).
+2. Cross-runtime pure rule or transform: the owning module's shared boundary, with a domain package activated only for genuine cross-runtime/package reuse.
 3. Client-only feature rule or view model: `src/features/<feature>/domain.ts` or `helpers.ts`.
 
 Shared code must remain isomorphic and side-effect free. It must not import database clients, server auth, environment access, browser globals, React, stores, or query hooks.
