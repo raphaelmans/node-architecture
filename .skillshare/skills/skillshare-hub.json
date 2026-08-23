@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-23T23:30:04Z",
+  "sourcePath": "/Users/raphaelm/Documents/Coding/node-architecture/.skillshare/skills",
+  "skills": [
+    {
+      "name": "turborepo",
+      "source": "https://github.com/vercel/turborepo/skills/turborepo"
+    }
+  ]
+}

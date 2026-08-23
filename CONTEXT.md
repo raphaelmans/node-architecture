@@ -64,6 +64,54 @@ _Avoid_: Package only after a second consumer, automatic partial migration
 A development-only edge from an application or package to shared configuration; it does not participate in or weaken the runtime onion dependency graph.
 _Avoid_: Runtime dependency, architecture-layer dependency
 
+**Environment boundary**:
+The deployable-application boundary that reads and validates external configuration, then normalizes it into application configuration. Reusable components declare focused configuration needs but do not own or read a deployable's environment.
+_Avoid_: Shared environment package, global environment service
+
+**External environment contract**:
+The deployable-owned inventory of external variables required to build, start, or operate it, classified by visibility, consumer, and lifecycle. It is a setup and validation contract, not an application dependency-injection surface.
+_Avoid_: Undifferentiated server environment, application configuration
+
+**Executable environment schema**:
+The authoritative machine-executable declaration of a lifecycle-specific subset of an external environment contract. It validates only declared variables, permits unrelated ambient variables, and may be composed with other schemas while the environment example remains a checked projection.
+_Avoid_: Environment example as source of truth, globally importable environment object
+
+**Task environment policy**:
+The build-orchestration boundary that determines which ambient variables reach a task and which influence its cache identity. It is independent of the executable environment schema that validates application-owned variables.
+_Avoid_: Application configuration, environment validation
+
+**Configuration materialization**:
+Validating and normalizing external configuration once at the earliest lifecycle point where it is available, before the deployable accepts traffic or work that depends on it.
+_Avoid_: Lazy environment lookup, universal build-time validation
+
+**Application configuration**:
+Validated, normalized, framework-neutral values that a deployable application's composition boundary supplies explicitly to the dependencies that require them. External variable names and environment-reading mechanisms do not cross this boundary.
+_Avoid_: Raw environment, environment service, framework-prefixed configuration
+
+**Configuration namespace**:
+A focused, typed portion of application configuration exposed to a framework-owned outer component according to its declared needs. Generic configuration lookup and external variable names remain at the environment boundary.
+_Avoid_: Global configuration lookup, complete application configuration
+
+**Configuration surface**:
+The typed application configuration visible within one execution realm. A deployable may expose separate surfaces from one environment boundary while its framework specialization chooses a unified or physically split validation implementation.
+_Avoid_: Combined cross-realm configuration, mandatory file split
+
+**Browser build configuration (`BrowserBuildConfig`)**:
+Public browser configuration materialized from a build process and embedded in its output. It owns only build-materialized fields; the browser never receives the originating environment variables.
+_Avoid_: Browser environment, browser runtime configuration
+
+**Browser runtime configuration (`BrowserRuntimeConfig`)**:
+Public configuration data loaded and validated by the browser independently of build-time environment substitution. It owns only runtime-loaded fields and never contains secrets.
+_Avoid_: Environment variable, browser build configuration
+
+**Configuration mode**:
+A validated configuration state for an optional capability in which activation explicitly requires every value needed to compose that capability.
+_Avoid_: Missing means disabled, unrelated optional variables
+
+**Framework-native composition**:
+Using a selected framework's dependency injection, lifecycle, module, and testing mechanisms at its outer application boundaries while keeping reusable inward components independent of that framework.
+_Avoid_: Reimplementing the framework, framework-coupled core
+
 **Architecture convention**:
 A durable ownership, dependency, safety, or verification rule governed by this repository and intended to remain valid across tool versions.
 _Avoid_: Tool configuration, copied vendor guidance
