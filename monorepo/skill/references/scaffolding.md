@@ -15,7 +15,7 @@ A vertical slice is one complete business operation across activated boundaries;
 
 ## Preflight
 
-1. Detect topology, package manager/version, lockfile, build system/version, workspace/package discovery, apps, packages, manifests, exports, dependencies, tasks, outputs, environment ownership, boundaries, CI, cache, and dirty files.
+1. Detect topology, package manager/version, lockfile, build system/version, workspace/package discovery, apps, packages, manifests, exports, dependencies, tasks, outputs, deployable schemas/examples, task environment policy, boundaries, CI, cache, and dirty files.
 2. Locate activated client/server roles, cohesive existing module owners, composition roots, contracts, shared domain rules, capability owners, ports, adapters, and tests.
 3. Classify every role as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 4. Retrieve authoritative version-matched sources for every tool-sensitive decision.
@@ -33,6 +33,8 @@ shared configs only when multiple packages require them
 app-owned environment policy
 boundary and cache correctness verification
 ```
+
+Foundation does not invent variables, browser runtime resources, shared environment packages, or root environment files. When configuration is activated, classify it by consumer/lifecycle, keep schemas with the deployable, and coordinate task availability/cache identity separately. Keep publication/deployment side effects separate from cached builds so a restored artifact cannot suppress requested external work.
 
 Preserve a detected package manager. When absent, propose the build specialization's supported recommendation and obtain approval before initialization or installation.
 

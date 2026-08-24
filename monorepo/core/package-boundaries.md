@@ -68,12 +68,14 @@ Existing repositories preserve coherent task names and map them rather than bein
 
 ## Environment Ownership
 
-- Each deployable application owns, validates, and documents its environment.
-- Reusable packages never read a process-wide environment directly and never receive a complete environment object.
-- Composition roots inject narrow configuration values or ports.
-- Do not create a shared root environment file.
-- Cache inputs include the variables and files that actually affect each task.
-- Remote caching and provider credentials are opt-in and never written into repository files.
+Apply the [environment ownership contract](./environment.md):
+
+- each deployable application owns, validates, and documents only the external variables it consumes;
+- reusable packages never read a process-wide environment directly and never receive a complete environment object;
+- composition roots inject narrow normalized values or ports;
+- no root environment file or shared environment package is created;
+- task availability/cache policy remains separate from application schema validation; and
+- remote caching and provider credentials remain opt-in and are never written into repository files.
 
 ## Enforcement
 

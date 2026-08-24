@@ -50,7 +50,7 @@ Inspect before proposing installations or edits:
 
 1. Detect the client language, framework, runtime/metaframework, package or build manager, installed versions, module format, and workspace boundary.
 2. Locate source roots, aliases, feature folders, shared contracts, composition roots, route/view entry points, tests, and generated artifacts.
-3. Inspect existing transport, server-state, form, validation, telemetry, error, and testing capabilities through their public behavior.
+3. Inspect existing transport, server-state, form, validation, configuration, telemetry, error, and testing capabilities through their public behavior.
 4. Discover the requested feature's real operation, authoritative request/response contract, cache or synchronization identity, UI intent, and success/failure behavior.
 5. Classify every planned boundary as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 6. Resolve the narrowest relevant tests, type or compile checks, lint checks, and production build.
@@ -99,6 +99,8 @@ Activate capabilities from requested behavior, not from package presence:
 | Remote error reporting | Production reporting is explicitly required |
 | Product analytics | The feature owns a meaningful behavioral event |
 | Transport | The feature communicates with an external/server boundary |
+| Browser build configuration | The deployable declares public values consumed while producing browser output |
+| Browser runtime configuration | Public browser values must be delivered independently of the build |
 | Test tooling | A created boundary requires executable verification |
 
 Core does not prescribe packages. Resolve each activated capability as follows:
@@ -133,11 +135,12 @@ application errors       normalize unknown/provider failures once
 operational logging      stable application-facing port
 client transport         application-facing request/response port
 composition root         construct and own application-scoped dependencies
+configuration boundary   only for declared build/runtime configuration surfaces
 product analytics        only when an activated capability requires it
 tests                    verify every created public boundary
 ```
 
-Hide concrete providers behind narrow ports and factories. Preserve compatible existing implementations. Add request scope only when the client runtime performs server rendering and a dependency captures request-bound state. Inject specific ports, never the entire runtime container.
+Hide concrete providers behind narrow ports and factories. Preserve compatible existing implementations. Add request scope only when the client runtime performs server rendering and a dependency captures request-bound state. Inject specific ports or normalized configuration, never the entire runtime container or environment object. Follow the [configuration boundary](./configuration.md); do not scaffold a browser runtime loader unless independent runtime delivery is required.
 
 ## Feature Roles
 

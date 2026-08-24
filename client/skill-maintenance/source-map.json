@@ -8,6 +8,7 @@
         "client/core/architecture.md",
         "client/core/client-api-architecture.md",
         "client/core/composition-root.md",
+        "client/core/configuration.md",
         "client/core/conventions.md",
         "client/core/folder-structure.md",
         "client/core/logging.md",
@@ -17,7 +18,7 @@
         "client/core/testing.md",
         "client/core/validation-zod.md"
       ],
-      "fingerprint": "bb795f4a003fbe06dc1d5d2d9f1477d28ea6b5c8d90ad241d3809c50eacf7505"
+      "fingerprint": "b6855fa57abe82f2016aee6c5a2aab2871739ed0cb6574cc090783f103beb110"
     },
     "foundations": {
       "reference": "client/skill/references/foundations.md",
@@ -26,13 +27,14 @@
         "client/core/README.md",
         "client/core/architecture.md",
         "client/core/composition-root.md",
+        "client/core/configuration.md",
         "client/core/conventions.md",
         "client/core/domain-logic.md",
         "client/core/folder-structure.md",
         "client/core/onboarding.md",
         "client/diagrams.md"
       ],
-      "fingerprint": "e3cb82a1864af26d1af3fda5387f9c250aa0bd7c5c99407d2a1f4a5a15f176e2"
+      "fingerprint": "7c643884d31b141c5b6859e787b9c311e96201e9723d4accab413ba73d089dd3"
     },
     "workspace": {
       "reference": "client/skill/references/workspace.md",
@@ -43,10 +45,11 @@
         "client/core/scaffolding.md",
         "client/frameworks/reactjs/scaffolding.md",
         "monorepo/core/architecture.md",
+        "monorepo/core/environment.md",
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "37bae6799b8f15106f9e887b5314c72905e7c86f9c9f47866d38629903a87092"
+      "fingerprint": "5b0fcdac90b9fe467fa9ff8d59073ce53e9fd86716d63441bf09a85a93a7fd2f"
     },
     "contracts": {
       "reference": "client/skill/references/contracts.md",
@@ -56,10 +59,11 @@
         "client/core/error-handling.md",
         "client/core/validation-zod.md",
         "client/frameworks/reactjs/error-handling.md",
+        "client/frameworks/reactjs/environment.md",
         "client/frameworks/reactjs/forms-react-hook-form.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "74a396aee2b03c8b87bb3907ab1e12ba210844c0865e73d00964789e2c4bf8bf"
+      "fingerprint": "1f02b9cfb03ba30a157e41f5e2256d81fb516afbfba1b388f56fce9e98829822"
     },
     "data-flow": {
       "reference": "client/skill/references/data-flow.md",
@@ -101,7 +105,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
       ],
-      "fingerprint": "68fcb7d6c9e0fe1c3b0785a8fefd0a3f20af996d225113b1bc8540efa244b5c3"
+      "fingerprint": "f6b73b0e856cfa8904156805c5595ecc2d81153680e1c288ef874af0b8f142ea"
     },
     "testing": {
       "reference": "client/skill/references/testing.md",
@@ -118,7 +122,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md"
       ],
-      "fingerprint": "91d1c7919bc3900b775e4d4d650c86d998de982ffcd689ac0fd110610aaa4a35"
+      "fingerprint": "cf42d2c31b5af7a9d7b9b65ad4536af85552c7556cbec6a3f8c2133e10d06160"
     },
     "react": {
       "reference": "client/skill/references/react.md",
@@ -127,6 +131,7 @@
         "client/frameworks/reactjs/composition-react.md",
         "client/frameworks/reactjs/conventions.md",
         "client/frameworks/reactjs/error-handling.md",
+        "client/frameworks/reactjs/environment.md",
         "client/frameworks/reactjs/forms-react-hook-form.md",
         "client/frameworks/reactjs/overview.md",
         "client/frameworks/reactjs/realtime-react.md",
@@ -134,7 +139,7 @@
         "client/frameworks/reactjs/state-zustand.md",
         "client/frameworks/reactjs/ui-shadcn-radix.md"
       ],
-      "fingerprint": "2d87b443512a894a6a055a5db4ac05a63ba6ef3ae179923ad22e8d1ff113c905"
+      "fingerprint": "b1e6da5578019d042e099c9ec749b22fe15c4a240e62279e3c72e30fa017a4fd"
     },
     "nextjs": {
       "reference": "client/skill/references/nextjs.md",
@@ -152,7 +157,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "14f79ba3e894db505d8ec7b1224d3ef2554cac80b971924fc868f6655b408af7"
+      "fingerprint": "4233dd8197c0e32b0501f3ac94f542e38cecae8a56901539572b5cd2b2ac945b"
     }
   }
 }

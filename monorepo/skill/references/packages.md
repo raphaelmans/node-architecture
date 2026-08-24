@@ -53,7 +53,9 @@ Package scripts own task logic; root scripts coordinate. Dependency ordering com
 
 ## Environment
 
-Each deployable owns and validates its environment. Reusable packages receive narrow injected configuration, never a complete environment object or shared root environment file. Cache inputs account for the variables/files that affect each task. Remote caching and credentials remain opt-in.
+Classify configuration by consumer and lifecycle: `BrowserBuildConfig`, `PrivateBuildConfig`, `ServerRuntimeConfig`, and optional resource-backed `BrowserRuntimeConfig`. Each deployable owns its executable schemas and checked examples. Reusable packages receive narrow normalized configuration or ports, never a complete environment object, shared environment package, or root environment file.
+
+Application schema validation permits unrelated ambient variables and is separate from task environment policy. Every variable/file that changes cached output affects that task's cache identity; runtime-only values do not invalidate unrelated builds. Publication/deployment credentials authorize side effects rather than artifact content: supply them to a separate non-cacheable task, or equivalent, that consumes build outputs and still runs after a cache hit. Remote caching and credentials remain opt-in.
 
 ## Enforcement
 

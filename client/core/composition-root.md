@@ -71,21 +71,26 @@ Never store request/user context in an application-scoped SSR singleton. Context
 
 ```ts
 // src/common/runtime/browser.ts
-export function createBrowserRuntime(config: BrowserRuntimeConfig) {
+export function createBrowserRuntime(input: {
+  buildConfig: BrowserBuildConfig;
+  consent: AnalyticsConsentPolicy;
+}) {
+  const { buildConfig, consent } = input;
+
   const logger = createAppLogger({
-    sinks: createBrowserLogSinks(config),
-    context: createBrowserLogContext(config),
+    sinks: createBrowserLogSinks(buildConfig),
+    context: createBrowserLogContext(buildConfig),
     redaction: defaultClientRedaction,
   });
 
   const analytics = createProductAnalytics({
-    adapters: createAnalyticsAdapters(config),
-    consent: config.consent,
+    adapters: createAnalyticsAdapters(buildConfig),
+    consent,
     logger,
   });
 
   const clientApi = createClientApi({
-    transport: createBrowserTransport(config),
+    transport: createBrowserTransport(buildConfig),
     logger,
   });
 
@@ -99,13 +104,18 @@ export function createBrowserRuntime(config: BrowserRuntimeConfig) {
 }
 ```
 
+`BrowserBuildConfig` supplies only public values fixed into the built artifact, such as an API origin or public analytics destination identifier. Pass live runtime dependencies alongside it. In particular, the consent policy must observe the user's current consent when delivery is attempted; it is not a build-time boolean or a field in the executable environment schema.
+
 Cache the browser runtime only in this composition-root module:
 
 ```ts
 let browserRuntime: ReturnType<typeof createBrowserRuntime> | undefined;
 
 function getBrowserRuntime() {
-  browserRuntime ??= createBrowserRuntime(readPublicRuntimeConfig());
+  browserRuntime ??= createBrowserRuntime({
+    buildConfig: readBrowserBuildConfig(),
+    consent: createAnalyticsConsentPolicy(),
+  });
   return browserRuntime;
 }
 
@@ -118,6 +128,8 @@ export const getProfileApi = () => getBrowserRuntime().profileApi;
 Only the composition-root module can access the complete runtime object. Other modules import specific accessors.
 
 Feature modules must not implement their own hidden singletons.
+
+Do not merge an optional `BrowserRuntimeConfig` into this build-backed surface. If the application shell depends on runtime-delivered configuration, validate it before shell composition; when only one capability depends on it, that capability owns loading/validation and injects only its focused values or ports.
 
 ## Supplying Dependencies to UI Frameworks
 

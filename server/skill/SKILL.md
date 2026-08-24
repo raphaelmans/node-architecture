@@ -14,7 +14,7 @@ Route server work through modular architecture slices. Load only the references 
 3. Select the smallest relevant slice set from the routing table.
 4. Read every selected reference completely before acting.
 5. Apply provider or framework guidance only when that technology is present or explicitly requested.
-6. For version-sensitive runtime, framework, dependency, configuration, lifecycle, module-format, build, or deployment decisions, retrieve current version-applicable primary documentation before acting.
+6. For version-sensitive runtime, framework, dependency, configuration, lifecycle, module-format, build, or deployment decisions, retrieve current version-applicable primary documentation before acting. Retain named libraries and official links when they clarify a supported specialization, its role, rationale, or selection criteria. Treat vendor API symbols, framework-owned filenames, configuration keys, flags, version thresholds, deprecations, and migration recipes as version-sensitive even when repository examples or training data state them confidently; detect the installed version and derive the exact implementation at execution time.
 7. If the detected stack has no named slice, apply core guidance and derive the integration from repository evidence and official stack resources; do not reject it merely because it is unlisted.
 8. For implementation, verify the narrowest meaningful boundary first and preserve unrelated user changes.
 
@@ -23,7 +23,7 @@ Route server work through modular architecture slices. Load only the references 
 | Slice | Load when the task involves | Reference |
 | --- | --- | --- |
 | `scaffolding` | `$server scaffold`, foundation bootstrap, repository-aware vertical capability generation, dependency preflight, layout adaptation | [references/scaffolding.md](references/scaffolding.md) |
-| `foundations` | kernel boundaries, modules, controllers, services/use cases, repositories, factories, DI, folder structure | [references/foundations.md](references/foundations.md) |
+| `foundations` | kernel boundaries, modules, controllers, services/use cases, repositories, configuration, factories, DI, folder structure | [references/foundations.md](references/foundations.md) |
 | `workspace` | single-project/monorepo topology, capability/adapter packages, app composition, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, commands/view models, envelopes, pagination, public errors, endpoint naming, OpenAPI generation | [references/contracts.md](references/contracts.md) |
 | `data-flow` | adapter-to-controller flow, reads/writes, transactions, persistence, IDs, repository boundaries, result mapping | [references/data-flow.md](references/data-flow.md) |
@@ -31,9 +31,11 @@ Route server work through modular architecture slices. Load only the references 
 | `security` | authentication, sessions, authorization, cookies, redirects, keys, RLS, secrets, security headers | [references/security.md](references/security.md) |
 | `telemetry` | `AppLogger`, Pino, OpenTelemetry, correlation, event naming, product analytics, privacy | [references/telemetry.md](references/telemetry.md) |
 | `testing` | adapter/controller/application/repository tests, database concurrency, webhook fixtures, transport parity | [references/testing.md](references/testing.md) |
-| `runtimes` | Node.js, environment configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Supabase | [references/runtimes.md](references/runtimes.md) |
+| `runtimes` | Node.js and framework/runtime-specific configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Supabase | [references/runtimes.md](references/runtimes.md) |
 
-Treat `scaffold`, `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `layers`, and `module` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `schema`, `api`, `dto`, and `error` as aliases for `contracts`; `transaction`, `database`, `repository`, and `persistence` as aliases for `data-flow`; `job`, `event`, `outbox`, `webhook`, and `cron` as aliases for `operations`; `auth` as an alias for `security`; `logging`, `analytics`, `observability`, and `tracing` as aliases for `telemetry`; and `framework`, `adapter`, `config`, `environment`, `trpc`, `openapi`, `next`, `express`, `hono`, and `supabase` as aliases for `runtimes`.
+Treat `scaffold`, `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `layers`, `module`, `config`, `configuration`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `schema`, `api`, `dto`, and `error` as aliases for `contracts`; `transaction`, `database`, `repository`, and `persistence` as aliases for `data-flow`; `job`, `event`, `outbox`, `webhook`, and `cron` as aliases for `operations`; `auth` as an alias for `security`; `logging`, `analytics`, `observability`, and `tracing` as aliases for `telemetry`; and `framework`, `adapter`, `runtime`, `trpc`, `openapi`, `next`, `express`, `hono`, `nestjs`, and `supabase` as aliases for `runtimes`.
+
+For a generic configuration/environment request, load `foundations`. Add `runtimes` only when the requested work must integrate with a detected or named runtime/framework specialization.
 
 When the user explicitly names slices, load those slices. Add another slice only when the task clearly crosses its boundary, and state the added slice briefly. Examples:
 
@@ -46,6 +48,7 @@ When the user explicitly names slices, load those slices. Add another slice only
 - Implement a Stripe webhook: `contracts` + `operations` + `security` + `telemetry` + `testing` + `runtimes`
 - Add Supabase authentication: `security` + `runtimes` + `testing`; add `data-flow` when application roles or user provisioning use the database
 - Audit logs and analytics: `telemetry`; add `operations` for outbox-backed reliable delivery
+- Explain portable environment validation: `foundations`; add `runtimes` when applying it to Next.js, NestJS, Express, Hono, or another detected specialization
 
 When invoked without a task, show the slice menu with two or three context-aware examples. Do not start an audit or implementation automatically.
 
@@ -61,9 +64,10 @@ When invoked as `$server scaffold ...`, read `scaffolding` first, then every arc
 - Normalize malformed input to `ValidationError`; throw typed `AppError` subclasses for expected failures; expose only allowlisted public details.
 - Keep `TransactionContext` opaque and database-only. Do not merge request, tracing, logger, actor, or analytics data into transaction options.
 - Inject narrow ports through factories. Never pass a container or generic context object through application layers.
-- Treat environment access as an outer runtime boundary. Validate it once, then inject narrow configuration through composition roots and factories; inner layers and shared contracts never read `process.env` or receive the complete env object.
+- Treat environment access as a deployable-owned outer boundary. Validate declared fields at the build/runtime lifecycle that consumes them, then inject narrow configuration; inner layers and shared contracts never read the host environment or receive a complete env object.
 - Keep operational `AppLogger` records separate from typed `ProductAnalytics` events. Obtain request and trace correlation from active runtime context rather than business DTOs.
 - Apply core rules before runtime additions. Framework and provider guidance extends the architecture; it never overrides it.
+- Persist durable concepts, rationale, selection criteria, ownership, safety, and verification outcomes in this skill. Named libraries may remain as linked reference implementations; their currently correct syntax does not become a permanent skill rule.
 - Do not introduce a library, provider, outbox, controller, use case, or abstraction merely because a reference mentions it. The target stack and behavior must justify it.
 
 ## Review and Change Discipline

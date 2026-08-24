@@ -248,6 +248,7 @@ src/
 | ------------------------------------------- | ------------------------------------------- |
 | [Server Scaffolding Contract](./scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
+| [Configuration Boundaries](./configuration.md) | Private build/server runtime surfaces, schema authority, and narrow injection |
 | [Framework-Neutral Controllers](./controllers.md) | Portable boundary between framework adapters and application logic |
 | [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
 | [Transaction](./transaction.md)             | Transaction manager, patterns, context      |

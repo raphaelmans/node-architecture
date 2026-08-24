@@ -25,6 +25,6 @@ Rules:
 
 1. [Core Architecture](./core/architecture.md)
 2. [Package Boundaries](./core/package-boundaries.md)
-3. [Scaffolding Contract](./core/scaffolding.md)
-4. The detected build-system specialization, currently [Turborepo](./build-systems/turborepo/README.md)
-
+3. [Environment Ownership](./core/environment.md)
+4. [Scaffolding Contract](./core/scaffolding.md)
+5. The detected build-system specialization, currently [Turborepo](./build-systems/turborepo/README.md)

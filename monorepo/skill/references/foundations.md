@@ -14,6 +14,7 @@ module shared contracts        packages/contracts/<module>/ when cross-package
 module shared pure rules       packages/domain/<module>/ when cross-runtime
 portable application behavior packages/capabilities/<module>/ when activated
 concrete provider adapter      packages/adapters/<module>-<provider>/ when activated
+deployable configuration       remains app-owned in either topology
 ```
 
 Activation means current behavior needs the role; it does not mean generating every possible package. New modules use capability and activated adapter packages even with one deployable consumer. Domain, UI, config, and adapter roles remain absent when their behavior/sharing condition is not present. Do not split an existing app-local module for one new operation; migrate its complete ownership only when explicitly requested.
@@ -43,7 +44,7 @@ It may import wire contracts and explicitly cross-runtime pure domain packages, 
 
 ## Composition
 
-Deployable applications are endpoints of the package graph. Their composition roots select concrete transports, repositories, providers, configuration, and runtime lifetimes. Reusable packages never select providers, inspect app containers, or import applications.
+Deployable applications are endpoints of the package graph. Their composition roots select concrete transports, repositories, providers, lifecycle-specific configuration, and runtime lifetimes. Reusable packages never select providers, inspect app containers, import applications, or own deployable environment schemas.
 
 ## Review Checklist
 

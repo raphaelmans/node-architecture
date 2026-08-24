@@ -8,6 +8,7 @@ Use this slice for architecture boundaries, feature placement, composition roots
 - [Layer ownership](#layer-ownership)
 - [Feature structure](#feature-structure)
 - [Factories and lifetimes](#factories-and-lifetimes)
+- [Configuration boundaries](#configuration-boundaries)
 - [Domain placement](#domain-placement)
 - [Review checklist](#review-checklist)
 
@@ -124,6 +125,19 @@ Lifetime defaults:
 
 Never create factories for React components, Zod schemas, pure helpers, simple hooks, or immutable values.
 
+## Configuration Boundaries
+
+Classify browser configuration by lifecycle:
+
+- `BrowserBuildConfig` is public configuration embedded into browser output by the selected build tool.
+- `BrowserRuntimeConfig` is an optional public resource loaded when dependent browser work begins; it is not an environment variable.
+
+Executable schemas belong to the deployable application and are authoritative. `.env.example` is a checked, human- or agent-authored projection of environment-backed build fields. Validation accepts unrelated ambient variables but returns only declared normalized fields and never prints supplied values in errors.
+
+External names stop at the configuration boundary. Composition maps typed surfaces into focused options or ports; reusable packages and framework providers never receive a complete environment/configuration object. Retrieve current framework/build-tool documentation before implementing exact loading, exposure, or module syntax.
+
+Do not place live application dependencies in `BrowserBuildConfig`. Supply mutable consent policies, identity/session state, request context, stores, and other runtime services separately from focused build values. A singleton adapter may retain a live policy port, but it must not snapshot mutable user state from the build configuration.
+
 ## Domain Placement
 
 Use this precedence:
@@ -137,10 +151,11 @@ Shared code must remain isomorphic and side-effect free. It must not import data
 ## Review Checklist
 
 - Every layer owns only its documented responsibility.
-- Components do not call HTTP, tRPC, or QueryClient directly.
+- Components do not call HTTP, tRPC, or the server-state cache client directly.
 - Feature APIs implement `I<Feature>Api` and are created through `create<Feature>Api`.
 - The composition root is the only owner of infrastructure lifecycle.
 - No consumer receives the entire runtime container.
+- Browser build/runtime surfaces remain distinct and only activated surfaces are scaffolded.
 - Browser and SSR lifetimes cannot leak actor/request context.
 - Shared domain code is safe in both client and server runtimes.
 - Existing legacy code is reported, not broadly rewritten outside scope.

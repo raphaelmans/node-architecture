@@ -100,8 +100,16 @@ _Avoid_: Combined cross-realm configuration, mandatory file split
 Public browser configuration materialized from a build process and embedded in its output. It owns only build-materialized fields; the browser never receives the originating environment variables.
 _Avoid_: Browser environment, browser runtime configuration
 
+**Private build configuration (`PrivateBuildConfig`)**:
+Private configuration materialized while producing a non-browser artifact and excluded from public artifacts. It owns only output-affecting fields; credentials that only authorize publication or deployment belong to separate task execution policy.
+_Avoid_: Server runtime configuration, browser build configuration
+
+**Server runtime configuration (`ServerRuntimeConfig`)**:
+Validated, normalized configuration materialized from host-supplied values for one server or worker execution. It may contain secrets and never crosses into browser-reachable code.
+_Avoid_: Server environment, browser runtime configuration
+
 **Browser runtime configuration (`BrowserRuntimeConfig`)**:
-Public configuration data loaded and validated by the browser independently of build-time environment substitution. It owns only runtime-loaded fields and never contains secrets.
+Public configuration data loaded and validated by the browser independently of build-time environment substitution when the work that depends on it begins. It owns only runtime-loaded fields and never contains secrets.
 _Avoid_: Environment variable, browser build configuration
 
 **Configuration mode**:

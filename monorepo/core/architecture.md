@@ -13,6 +13,7 @@ The architecture has two equal physical mappings:
 | Application behavior | Module service/use-case/controller boundary | Capability package for an activated new module by default |
 | Infrastructure adapter | App/module-owned adapter | Adapter package when persistence/provider behavior is activated for a new module |
 | Composition root | App-owned runtime boundary | Deployable application package |
+| Configuration boundary | Deployable-owned build/runtime boundary | Deployable application package |
 
 Examples in `client/` and `server/` may use the single-project mapping. They name architecture roles, not a requirement to collapse a workspace into one project.
 
@@ -85,3 +86,5 @@ view -> query/state adapter -> feature API -> client transport -> network
 ```
 
 Client applications may consume shared wire contracts and explicitly cross-runtime domain packages. They never import server capability or infrastructure packages.
+
+Configuration follows the same deployable ownership in both topologies. See [Environment Ownership](./environment.md) for consumer/lifecycle surfaces and task-policy separation.

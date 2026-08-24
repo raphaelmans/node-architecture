@@ -17,14 +17,14 @@ For scaffolding, load the generic and React contracts first, then detect the ins
 
 In a workspace, also load `workspace`. Treat all `src/*` paths below as relative to the selected Next.js app, and consume activated internal packages through public exports using current version-matched Next.js/build-system guidance.
 
-- Routes live in `src/app/`; API route handlers live under `src/app/api/**/route.ts`.
+- Use the detected router's current route and route-handler file conventions.
 - Pages and layouts are metaframework composition boundaries, not feature business layers.
 - Route groups partition layouts and access policies; exact group names remain project-specific.
 - Parse and validate route params/search params in the smallest page/layout boundary, then pass typed values into feature components.
 - Keep a central route registry for links, redirects, and access classification.
-- Keep fast boundary redirects/header propagation in `proxy.ts`, with authoritative session/authorization checks in the appropriate server boundary.
+- Keep fast request-boundary redirects and header propagation in the framework's current interception boundary, with authoritative session and authorization checks in the appropriate server boundary.
 
-For current App Router request APIs, page/layout params and page search params may be promises. Await them in Server Components and keep route parsing out of feature components.
+Resolve the installed version's route-param and search-param shapes at the page/layout boundary and keep route parsing out of feature components. Current official documentation owns whether those values are synchronous, asynchronous, or otherwise wrapped.
 
 ## Routing and Request Context
 
@@ -44,7 +44,7 @@ common/runtime/request.ts
 
 Provider and feature runtime modules expose specific ports/accessors. They never construct hidden singletons or return the complete runtime container.
 
-Place shared client/server capability contracts in the resolved topology boundary: the local module path in one project or an activated contract package when cross-package. Both `route.ts` or tRPC procedures and the client feature API import the same schema.
+Place shared client/server capability contracts in the resolved topology boundary: the local module path in one project or an activated contract package when cross-package. Both the framework route adapter or tRPC procedure and the client feature API import the same schema.
 
 ## Transport Integration
 
@@ -58,9 +58,9 @@ For tRPC:
 
 - Construct the client/link inside the composition root.
 - Treat tRPC as transport; preserve `I<Feature>Api` for app-facing capabilities.
-- Use generated utilities for direct tRPC query hooks.
-- Use `buildTrpcQueryKey` only for feature API wrappers that require tRPC cache interop.
-- Keep direct `trpc.*` hooks inside feature hooks as an incremental compatibility mode and project normalized app-facing results.
+- Use the installed tRPC integration's generated utilities for direct query hooks.
+- For feature API wrappers that require tRPC cache interop, use the installed integration's supported query-key adapter rather than reconstructing internal keys.
+- Keep direct tRPC-generated hooks inside feature hooks as an incremental compatibility mode and project normalized app-facing results.
 
 For Ky/route handlers:
 
@@ -73,26 +73,15 @@ For Supabase realtime, construct the client in the composition root, keep channe
 
 ## Environment and Tests
 
-Use `@t3-oss/env-nextjs` as the validated environment boundary. Client-exposed variables require `NEXT_PUBLIC_`; secrets never do. Application code reads the validated module rather than scattered `process.env` calls. Parse string booleans explicitly so `"false"` does not become truthy.
+Use one deployable-owned logical environment boundary with distinct typed surfaces: public `BrowserBuildConfig`, build-only private `PrivateBuildConfig`, `ServerRuntimeConfig`, and optional public `BrowserRuntimeConfig`. T3 Env is a supported outer Next.js adapter when detected or selected; it is never an inward architecture dependency.
 
-Keep runtime wiring compatible with the installed Next.js version:
+Detect the installed Next.js, environment-adapter, TypeScript, and module-system versions. Retrieve their current official documentation before choosing runtime maps, public-variable conventions, configuration-module syntax, import strategy, build-time validation wiring, schema split/unification, or standalone-output packaging. These implementation details must not be inferred from this skill, repository examples, or training memory.
 
-- Next.js `>= 13.4.4`: use `experimental__runtimeEnv` and explicitly enumerate every client variable.
-- Next.js `< 13.4.4`: use strict `runtimeEnv` and explicitly enumerate every server and client variable.
+Use one physical implementation only when it preserves lifecycle validation and server/browser isolation. Split modules when private/server schemas or runtime-only validation would otherwise become client-reachable or build-required. Validate only genuine build inputs during the build; validate runtime-only server values before dependent server work. Browser runtime resources validate when dependent browser work begins.
 
-Next.js statically analyzes environment-variable access for browser bundling, so do not replace explicit entries with dynamic property access. Import the env module from Next.js config to guarantee build-time validation: use a direct TypeScript import on Next.js 16+ and `jiti` on earlier versions. Preserve the detected config module format: CommonJS `next.config.js` on Next.js 12.1+ uses `require`, an async `module.exports`, and Jiti's async import API; ESM syntax belongs in `next.config.mjs`. For an older Next.js version without async config support, resolve a version-compatible strategy or block. Verify all behavior against the installed Next.js and Jiti versions before editing.
+Executable schemas are authoritative; `.env.example` is a checked projection of environment-backed fields. Validation permits unrelated ambient variables and exposes only declared normalized values. Outer composition maps these surfaces into focused configuration/ports instead of exporting a global env object.
 
-Use a unified schema by default. Split client and server schemas when server variable names are sensitive, and prevent client-reachable modules from importing the server schema. In a split setup, give `client.ts` strict `runtimeEnv` entries for its public variables; on Next.js `>= 13.4.4`, give the server-only module `experimental__runtimeEnv: process.env`, never an empty object. Older versions require explicit strict server entries.
-
-For `output: "standalone"`, add `@t3-oss/env-nextjs` and `@t3-oss/env-core` to `transpilePackages`. Confirm TypeScript 5+, ESM, and package-exports-compatible module resolution before adopting the package.
-
-Extend core Vitest with:
-
-- React plugin and Testing Library;
-- Node as the default environment;
-- jsdom per client test or separate projects;
-- a `server-only` shim for runner compatibility;
-- scoped fake environment setup for import-time validation.
+Extend the core test contract with compatible React/Next.js integration, a Node-default environment, explicit browser-like opt-in for client tests, scoped fake configuration for import-time validation, and any server-only marker shim required by the installed runner/framework combination.
 
 The shim is not an import-safety check. Keep a Next.js build or equivalent boundary validation in CI.
 
@@ -104,10 +93,19 @@ The shim is not an import-safety check. Keep a Next.js build or equivalent bound
 - Shared contracts are isomorphic and imported by both server and client boundaries.
 - tRPC or Ky stays behind the feature/data-flow architecture.
 - Query/cache mechanics stay in feature hooks or sync modules.
-- Environment exposure and version-specific runtime wiring are explicit and validated during the build.
+- Environment exposure and version-specific runtime wiring are explicit and validated at the lifecycle that consumes each value.
 - Split environment schemas preserve the client/server import boundary when variable names are sensitive.
-- Standalone output transpiles both T3 Env packages.
+- Standalone output includes every required environment-adapter dependency according to the installed framework's packaging contract.
 - Next.js tests extend, rather than replace, core behavioral and Vitest rules.
+
+## Official Implementation References
+
+- [Next.js documentation](https://nextjs.org/docs)
+- [tRPC client documentation](https://trpc.io/docs/client)
+- [T3 Env for Next.js](https://env.t3.gg/docs/nextjs)
+- [Vitest guide](https://vitest.dev/guide/)
+
+Next.js owns routing, rendering, request-boundary, configuration, and build conventions; tRPC, T3 Env, and Vitest are documented specializations at their respective outer boundaries. Keep those roles and rationale while deriving their exact integration from the target versions.
 
 ## Derivation Sources
 

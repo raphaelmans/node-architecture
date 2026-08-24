@@ -107,6 +107,7 @@ Activate capabilities from requested behavior, not package presence:
 | Framework adapter | A public transport entry point is requested |
 | API description or RPC | The selected transport requires it |
 | Product analytics | The capability owns a meaningful behavioral event |
+| Environment configuration | The deployable declares build- or runtime-consumed external values |
 
 Core does not prescribe packages, runtime primitives, or frameworks. Resolve each activated capability as follows:
 
@@ -162,10 +163,11 @@ response contracts       compatible success/error envelopes when used
 execution observability  runtime-neutral request/trace correlation contract
 transport mapping        centralized error/envelope integration
 composition root         application-scoped construction and wiring
+configuration boundary   only for declared private-build/server-runtime surfaces
 tests                    verify every created public boundary
 ```
 
-Do not add persistence, transactions, authentication, analytics, outbox, or provider abstractions to a foundation-only scaffold unless the requested foundation actually activates them. Inject narrow ports and configuration, never a generic dependency container or transport context.
+Do not add persistence, transactions, authentication, analytics, outbox, configuration variables, or provider abstractions to a foundation-only scaffold unless the requested foundation actually activates them. When configuration is activated, follow the [configuration boundary](./configuration.md). Inject narrow ports and normalized configuration, never a generic dependency container, complete environment object, or transport context.
 
 ## Capability Roles
 

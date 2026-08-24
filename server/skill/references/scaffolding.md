@@ -17,7 +17,7 @@ An unlisted language/runtime/framework is not unsupported. Use the generic contr
 ## Preflight Before Writes
 
 1. Detect language, runtime, framework/transport, dependency/build manager, installed versions, module/package boundaries, workspace, source roots, composition roots, adapters, and tests.
-2. Inspect contracts, validation, errors, envelopes, logging, observability, actors/sessions, persistence, transactions, effects, analytics, and tests through public behavior.
+2. Inspect contracts, validation, configuration, errors, envelopes, logging, observability, actors/sessions, persistence, transactions, effects, analytics, and tests through public behavior.
 3. Discover the operation, explicit access policy, input/response contract, domain ownership, reads/writes, persistence, transaction boundary, side effects, and failure behavior.
 4. Select one service or one use case as the controller's application boundary.
 5. Classify every required boundary as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
@@ -85,6 +85,7 @@ Activate only behavior the requested scaffold needs:
 | Framework adapter | A public entry point is requested |
 | API description/RPC | The selected transport requires it |
 | Product analytics | A meaningful capability-owned behavioral event exists |
+| Environment configuration | The deployable declares build- or runtime-consumed external values |
 
 Do not choose packages or primitives in the generic slice. Reuse compatible repository capabilities first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Never replace required validation with unchecked data, durable persistence with production memory, or tests with placeholders.
 
@@ -127,10 +128,11 @@ compatible response contracts
 runtime-neutral execution observability
 centralized transport mapping
 composition root
+configuration boundary when activated
 tests for created boundaries
 ```
 
-Do not activate persistence, transactions, auth, analytics, outbox, or providers without requested behavior.
+Do not activate persistence, transactions, auth, analytics, outbox, configuration variables, or providers without requested behavior. When configuration is activated, keep lifecycle schemas deployable-owned, permit unrelated ambient variables, and inject only normalized focused values. Treat publication/deployment credentials as inputs to separate side-effect execution rather than fields that invalidate cached artifact production.
 
 Every public capability preserves:
 

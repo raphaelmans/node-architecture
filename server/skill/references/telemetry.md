@@ -72,6 +72,13 @@ Logging and analytics adapters must not throw into business behavior. Preserve i
 - Telemetry failures cannot change the business result.
 - Tests assert app-facing records/events, not Pino or vendor formatting.
 
+## Official Implementation References
+
+- [Pino documentation](https://getpino.io/#/)
+- [OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
+
+Pino is the structured logging specialization and OpenTelemetry is the runtime correlation specialization. Preserve the observability outcomes and boundary between them if providers change; derive exact setup and APIs from current official documentation.
+
 ## Derivation Sources
 
 Derived from logging, observability, product analytics, event patterns, and Pino runtime guidance. Exact paths and fingerprints are maintained outside the portable skill package.

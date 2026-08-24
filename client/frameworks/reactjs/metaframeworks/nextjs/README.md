@@ -15,7 +15,7 @@ Read order before using this folder:
 | [Next.js Client Scaffolding](./scaffolding.md) | Next.js specialization of the portable client scaffolding contract |
 | [Overview](./overview.md) | App Router conventions, guards, route registry |
 | [Routing + SSR + Params](./routing-ssr-params.md) | Where route parsing/validation belongs |
-| [Environment Variables](./environment.md) | Type-safe env vars (`@t3-oss/env-nextjs`) |
+| [Configuration](./environment.md) | Browser/private build, server runtime, optional browser runtime, and T3 Env adaptation |
 | [Folder Structure (Next.js)](./folder-structure.md) | App Router file layout and route groups |
 | [URL State (nuqs)](./url-state-nuqs.md) | URL query state patterns |
 | [Testing with Vitest — Next.js Additions](./testing-vitest.md) | Next.js-specific runner additions (`jsdom`, React plugin, `server-only` shim, env bootstrapping). Core runner: `client/core/testing-vitest.md` |

@@ -32,7 +32,7 @@ Parse untrusted input at the adapter and normalize parser failures:
 const body = await parseJsonRequestBody(request);
 const input = parseRequestInput(CreateUserInputSchema, body);
 const result = await makeCreateUserController().execute(input, actor);
-const payload = CreateUserResponseSchema.parse(result);
+const payload = parseResponsePayload(CreateUserResponseSchema, result);
 return json(wrapResponse(payload));
 ```
 
@@ -42,7 +42,7 @@ return json(wrapResponse(payload));
   to clients.
 - Response-schema failures are server contract bugs and become sanitized 500 responses.
 - Hono validator hooks must throw the shared error instead of returning a framework-default envelope.
-- tRPC `.input()` may own wire parsing, but the procedure still calls the same controller and returns the same payload contract.
+- A tRPC procedure's configured input validator may own wire parsing, but the procedure still calls the same controller and returns the same payload contract. Resolve the exact configuration API from the installed integration.
 
 ## Envelopes and Pagination
 
@@ -66,8 +66,8 @@ type ApiErrorResponse = {
 Expose `details` only when explicitly allowlisted and safe. Never serialize provider messages, SQL, constraints, stack traces, or raw validation objects.
 
 For numeric pagination, use `limit`, `offset`, and `nextOffset` with a regular
-query. Reserve `cursor` for opaque stable traversal keys. A tRPC
-`useInfiniteQuery` capability must accept an optional field named `cursor` and
+query. Reserve `cursor` for opaque stable traversal keys. An infinite-query
+capability exposed through tRPC must accept an optional field named `cursor` and
 return an opaque `nextCursor`; never feed `nextOffset` into the infinite-query
 contract. Validate collection payloads with the shared pagination
 schema/helper rather than repeating envelope definitions.
@@ -100,6 +100,14 @@ Generate OpenAPI from the canonical Zod schemas at build time. Fail CI when the 
 - Validation issue details use the allowlisted path/message projection.
 - tRPC/OpenAPI variants share controllers and pass parity tests.
 - Numeric offsets are not mislabeled as cursors.
+
+## Official Implementation References
+
+- [Zod documentation](https://zod.dev/)
+- [OpenAPI Specification](https://spec.openapis.org/oas/latest.html)
+- [tRPC documentation](https://trpc.io/docs)
+
+Zod is the executable schema specialization, while OpenAPI and tRPC are reference transports over the same application contracts. Preserve the shared-contract rationale if these libraries change, and derive exact generators, adapters, and APIs from the installed versions and current official documentation.
 
 ## Derivation Sources
 

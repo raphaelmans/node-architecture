@@ -71,6 +71,7 @@ Rule:
 | [Conventions](./conventions.md) | Layer ownership + decision flows |
 | [Folder Structure](./folder-structure.md) | Directory and feature starter contracts |
 | [Composition Root](./composition-root.md) | Infrastructure factories, DI, browser/SSR lifetimes |
+| [Configuration Boundaries](./configuration.md) | Browser build/runtime surfaces, schema authority, and narrow injection |
 | [Client API Architecture](./client-api-architecture.md) | `components -> query adapter -> featureApi -> clientApi` call flow |
 | [Zod Validation](./validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./domain-logic.md) | Shared vs client-only transformations |

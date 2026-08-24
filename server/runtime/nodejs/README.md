@@ -40,6 +40,7 @@ No Node.js adapter may be imported by client code or by browser-safe shared cont
 - [Next.js](./metaframeworks/nextjs/README.md)
 - [Express](./metaframeworks/express/README.md)
 - [Hono](./metaframeworks/hono/README.md)
+- [NestJS](./metaframeworks/nestjs/README.md)
 
 ## Runtime Checklist
 

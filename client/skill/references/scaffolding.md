@@ -17,7 +17,7 @@ An unlisted framework is not unsupported. Use the generic contract, inspect its 
 ## Preflight Before Writes
 
 1. Detect language, framework, runtime/metaframework, package/build manager, installed versions, module format, workspace, source root, routes/views, aliases, composition roots, and tests.
-2. Inspect existing contract, validation, error, transport, server-state, form, telemetry, runtime, and test capabilities through public behavior.
+2. Inspect existing contract, validation, configuration, error, transport, server-state, form, telemetry, runtime, and test capabilities through public behavior.
 3. Discover the actual operation, trustworthy request/response contract, cache/synchronization identity, UI intent, and success/failure behavior.
 4. Classify every required boundary as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 5. Retrieve current primary sources for version-sensitive dependency, configuration, lifecycle, module-format, build, and deployment decisions.
@@ -81,6 +81,8 @@ Activate only behavior the requested scaffold needs:
 | Remote reporting | Production reporting is explicitly required |
 | Product analytics | A meaningful feature-owned behavioral event exists |
 | Transport | The feature calls an external/server boundary |
+| Browser build configuration | The deployable declares public values consumed while producing browser output |
+| Browser runtime configuration | Public browser values must be delivered independently of the build |
 | Tests | A created public boundary needs executable verification |
 
 Do not choose packages in the generic slice. Reuse compatible repository capabilities first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Package-specific fallbacks belong to the selected specialization; never replace required validation, remote-state ownership, or tests with ad hoc code.
@@ -106,11 +108,14 @@ application errors
 operational logging port
 client transport port
 composition root
+configuration boundary when activated
 product analytics when activated
 tests for created boundaries
 ```
 
-Hide providers behind narrow ports/factories and inject specific dependencies rather than a runtime container.
+Hide providers behind narrow ports/factories and inject specific dependencies or normalized configuration rather than a runtime container/environment object. Do not scaffold browser runtime loading unless independent delivery is required.
+
+Keep live dependencies such as consent, identity, request context, and stores outside `BrowserBuildConfig`; compose them alongside focused build values at runtime.
 
 For server-backed features preserve:
 

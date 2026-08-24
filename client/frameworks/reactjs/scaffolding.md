@@ -9,7 +9,7 @@ When React is inside a workspace, apply this mapping within the resolved client 
 In addition to core preflight:
 
 1. Detect the installed React version, renderer, build tool or metaframework, language mode, JSX transform, module format, source root, aliases, and test environment.
-2. Inspect existing providers, composition roots, error boundaries, transport adapters, TanStack Query or equivalent server-state layer, forms, telemetry, and component-test setup.
+2. Inspect existing providers, composition roots, error boundaries, environment/configuration boundaries, transport adapters, TanStack Query or equivalent server-state layer, forms, telemetry, and component-test setup.
 3. Retrieve version-applicable official documentation for React and every activated package when lifecycle, peer compatibility, configuration, or build behavior affects the scaffold.
 4. If a metaframework is present, load its specialization before planning routes, server rendering, environment access, or build configuration.
 
@@ -47,6 +47,8 @@ Prefer compatible existing packages. When a capability is absent and required, v
 | Local operational logging | Existing logger; otherwise `debug` behind `AppLogger` |
 | Remote error reporting | Existing or explicitly requested provider behind the repository facade |
 | Product analytics | Existing or requested provider behind `ProductAnalytics` |
+| Browser build configuration | The installed build tool's public environment mechanism behind an executable app-owned schema |
+| Browser runtime configuration | An opt-in public resource loaded at the dependent React boundary |
 | Component tests | Existing runner plus React Testing Library when UI behavior is generated |
 | Transport | Existing compatible adapter; otherwise platform `fetch` behind `IClientApi` |
 
@@ -69,6 +71,7 @@ common/errors/       AppError + unknown normalization
 common/logging/      AppLogger port + local/provider adapters
 common/clients/      IClientApi + createClientApi
 common/runtime/      composition root + stable browser accessor
+app-owned config     activated `BrowserBuildConfig` and optional `BrowserRuntimeConfig` boundaries
 common/analytics/    conditional ProductAnalytics port/adapter
 ```
 
@@ -82,6 +85,8 @@ create<Feature>Api(deps) -> I<Feature>Api
 ```
 
 Browser instances are application-scoped. Request scope is a metaframework concern and exists only when server rendering captures request-bound dependencies.
+
+React does not define environment loading. Apply the [React configuration specialization](./environment.md), preserve the installed build tool's mechanism, and retrieve its current official documentation before generating exact syntax. Keep browser runtime configuration absent unless independent delivery is required.
 
 ## Feature Mapping
 

@@ -13,7 +13,7 @@ Route workspace work through the smallest relevant architecture slices. Preserve
 2. Determine whether the target uses a single-project or monorepo topology; both are canonical and architecture roles do not change.
 3. Select the smallest relevant slice set from the routing table and read every selected reference completely.
 4. Preserve cohesive existing module ownership. For a new monorepo module, place activated roles through the package convention unless the user explicitly requests app-local scope; never migrate or split an existing module implicitly.
-5. Retrieve authoritative documentation matching every detected or selected tool version before making version-sensitive decisions.
+5. Retrieve authoritative documentation matching every detected or selected tool version before making version-sensitive decisions. Retain named tools and official links when they clarify a supported specialization, its role, rationale, or selection criteria. Treat vendor API symbols, configuration files and keys, flags, version thresholds, deprecations, and migration recipes as execution-time details rather than skill knowledge.
 6. When a change activates client or server roles, load the relevant installed `$client` or `$server` guidance when available and keep role-specific work inside the boundaries resolved here.
 7. Verify package and onion boundaries, package/task graphs, outputs, environment inputs, focused behavior, and affected builds.
 
@@ -59,7 +59,7 @@ A slice is one complete operation across every activated boundary. Cross-package
 - Packages use declared workspace dependencies and intentional exports; never traverse into another package's files.
 - Apps and packages may consume config packages through declared tooling/dev dependencies; config packages never import runtime application packages.
 - Package tasks own task logic; the workspace root coordinates them. Parallel checks remain cache-correct when dependency sources change.
-- Deployable applications own and validate environment configuration; reusable packages receive narrow injected values and never read a shared root environment.
+- Deployable applications own lifecycle-specific executable schemas and checked examples; reusable packages receive narrow normalized values/ports and never read a shared root environment. Task environment availability/cache identity remains a separate build-system policy.
 - Experimental build-system checks supplement rather than replace stable package and source-boundary enforcement.
 - Tool specializations remain thin. Official sources matching the target version own current syntax and behavior.
 

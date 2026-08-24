@@ -14,7 +14,7 @@ Route client work through modular architecture slices. Load only the references 
 3. Select the smallest relevant slice set from the routing table.
 4. Read every selected reference completely before acting.
 5. Inspect existing project conventions and dependencies. Apply framework or vendor guidance only when that technology is present or explicitly requested.
-6. For version-sensitive framework, dependency, configuration, lifecycle, module-format, build, or deployment decisions, retrieve current version-applicable primary documentation before acting.
+6. For version-sensitive framework, dependency, configuration, lifecycle, module-format, build, or deployment decisions, retrieve current version-applicable primary documentation before acting. Retain named libraries and official links when they clarify a supported specialization, its role, rationale, or selection criteria. Treat vendor API symbols, framework-owned filenames, configuration keys, flags, version thresholds, deprecations, and migration recipes as version-sensitive even when repository examples or training data state them confidently; detect the installed version and derive the exact implementation at execution time.
 7. If the detected stack has no named slice, apply core guidance and derive the integration from repository evidence and official stack resources; do not reject it merely because it is unlisted.
 8. For implementation, verify the result at the narrowest meaningful boundary and report unrelated drift without changing it.
 
@@ -23,7 +23,7 @@ Route client work through modular architecture slices. Load only the references 
 | Slice | Load when the task involves | Reference |
 | --- | --- | --- |
 | `scaffolding` | `$client scaffold`, repository preflight, missing infrastructure, dependency approval, vertical feature generation | [references/scaffolding.md](references/scaffolding.md) |
-| `foundations` | boundaries, folders, composition roots, factories, feature structure, domain placement | [references/foundations.md](references/foundations.md) |
+| `foundations` | boundaries, folders, composition roots, configuration surfaces, factories, feature structure, domain placement | [references/foundations.md](references/foundations.md) |
 | `workspace` | single-project/monorepo topology, client app ownership, shared packages, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, validation, DTO mapping, `AppError`, safe error UX | [references/contracts.md](references/contracts.md) |
 | `data-flow` | `clientApi`, `featureApi`, query adapters, TanStack Query, query keys, HTTP, tRPC | [references/data-flow.md](references/data-flow.md) |
@@ -33,7 +33,7 @@ Route client work through modular architecture slices. Load only the references 
 | `react` | React composition, hooks, forms, presentation boundaries, UI and toast facades | [references/react.md](references/react.md) |
 | `nextjs` | App Router, SSR/RSC, params, environment, tRPC/Ky adapters, Next.js tests | [references/nextjs.md](references/nextjs.md) |
 
-Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core` and `architecture` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
+Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `config`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 
 When the user names multiple concerns, load all matching references. Examples:
 
@@ -42,6 +42,7 @@ When the user names multiple concerns, load all matching references. Examples:
 - `$client scaffold users/create`: `scaffolding` + `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `nextjs`, `telemetry`, or state slices only when detected/requested capabilities require them
 - `$client scaffold users/create` in Vue or Svelte: `scaffolding` + capability slices; derive framework integration from repository evidence and current official docs
 - Next.js logging or Sentry: `telemetry` + `nextjs`
+- Standalone React configuration: `foundations` + `react`; add `workspace` or `nextjs` only when those boundaries exist
 - Create a React feature: `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `telemetry` when the implementation emits operational records or product events
 - Realtime React cache synchronization: `state-realtime` + `data-flow` + `react` + `testing`
 - Form validation and error UX: `contracts` + `react` + `testing`
@@ -58,9 +59,11 @@ When invoked as `$client scaffold`, read `scaffolding` first, then every capabil
 - Normalize provider errors once to `AppError`. Preserve only user-safe messages and assign one operational reporting owner per failure.
 - Keep server state in TanStack Query, client coordination state in an appropriate store, shareable state in the URL, and local ephemeral state in the component.
 - Use factories for dependency-heavy infrastructure and assemble it in one composition root. Inject specific ports, never the complete runtime container.
+- Keep `BrowserBuildConfig` limited to public build values and separate from live runtime dependencies and opt-in `BrowserRuntimeConfig`; executable schemas are deployable-owned and external names stop at composition.
 - Keep `AppLogger` operational diagnostics separate from typed `ProductAnalytics` behavioral events. Never thread telemetry metadata through business DTOs.
 - Keep tests under a mirrored `src/__tests__/` tree and test each layer through its public boundary.
 - Apply core rules before React or Next.js additions. Framework guidance extends core; it does not override it.
+- Persist durable concepts, rationale, selection criteria, ownership, safety, and verification outcomes in this skill. Named libraries may remain as linked reference implementations; their currently correct syntax does not become a permanent skill rule.
 - Do not introduce libraries, adapters, controllers, stores, or factories merely because a reference mentions them. The target stack and actual complexity must justify them.
 
 ## Review and Change Discipline

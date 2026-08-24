@@ -21,7 +21,7 @@ Before configuring Turborepo:
 
 1. Detect the installed version, package manager and version, lockfile, workspace declarations, root and package configurations, package scripts, outputs, environment inputs, CI, and cache state.
 2. Retrieve official guidance matching that evidence.
-3. Map [core package boundaries](../../core/package-boundaries.md) and the [scaffolding contract](../../core/scaffolding.md) to the current supported mechanisms.
+3. Map [core package boundaries](../../core/package-boundaries.md), [environment ownership](../../core/environment.md), and the [scaffolding contract](../../core/scaffolding.md) to the current supported mechanisms.
 4. Show any dependency installation, initialization, migration, remote-cache connection, or CI-provider change for approval.
 5. Verify the resulting package and task graphs with the installed tool.
 

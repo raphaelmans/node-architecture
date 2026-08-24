@@ -57,7 +57,7 @@ Never add request IDs, actors, loggers, analytics, or arbitrary metadata to `Tra
 - Route workers, CLIs, and alternate transports through the same service/use-case capability authorization rather than duplicating ownership or tenant checks in adapters.
 - Keep the repository beside its domain module. Shared database infrastructure supplies clients, schemas, and transaction plumbing but does not own domain-specific queries.
 
-For known uniqueness failures, match the exact constraint name. Do not map every PostgreSQL `23505` to one domain conflict.
+For known uniqueness failures, match both the installed PostgreSQL adapter's documented unique-violation signal and the exact constraint name. Do not map every database uniqueness failure to one domain conflict.
 
 ## ID Policy
 
@@ -79,6 +79,13 @@ When infrastructure depends on cookies, headers, or an authenticated provider se
 - IDs and retries follow actual persistence semantics.
 - Request-scoped provider clients cannot leak across requests.
 - Results are mapped and response-validated before serialization.
+
+## Official Implementation References
+
+- [PostgreSQL error codes](https://www.postgresql.org/docs/current/errcodes-appendix.html)
+- [Drizzle ORM documentation](https://orm.drizzle.team/docs/overview)
+
+PostgreSQL is the documented durable store and Drizzle is the TypeScript persistence specialization. The stable rationale is to classify provider failures structurally and match domain conflicts by exact constraint; the installed database and driver documentation own concrete codes and error-object shapes.
 
 ## Derivation Sources
 

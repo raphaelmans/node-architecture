@@ -21,6 +21,7 @@ Rule:
 - Put framework/runtime-specific behavior in framework/runtime folders.
 - Keep `monorepo/core/*` build-system and package-manager agnostic.
 - Keep build-system specializations thin and resolve version-sensitive behavior from matching authoritative sources.
+- Curate portable skills down to durable concepts, rationale, outcomes, and decision criteria. Retain named libraries and official links when they clarify a supported specialization or selection choice. Do not copy vendor-owned API symbols, framework filenames, configuration keys, flags, version matrices, deprecations, or migration recipes from canonical examples into a skill; the executing agent detects installed versions, retrieves current primary documentation, and verifies the derived implementation.
 
 ## Contribution Types
 
@@ -113,6 +114,7 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 - Prefer additive updates over broad rewrites.
 - Keep examples concrete but avoid forcing one project-specific path unless required.
 - Mark legacy/reference-only content explicitly as non-canonical.
+- Treat framework and vendor examples as dated implementation evidence, not version authority for portable skills. A library link supports discovery; it does not make the linked page's current syntax part of the architecture contract.
 
 ## Pull Request Checklist
 
@@ -122,6 +124,7 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 - [ ] Updated indices/README links for new folders
 - [ ] Added/updated changelog for non-trivial changes
 - [ ] Verified no contradictory guidance across related docs
+- [ ] Portable skills retain library roles, rationale, and official links without freezing vendor syntax or version-specific recipes
 
 ## If You Are Unsure Where A Rule Belongs
 

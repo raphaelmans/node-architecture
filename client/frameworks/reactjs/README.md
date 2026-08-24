@@ -15,6 +15,7 @@ Read core first:
 
 - [Overview](./overview.md)
 - [React Scaffolding](./scaffolding.md)
+- [Configuration](./environment.md)
 - [Conventions](./conventions.md)
 - [Server State Patterns (Cookbook)](./server-state-patterns-react.md)
 - [Composition](./composition-react.md)

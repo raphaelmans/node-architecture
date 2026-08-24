@@ -22,13 +22,14 @@ wire contracts             module shared/contracts       packages/contracts/<mod
 shared pure rules          module shared domain           packages/domain/<module>
 application behavior       module                         packages/capabilities/<module>
 concrete infrastructure    module adapter                 packages/adapters/<module>-<provider>
+configuration boundary     deployable composition         remains in apps/<server|worker>/
 ```
 
 A workspace package may contain several onion layers. Controllers may depend on wire contracts and application boundaries; services/use cases remain independent of transport shapes; concrete adapters import and implement inward-owned ports.
 
 ## Composition and Imports
 
-Deployable server/worker apps are graph endpoints. Their composition roots select concrete adapters and inject narrow environment configuration. Capabilities never import concrete adapters or apps. Packages never read a shared root environment or receive the complete app environment.
+Deployable server/worker apps are graph endpoints. Their composition roots select concrete adapters and inject narrow `PrivateBuildConfig`/`ServerRuntimeConfig` values. Capabilities never import concrete adapters or apps. Packages never read a shared root environment, own deployable variable names, or receive the complete app environment. Task environment availability/cache identity remains separate from schema validation; publication/deployment side effects consume build outputs through separate execution that still runs when those outputs come from cache.
 
 For a new monorepo module, activated capability and adapter roles use package placement by default, even with one deployable consumer. Unused roles remain absent. Preserve a cohesive existing app-local module for incremental operations unless the user explicitly requests migration; never create one package per operation or onion layer.
 

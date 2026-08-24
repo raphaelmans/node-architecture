@@ -62,7 +62,7 @@ Store regression fixtures by provider and event type. Keep fixtures minimal, det
 
 ## Transport Parity
 
-`createCaller` tests tRPC procedures only. It does not prove HTTP context creation, raw parsing, observability, headers/cookies, or serialized formatter output; cover those with real HTTP adapter tests.
+An in-process tRPC procedure harness proves procedure behavior only. It does not prove HTTP context creation, raw parsing, observability, headers/cookies, or serialized formatter output; cover those with real HTTP adapter tests and resolve the exact harness API from the installed tRPC version.
 
 When tRPC and OpenAPI coexist, run the same fixtures through both transports and compare payloads, authorization, app error codes, safe details, and side effects. Allow only deliberate transport differences such as HTTP status versus tRPC code.
 
@@ -77,6 +77,14 @@ When tRPC and OpenAPI coexist, run the same fixtures through both transports and
 - tRPC procedure tests are not mislabeled as HTTP integration tests.
 - Telemetry assertions target stable app-facing fields and ownership.
 - No unit test reaches live infrastructure.
+
+## Official Implementation References
+
+- [tRPC documentation](https://trpc.io/docs)
+- [Vitest guide](https://vitest.dev/guide/)
+- [Hono testing documentation](https://hono.dev/docs/guides/testing)
+
+tRPC's in-process harness, Vitest, and Hono's request utilities are reference implementations for distinct test boundaries. Preserve the distinction between procedure, framework-adapter, and real HTTP behavior while retrieving exact test APIs from installed-version documentation.
 
 ## Derivation Sources
 

@@ -85,7 +85,7 @@ Keep query/mutation units single-purpose. Query adapters own:
 - invalidation, optimistic updates, and cache patches;
 - reusable success analytics when the mutation owns that occurrence.
 
-Prefer hook-owned invalidation for reusable mutation behavior. A business coordinator may own route-local `mutate -> sync -> navigate` sequencing, but it calls a named operation from `hooks.ts` or `sync.ts`; it never embeds QueryClient or concrete keys in TSX.
+Prefer hook-owned invalidation for reusable mutation behavior. A business coordinator may own route-local `mutate -> sync -> navigate` sequencing, but it calls a named operation from `hooks.ts` or `sync.ts`; it never embeds direct cache-client operations or concrete keys in TSX.
 
 Optimistic updates require an exact snapshot, immutable patch, rollback on error, and reconciliation after settle. If rollback semantics are unclear, use explicit invalidation.
 
@@ -93,9 +93,11 @@ Optimistic updates require an exact snapshot, immutable patch, rollback on error
 
 Select keys by transport pattern:
 
-1. Direct tRPC hooks: use tRPC-generated keys and `trpc.useUtils()`.
-2. `IFeatureApi` backed by tRPC and requiring cache interop: use `buildTrpcQueryKey(path, input)`.
-3. Ky, fetch, or realtime-backed adapters: use plain key factories under `src/common/query-keys/`.
+1. Direct tRPC hooks use the query-key and cache utilities supported by the installed tRPC integration.
+2. An `IFeatureApi` backed by tRPC and requiring cache interop derives keys through that integration's supported adapter rather than reconstructing its internal key format.
+3. Ky, fetch, or realtime-backed adapters use plain key factories under `src/common/query-keys/`.
+
+Resolve exact tRPC utility names and call shapes from the installed packages and current official documentation.
 
 ```ts
 export const profileKeys = {
@@ -111,7 +113,7 @@ Include every result-changing dependency. Keep structured inputs serializable. N
 
 ```text
 CreateForm.onSubmit
-  -> useMutCreate.mutateAsync(input)
+  -> await feature mutation(input)
   -> FeatureApi.create(input)
   -> ClientApi.post(path, input)
   -> network
@@ -151,6 +153,15 @@ For Ky or fetch:
 - Transport and contract failures have separate single reporting owners.
 - Completion analytics emits only after meaningful success.
 - Factories and the composition root own all provider construction.
+
+## Official Implementation References
+
+- [TanStack Query React documentation](https://tanstack.com/query/latest/docs/framework/react/overview)
+- [tRPC client documentation](https://trpc.io/docs/client)
+- [tRPC React Query integrations](https://trpc.io/docs/client/react)
+- [Ky documentation](https://github.com/sindresorhus/ky#readme)
+
+TanStack Query owns server-state synchronization, tRPC or Ky supplies transport integration, and the feature API keeps those providers out of components. Preserve that boundary when selecting a new query or transport library; resolve exact utilities and mutation methods from current version-matched sources.
 
 ## Derivation Sources
 

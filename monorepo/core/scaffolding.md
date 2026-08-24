@@ -25,7 +25,7 @@ monorepo foundation
 
 Before writing:
 
-1. Detect repository topology, package manager, lockfile, workspace discovery, build system and version, application packages, internal packages, package exports, dependency edges, task scripts, environment ownership, boundary checks, CI, and dirty files.
+1. Detect repository topology, package manager, lockfile, workspace discovery, build system and version, application packages, internal packages, package exports, dependency edges, task scripts, deployable schemas/examples, task environment policy, boundary checks, CI, and dirty files.
 2. Locate client/server architecture roles, cohesive existing module owners, composition roots, wire contracts, shared domain rules, persistence/provider ports, concrete adapters, and tests.
 3. Classify every required change as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 4. Retrieve authoritative version-matched sources for every tool-sensitive decision.
@@ -57,6 +57,8 @@ environment ownership
 boundary verification
 local cache correctness
 ```
+
+Foundation establishes ownership only. It does not invent environment variables, browser runtime resources, shared environment packages, or root environment files. Activated configuration follows [Environment Ownership](./environment.md).
 
 Preserve the detected package manager. If none exists, propose the specialization's current supported recommendation, explain the consequences, and obtain approval. Do not create empty package or application placeholders.
 
@@ -108,7 +110,7 @@ Verify, as applicable:
 - no filesystem traversal across packages;
 - dependency and onion boundary checks;
 - task ordering, parallel cache invalidation, and real file outputs;
-- app-owned environment validation and cache inputs;
+- app-owned lifecycle schemas, example parity, task availability, and cache inputs;
 - focused contract, domain, capability, adapter, client, server, and composition tests;
 - type/static checks, lint/format checks, builds, and affected CI selection;
 - no credentials, speculative packages, partial slices, or unrelated rewrites.

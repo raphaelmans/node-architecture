@@ -24,7 +24,7 @@ Use HTTP-only, secure production cookies with an intentional SameSite policy. Ro
 - Use the publishable key for browser and request-scoped user/session clients.
 - Use the secret key only in narrowly named server-only privileged factories.
 - Never expose a secret/service-role key to the client; it bypasses RLS.
-- Treat legacy `anon` and `service_role` values as migration compatibility, not the default for new code.
+- Treat legacy credential types detected in an existing project as migration compatibility, not the default for new code; retrieve Supabase's current key taxonomy and migration guidance before implementation.
 - Enable and test RLS for browser/user-scoped access. Do not assume a publishable key protects data without policy.
 
 Keep privileged clients out of ordinary factories so code review can identify bypass-RLS paths immediately.
@@ -61,6 +61,13 @@ Branch on stable provider error codes, never localized message text. Translate p
 - Secrets, credentials, cookies, and raw tokens cannot reach logs or public errors.
 - Secret/public environment exposure is validated centrally and configuration is injected narrowly.
 - Security headers and upload limits match the deployed runtime.
+
+## Official Implementation References
+
+- [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys)
+- [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+
+Supabase is the documented authentication and data-provider specialization. The durable security model distinguishes public application credentials, privileged server credentials, user identity, and RLS policy; current Supabase documentation owns credential labels, formats, compatibility, and migration steps.
 
 ## Derivation Sources
 

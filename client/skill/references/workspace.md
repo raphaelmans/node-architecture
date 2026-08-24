@@ -18,6 +18,7 @@ wire contracts               module shared/contracts       packages/contracts/<m
 cross-runtime pure rules     module shared domain           packages/domain/<module>
 shared UI                    components                     packages/ui/<system>
 composition root             app-owned runtime              remains app-owned
+configuration boundary      app-owned build/runtime         remains app-owned
 ```
 
 Do not extract app-local client features merely because a workspace exists. Domain and UI packages require genuine cross-package consumers. When a new server-backed module activates cross-package contracts through the monorepo package convention, the client consumes the contract package through public exports.
@@ -27,6 +28,8 @@ Do not extract app-local client features merely because a workspace exists. Doma
 A client application may import intentional exports from contract, explicit cross-runtime domain, UI, and tooling packages. It never imports server capability packages, repositories, provider adapters, server composition, environment modules, entities, or internal commands.
 
 Tooling packages are declared development dependencies and remain orthogonal to the runtime onion; they never import client or server application code.
+
+Each client deployable owns its executable `BrowserBuildConfig` schema and optional `BrowserRuntimeConfig` resource boundary. It may consume shared packages through narrow normalized options or ports; it never imports another app's environment module or a shared root environment. Workspace task policy accounts for output-affecting build inputs separately from application validation. Source-map publication, deployment, and similar external side effects use separate execution that is not suppressed by restoring cached build outputs.
 
 Contracts and domain are siblings: serialized DTOs do not become domain models, and domain packages do not depend on transport contracts. Feature APIs or explicit mappers translate at the client boundary.
 

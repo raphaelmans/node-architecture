@@ -45,6 +45,7 @@ This documentation emphasizes:
 | [Core Index](./core/README.md) | Architecture summary, folder structure, quick reference |
 | [Server Scaffolding Contract](./core/scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./core/conventions.md) | Layer responsibilities, DI patterns, kernel rules |
+| [Configuration Boundaries](./core/configuration.md) | Private build/server runtime schemas and narrow injection |
 | [Framework-Neutral Controllers](./core/controllers.md) | Portable capability boundary shared by Next.js, Express, Hono, tRPC, OpenAPI, and other adapters |
 | [Error Handling](./core/error-handling.md) | Public error policy, translation rules, response structure |
 | [Transaction](./core/transaction.md) | Transaction manager, patterns, transaction-only options |
@@ -80,6 +81,7 @@ This documentation emphasizes:
 | [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
 | [Express](./runtime/nodejs/metaframeworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
 | [Hono](./runtime/nodejs/metaframeworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |
+| [NestJS](./runtime/nodejs/metaframeworks/nestjs/README.md) | Nest adapters and framework-native configuration/DI integration |
 
 ## Quick Start
 

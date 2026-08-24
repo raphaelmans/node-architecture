@@ -9,6 +9,7 @@ Use this slice for server layering, framework-neutral controllers, module struct
 - [Decision flow](#decision-flow)
 - [Folder contract](#folder-contract)
 - [Dependency injection](#dependency-injection)
+- [Configuration boundaries](#configuration-boundaries)
 - [Review checklist](#review-checklist)
 
 ## Canonical Flow
@@ -78,7 +79,7 @@ src/
       factories/
       errors/
       dtos/                            optional server-only commands
-  drizzle/migrations/
+  database/migrations/                 logical migration boundary; adapt to the selected persistence tool
 ```
 
 Keep the shared kernel small. Put a concept there only when multiple modules require it, it is stable, and it does not depend on a framework, ORM, provider SDK, or concrete logger.
@@ -104,7 +105,17 @@ export function makeCreateUserController(): ICreateUserController {
 
 Adapters resolve controller factories only. Services and use cases receive narrow ports, never a service locator. Keep browser/request/runtime lifetimes in the composition root, not hidden inside modules.
 
-Treat validated environment configuration the same way: runtime composition may read the app-owned env module, but it passes only focused values such as `{ connectionString }` or `{ apiKey }` into infrastructure. Never inject `process.env`, the complete env object, or an environment service locator into controllers or application layers.
+## Configuration Boundaries
+
+Treat validated environment configuration the same way. The deployable owns separate `PrivateBuildConfig` and `ServerRuntimeConfig` schemas for values genuinely consumed in those lifecycles. Schemas permit unrelated ambient variables, return only declared normalized fields, and remain the source of truth for a checked `.env.example` projection.
+
+Build/runtime composition passes only focused values such as `{ connectionString }` or `{ apiKey }` into infrastructure. Never inject a process environment, complete configuration surface, or environment service locator into controllers or application layers. Framework-native DI may compose focused providers at the outer boundary without coupling portable application code to framework configuration lookup.
+
+Validate each surface at the earliest boundary where its dependent work has the required values. Do not require runtime-only secrets during unrelated builds. Model optional capabilities as explicit modes: a disabled capability requires no provider configuration, while an enabled capability validates every field needed to construct that adapter. A configuration failure blocks only the dependent work unless that dependency is required to start the whole deployable.
+
+Frameworks and hosts may consume undeclared ambient variables freely. Add one to an application schema only when application composition depends on it; schema validation must not attempt to own the entire process environment.
+
+`PrivateBuildConfig` contains only private values that can affect a produced artifact. Credentials that merely authorize publication or deployment belong to a separate side-effect task that still runs when requested after a build cache hit; they do not invalidate the artifact cache.
 
 ## Review Checklist
 
@@ -117,9 +128,9 @@ Treat validated environment configuration the same way: runtime composition may 
 - Dependencies point inward; domain/application layers do not import infrastructure.
 - Shared kernel additions satisfy the stability and cross-module tests.
 - Factories make dependency graphs explicit and tests can substitute every boundary.
-- Runtime configuration is validated once and injected narrowly from composition.
+- Build/runtime configuration is validated at its consuming lifecycle and injected narrowly from composition.
 - New abstractions solve current complexity rather than anticipated complexity.
 
 ## Derivation Sources
 
-Derived from the server indexes, core README, conventions, controller, transaction, and runtime-boundary guides. Exact source paths and fingerprints are maintained outside the portable skill package.
+Derived from the server indexes, core README, configuration, conventions, controller, transaction, and runtime-boundary guides. Exact source paths and fingerprints are maintained outside the portable skill package.

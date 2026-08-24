@@ -50,7 +50,7 @@ Never mock pure domain/helpers, Zod schemas, or standard-library behavior.
 - Shared contract: representative valid/invalid wire payloads, serialized safety, UUID/date/enum/nullability edges. Test the schema matrix once.
 - `domain.ts` and `helpers.ts`: pure table-driven cases without mocks or framework runtime.
 - `api.ts`: construct through `create<Feature>Api`, stub injected `IClientApi`, inject `toAppError` and logger spy/no-op, assert representative response parsing/mapping and normalized failure.
-- `hooks.ts`: fake `I<Feature>Api`, use a fresh QueryClient, assert keys, invalidation, status, optimistic rollback, and success analytics when owned.
+- `hooks.ts`: fake `I<Feature>Api`, use a fresh server-state cache client, and assert keys, invalidation, status, optimistic rollback, and success analytics when owned.
 - business component: mock feature hooks, not transport.
 - presentation component: render with props/form fixtures only.
 - realtime adapter: fake provider channel/client and test validation, status mapping, and idempotent teardown.
@@ -77,20 +77,11 @@ Verify stable browser instances, isolated request-scoped context, provider const
 
 ## Vitest Baseline
 
-Require scripts:
+Expose stable package scripts for a single unit-test run and an interactive watch workflow. Resolve their exact commands from the installed Vitest and package-manager versions.
 
-```json
-{
-  "scripts": {
-    "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
-  }
-}
-```
+Use the installed runner's supported configuration module format and path-alias integration. Configure shared setup, mock restoration/isolation, and discovery restricted to the mirrored `src/__tests__/` tree.
 
-Use `vitest.config.mts`, `vite-tsconfig-paths`, globals, a shared `src/test/vitest.setup.ts`, `restoreMocks`, `clearMocks`, and includes restricted to `src/__tests__/**/*.test.ts(x)`.
-
-For Next.js/React, add the React plugin, Testing Library, and jsdom. Keep Node as the safe default and opt client component/hook tests into jsdom or use separate projects. Alias `server-only` to an empty test shim, but retain an independent build/import-boundary check so the shim cannot conceal a leaked server import.
+For Next.js/React, select compatible framework testing integration, component utilities, and browser simulation from the installed versions and their current primary docs. Keep Node as the safe default and opt component/hook tests into a browser-like environment or separate projects. If runner compatibility requires a server-only marker shim, retain an independent build/import-boundary check so the shim cannot conceal a leaked server import.
 
 Provide harmless fake env values only to tests whose import graph validates them. Never load production secrets or real infrastructure.
 
@@ -104,6 +95,14 @@ Provide harmless fake env values only to tests whose import graph validates them
 - No unit test calls live network, database, Sentry, debug, or analytics vendors.
 - Cache, analytics, error, and lifecycle assertions remain at their owning boundary.
 - One smoke test proves config, aliases, setup, and discovery before expanding a suite.
+
+## Official Implementation References
+
+- [Vitest guide](https://vitest.dev/guide/)
+- [Vitest CLI](https://vitest.dev/guide/cli)
+- [Testing Library documentation](https://testing-library.com/docs/)
+
+Vitest is the documented unit runner because it supports the repository's TypeScript/Vite-oriented test boundary, while Testing Library exercises observable component behavior. Preserve those outcomes if another runner is selected; derive scripts, configuration format, environments, and plugins from the installed versions.
 
 ## Derivation Sources
 

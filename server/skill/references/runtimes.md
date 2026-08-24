@@ -28,38 +28,41 @@ Adapters authenticate and apply rate limits or transport-wide coarse gates. Owne
 
 ## Next.js Route Handlers
 
-- Keep `route.ts` as a thin Fetch/Next adapter.
+- Keep the framework's current route-handler entrypoint as a thin Fetch/Next adapter.
 - Parse malformed JSON through a helper that throws `ValidationError`.
 - Establish observability before authentication or application work.
 - Validate shared input and payload schemas.
 - Return `ApiResponse<T>` for success and the canonical error response for failure.
 - Build security-sensitive redirects from a validated application origin.
 
-With Cache Components enabled, use `use cache`, `cacheLife`, and `cacheTag`. With the previous model, use route `revalidate` and `unstable_cache`. Use `revalidateTag(tag, "max")` for stale-while-revalidate and `updateTag` only in Server Actions requiring read-your-own-writes.
+Choose the caching model supported and enabled by the installed Next.js version. Preserve explicit lifetime, invalidation identity, stale-while-revalidate semantics, and read-your-own-writes only where the interaction requires them; retrieve current official documentation for exact directives, functions, signatures, and allowed call sites.
 
 Validate FormData as untrusted input, including total size, file count, type, and storage path. Authenticate cron handlers and make them idempotent. Keep metadata/SEO generation deterministic and avoid leaking request secrets.
 
 ## Next.js Environment Configuration
 
-Use one validated, app-owned environment module. `@t3-oss/env-nextjs` is the recommended Next.js adapter, not an inward architecture dependency.
+Use one deployable-owned logical environment boundary with separate private-build and server-runtime surfaces. When T3 Env is detected or selected, it is a Next.js adapter rather than an inward architecture dependency.
 
 - Declare secrets under the server schema without a public prefix.
-- Declare browser-safe values under the client schema with `NEXT_PUBLIC_` and list them in the runtime map required by the installed Next.js/T3 Env versions.
+- Declare browser-safe values explicitly under the client schema using the public exposure convention required by the installed framework.
 - Keep ordinary `process.env` access inside the env module and test/runtime bootstrap code.
 - Import validated values only at runtime composition and infrastructure factories; inject narrow configuration rather than the env object.
 - Keep controllers, services, use cases, repositories, entities, and isomorphic contracts free of environment access.
 - Parse strings, especially booleans, deliberately; JavaScript truthiness is not configuration validation.
-- Validate during `next.config.ts` loading when secrets exist at build time. When credentials are runtime-only, document and enforce validation before accepting traffic instead of silently disabling it.
-- For standalone output, verify and configure the T3 Env packages in `transpilePackages`.
+- Validate private build values only when they can affect the produced artifact. Validate runtime-only credentials before accepting dependent traffic/work; do not require them for unrelated builds.
+- Keep publication/deployment credentials out of cached build identity. Run the requested external side effect as a separate non-cacheable task, or equivalent, that consumes build outputs and still executes after a cache hit; resolve exact task/environment syntax from current build-system documentation.
+- Permit unrelated ambient variables and exclude them from normalized application configuration.
+- Treat executable schemas as authoritative and `.env.example` as a checked human- or agent-authored projection.
+- Retrieve current official Next.js and environment-adapter documentation for runtime maps, configuration-module syntax, build-time imports, and standalone packaging.
 - Scope fake import-time values to Node/server test setup and retain a real Next.js build or boundary check in CI.
 
 ## Express and Hono
 
-For Express 5, async handler rejections reach the final error middleware. Parse input with shared normalization, call one controller, and register central error middleware once after routes.
+For Express, determine async rejection propagation from the installed major's official documentation. Parse input with shared normalization, call one controller, and ensure failures reach central error mapping exactly once after routes.
 
-For Hono, use a validator hook that throws the shared `ValidationError`; do not let the default validator response bypass the canonical envelope. Adapt the shared numeric error status to Hono's `ContentfulStatusCode` union at the framework boundary before calling `c.json()`. Keep Hono context variables at middleware/adapter scope.
+For Hono, use its current validation extension point to throw the shared `ValidationError`; do not let a framework-default response bypass the canonical envelope. Adapt the shared numeric error status to the installed framework's accepted status type at the boundary. Keep Hono context variables at middleware/adapter scope.
 
-The NestJS material is a placeholder only. If adopting NestJS, keep decorators, pipes, guards, interceptors, and exception filters outside the same framework-neutral controller boundary.
+For NestJS, retain its native configuration module, typed/focused providers, dependency injection, lifecycle, and testing facilities at the outer application boundary. The deployable validates `ServerRuntimeConfig`; inward portable code receives normalized constructor/factory arguments rather than a generic configuration service. Reusable dynamic modules accept normalized options and never read the deployable environment. Keep decorators, pipes, guards, interceptors, and exception filters outside the same framework-neutral controller boundary.
 
 ## tRPC and OpenAPI
 
@@ -100,9 +103,25 @@ Implement the kernel `AppLogger` port without exposing Pino types inward. Merge 
 - All adapters share controllers, contracts, and central error policy.
 - Capability authorization remains effective through HTTP, workers, CLIs, and other transports.
 - Version-sensitive Next.js/tRPC/Supabase behavior is verified against the target dependencies.
-- Next.js configuration is validated once and injected narrowly; public exposure is explicit.
+- Next.js configuration is validated at its consuming build/runtime lifecycle and injected narrowly; public exposure is explicit.
+- NestJS configuration uses framework-native outer composition without leaking generic configuration lookup inward.
 - Privileged provider paths are explicit and server-only.
 - Runtime tests cover actual parsing, context, serialization, and error formatting.
+
+## Official Implementation References
+
+- [Node.js API documentation](https://nodejs.org/docs/latest/api/)
+- [Next.js documentation](https://nextjs.org/docs)
+- [Express documentation](https://expressjs.com/)
+- [Hono documentation](https://hono.dev/docs/)
+- [NestJS documentation](https://docs.nestjs.com/)
+- [tRPC documentation](https://trpc.io/docs)
+- [OpenAPI Specification](https://spec.openapis.org/oas/latest.html)
+- [Supabase documentation](https://supabase.com/docs)
+- [Pino documentation](https://getpino.io/#/)
+- [T3 Env documentation](https://env.t3.gg/docs/nextjs)
+
+These libraries are reference specializations at the outer adapter and runtime boundary. Preserve their architectural roles and selection rationale while deriving exact middleware, handler, configuration, and SDK syntax from the target repository, installed versions, and current official documentation.
 
 ## Derivation Sources
 

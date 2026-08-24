@@ -77,11 +77,12 @@ shared/kernel/response      compatible response contracts
 shared/infra/logger         structured runtime adapter
 shared/infra/observability  AsyncLocalStorage implementation when activated
 shared/infra/http           centralized transport error/envelope helpers
+app-owned environment      activated lifecycle schemas + normalized configuration mapping
 composition root            application-scoped construction and wiring
 tests                       focused tests for every created boundary
 ```
 
-Use explicit factories. Keep validated configuration, pools, stateless provider clients, and logger adapters application-scoped. Create request scope only for captured cookies, sessions, actors, headers, or request-bound clients. Correlation comes from the active async scope, never business DTOs or transaction options.
+Use explicit factories. Create an environment boundary only for variables the deployable consumes, validate them at their build/runtime lifecycle, and permit unrelated ambient variables. Keep validated configuration, pools, stateless provider clients, and logger adapters application-scoped. Create request scope only for captured cookies, sessions, actors, headers, or request-bound clients. Correlation comes from the active async scope, never business DTOs or transaction options.
 
 ## Capability Mapping
 

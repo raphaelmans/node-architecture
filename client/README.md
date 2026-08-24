@@ -62,6 +62,7 @@ This documentation emphasizes:
 | [Architecture](./core/architecture.md) | Core principles and boundaries |
 | [Conventions](./core/conventions.md) | Layer responsibilities + file boundaries |
 | [Composition Root](./core/composition-root.md) | Factories, dependency injection, runtime lifetimes |
+| [Configuration Boundaries](./core/configuration.md) | Browser build/runtime surfaces, schema authority, and injection |
 | [Client API Architecture](./core/client-api-architecture.md) | `components -> query adapter -> featureApi -> clientApi` call flow |
 | [Zod Validation](./core/validation-zod.md) | Schema boundaries + normalization |
 | [Domain Logic](./core/domain-logic.md) | Shared vs client-only transformations |
@@ -83,6 +84,7 @@ This documentation emphasizes:
 | [Frameworks Index](./frameworks/README.md) | Framework-specific docs |
 | [ReactJS Index](./frameworks/reactjs/README.md) | React-specific implementation |
 | [React Scaffolding](./frameworks/reactjs/scaffolding.md) | React implementation of the portable scaffolding contract |
+| [React Configuration](./frameworks/reactjs/environment.md) | Build-tool configuration and optional browser runtime delivery |
 | [Next.js Index](./frameworks/reactjs/metaframeworks/nextjs/README.md) | Next.js App Router + SSR/params + adapters |
 | [Next.js Scaffolding](./frameworks/reactjs/metaframeworks/nextjs/scaffolding.md) | Next.js specialization for repository-aware generation |
 

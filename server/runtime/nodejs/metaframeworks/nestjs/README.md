@@ -1,6 +1,10 @@
-# NestJS Server Documentation (Adapter Placeholder)
+# NestJS Server Documentation
 
-NestJS is not yet a canonical implementation in this guide. When added, Nest route controllers are framework adapters and must adapt—not redefine—the [core architecture](../../../../core/README.md).
+NestJS is a framework specialization over the [core architecture](../../../../core/README.md). Nest route controllers and modules adapt—not redefine—the framework-neutral application boundary.
+
+## Guides
+
+- [Configuration and dependency injection](./configuration.md)
 
 A NestJS adapter must:
 

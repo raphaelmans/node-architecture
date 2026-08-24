@@ -1,233 +1,108 @@
-# Environment Configuration (Next.js)
+# Next.js Server Configuration
 
-> Validate configuration once at the Next.js runtime boundary, then inject narrow values through composition roots and factories.
+> Use Next.js and its selected environment adapter at the outer boundary, validate private build and server runtime inputs at their actual lifecycles, and inject narrow configuration inward.
 
-In a monorepo, that boundary remains owned by the deployable Next.js application. Reusable packages never read a workspace-root environment file or receive the complete validated app environment.
+Apply the [server configuration contract](../../../../core/configuration.md). The corresponding [client Next.js guide](../../../../../client/frameworks/reactjs/metaframeworks/nextjs/environment.md) owns browser build/runtime exposure.
 
-This guide recommends [`@t3-oss/env-nextjs`](https://env.t3.gg/docs/nextjs) as the Next.js adapter for typed environment configuration. It is a runtime concern, not a core architecture dependency: Express, Hono, workers, and other runtimes may implement the same boundary with a different validator.
-
-## Architecture Boundary
+## Boundary
 
 ```text
-process.env
-  -> validated Next.js env module
-  -> composition root / controller factory
-  -> narrow infrastructure configuration
-  -> service or use case through an explicit port
+host-injected external values
+  -> app-owned executable lifecycle schema
+  -> PrivateBuildConfig or ServerRuntimeConfig
+  -> Next.js composition / infrastructure factory
+  -> narrow configuration or port
+  -> application dependency
 ```
 
 Rules:
 
-- Read `process.env` only inside the env module and test/runtime bootstrap code.
-- Import the validated `env` object only from runtime adapters, composition roots, and infrastructure factories.
-- Pass narrow configuration such as `{ connectionString }` or `{ apiKey }`; never inject the complete env object or `process.env`.
-- Keep controllers, services, use cases, repositories, entities, and shared wire contracts independent of environment access.
-- Treat client exposure as an explicit public API. Only variables declared under `client` and prefixed with `NEXT_PUBLIC_` may enter browser bundles.
-- Never log configuration objects or secret values.
+- Keep ordinary `process.env` access inside environment adapters and explicit bootstrap/test boundaries.
+- Permit unrelated ambient Next.js, platform, and tooling variables; exclude them from normalized application configuration.
+- Import validated lifecycle surfaces only from server/build composition code that owns the corresponding work.
+- Pass focused values such as `{ connectionString }` or `{ apiKey }`, never `process.env`, a complete env object, or a generic configuration service.
+- Keep framework-neutral controllers, services, use cases, repositories, entities, and wire contracts independent of environment access.
+- Never log supplied configuration values or whole configuration objects.
 
-`@t3-oss/env-nextjs` is an implementation detail of this outer boundary. Inner layers depend on configuration values or focused ports, not the package.
+## T3 Env Specialization
 
-## Install
+[`@t3-oss/env-nextjs`](https://env.t3.gg/docs/nextjs) is the supported Next.js adapter when selected or detected. It remains a runtime/framework implementation detail.
 
-```bash
-pnpm add @t3-oss/env-nextjs zod
-```
+Detect the installed Next.js, T3 Env, validator, TypeScript, module-system, and deployment versions. Retrieve their current official documentation before choosing exact schema APIs, runtime maps, public exposure, module splitting, configuration imports, or standalone packaging.
 
-Confirm the installed package, Next.js, TypeScript, and Zod versions before copying version-sensitive syntax. The package is ESM-only and requires a TypeScript module resolution mode that understands package exports; `Bundler` is the normal Next.js choice.
+A unified physical module is acceptable when it preserves lifecycle behavior and server/browser import safety. Split private build, server runtime, or browser modules when a unified import would validate unavailable values or make private schemas client-reachable.
 
-## Default: One Validated Module
+## Build and Runtime Separation
 
-For most applications, keep one app-owned module:
+`PrivateBuildConfig` contains only private values actually consumed while Next.js builds:
 
-```typescript
-// src/env.ts
+- prerender/static-generation data access;
+- code generation; or
+- another build-executed integration whose value can change the produced artifact.
 
-import { createEnv } from "@t3-oss/env-nextjs";
-import { z } from "zod";
+`ServerRuntimeConfig` contains values consumed by the running server, worker-like hook, route handler, action, or server-side integration.
 
-const booleanFromString = z
-  .enum(["true", "false"])
-  .transform((value) => value === "true");
+Do not force runtime-only secrets into the build environment. Validate those values before the deployed server accepts dependent traffic or work. Likewise, if artifact-producing build code consumes a value that can change the output, classify it as a build input and account for it in cache identity even when server runtime also uses a value with the same external name.
 
-export const env = createEnv({
-  server: {
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
-    DATABASE_URL: z.string().url(),
-    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
-    STRIPE_SECRET_KEY: z.string().min(1),
-    ENABLE_ASYNC_JOBS: booleanFromString.default(false),
-  },
+One deployable-owned field declaration may be composed into both lifecycle schemas. This shares validation intent, not an injected value or global env object; build and runtime receive values independently from their hosts.
 
-  client: {
-    NEXT_PUBLIC_APP_URL: z.string().url(),
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
-  },
+## Publication and Deployment Side Effects
 
-  // Current Next.js releases only require explicit destructuring for values
-  // that may be included in the browser bundle.
-  experimental__runtimeEnv: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-  },
+Credentials that only authorize source-map upload, artifact publication, deployment, or another external side effect are not cached build inputs. A credential rotation does not change the artifact, and restoring a cached artifact does not replay the side effect.
 
-  emptyStringAsUndefined: true,
-});
-```
+Model publication as a separate app/package-owned task that consumes the completed build outputs. It must execute when publication is requested even when the build is restored from cache, so keep it non-cacheable or use the detected build system's equivalent side-effect semantics. Make its credentials available without adding them to build cache identity. Retrieve the installed task runner's current official documentation before choosing the exact dependency, cache, and environment mechanisms.
 
-Why the explicit client map matters: Next.js statically replaces explicitly referenced public variables. A dynamic lookup such as `process.env[name]` is not a safe substitute.
+If a value genuinely changes generated output as well as authorizing publication, split the output-affecting build field from the publication credential and classify each by its actual consumer.
 
-For Next.js versions older than `13.4.4`, T3 Env requires `runtimeEnv` with every server and client variable listed explicitly. Do not mix examples across versions; follow the API supported by the installed dependencies.
+## Framework-Native Composition
 
-Avoid JavaScript truthiness for boolean configuration. `Boolean("false")` is `true`; parse an explicit string enum or use the installed Zod version's equivalent string-boolean parser.
-
-## Use Configuration at Composition
-
-Prefer configuration-shaped factory arguments:
-
-```typescript
-// src/lib/shared/infra/db/make-database.ts
-
-export interface DatabaseConfig {
-  connectionString: string;
-}
-
-export function makeDatabase(config: DatabaseConfig): Database {
-  return createPostgresDatabase(config.connectionString);
-}
-```
-
-```typescript
-// src/lib/shared/infra/runtime/database.ts
-
-import { env } from "@/env";
-import { makeDatabase } from "@/lib/shared/infra/db/make-database";
-
-// Application-scoped, hot-reload/serverless-safe infrastructure composition.
-export const database = makeDatabase({
-  connectionString: env.DATABASE_URL,
-});
-```
-
-```typescript
-// src/lib/modules/user/factories/get-user.factory.ts
-
-import { database } from "@/lib/shared/infra/runtime/database";
-
-export function makeGetUserController(): GetUserController {
-  const users = new DrizzleUserRepository(database);
-  const service = new UserService(users);
-
-  return new GetUserController(service);
-}
-```
-
-The database adapter receives one required value at application-scoped composition. `UserService` and `GetUserController` never know that the value came from an environment variable or that T3 Env performed validation. Request-scoped resources such as cookies and sessions still belong in request-scoped factories; do not hide them in this application singleton.
-
-## Optional Server/Client Split
-
-A single module never exposes server values to browser code, but its server schema—including variable names—may be present in the client bundle. Split the boundary when secret names are themselves sensitive or when ownership is clearer that way:
+Use the Next.js lifecycle and module boundaries appropriate to the installed version. Map the validated surface into framework-neutral factory arguments:
 
 ```text
-src/env/
-├── server.ts   # server schema + server runtime values
-└── client.ts   # NEXT_PUBLIC_ schema + explicit client runtime map
+DATABASE_URL
+  -> ServerRuntimeConfig.databaseUrl
+  -> makeDatabase({ connectionString: databaseUrl })
+  -> Database port/adapter
 ```
 
-Rules for a split boundary:
+Application-scoped clients are safe only when they hold no request-specific state. Cookies, headers, sessions, actors, and request-bound clients remain request scoped.
 
-- Client modules import only `env/client.ts`.
-- Server composition roots import only `env/server.ts`.
-- Do not create an isomorphic barrel that re-exports the server env module.
-- Keep both modules app-owned; do not place them in `modules/*/shared/contracts/`.
+Reusable packages accept normalized options or ports. They never import the Next.js environment module, own deployable variable names, or load a workspace-root environment file.
 
-## Validate During the Next.js Build
+## Schema and Example Contract
 
-Import the env module from `next.config.ts` so missing or invalid configuration fails before deployment:
-
-```typescript
-// next.config.ts
-
-import "./src/env";
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {};
-
-export default nextConfig;
-```
-
-If schemas are split, import both modules. When secrets intentionally exist only at container runtime, define and document that deployment contract instead of silently disabling all validation. Validate runtime-only configuration before accepting traffic or processing work.
-
-### Standalone Output
-
-When using `output: "standalone"`, transpile both T3 Env packages:
-
-```typescript
-// next.config.ts
-
-import "./src/env";
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  output: "standalone",
-  transpilePackages: ["@t3-oss/env-nextjs", "@t3-oss/env-core"],
-};
-
-export default nextConfig;
-```
-
-## Files and Deployment
-
-```text
-.env.local     local values; ignored by Git
-.env.example   committed names and safe placeholders; never real secrets
-platform env   production/staging values managed by the deployment platform
-```
-
-- Keep `.env.example` synchronized with required variables.
-- Scope credentials per environment and grant the least privilege required.
-- Rotate secrets without changing inner application APIs.
-- Remember that `NEXT_PUBLIC_` values are compiled into browser assets and are not secrets.
+- Executable schemas are the source of truth.
+- `.env.example` is a checked, human- or agent-authored projection of activated environment-backed schemas.
+- A drift check rejects missing schema keys and stale example keys while preserving comments and safe placeholders.
+- Validation handles declared values only and does not reject unrelated ambient variables.
+- Error output identifies fields and expected shapes without echoing supplied values.
 
 ## Tests
 
-Import-time validation means a test may fail before assertions when its module graph imports `env`.
-
-- Provide harmless fake values only in the Node/server test setup or test files that require them.
-- Set values before dynamically importing an env-sensitive module.
-- Do not place server-secret placeholders in global browser/jsdom setup; that can hide an accidental server import.
-- Keep a real `next build` or equivalent import-boundary check in CI.
-- Never load production credentials into unit tests.
-
-```typescript
-// src/test/setup-server-env.ts
-
-process.env.DATABASE_URL ??=
-  "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-process.env.STRIPE_SECRET_KEY ??= "sk_test_not-a-secret";
-process.env.NEXT_PUBLIC_APP_URL ??= "http://localhost:3000";
-process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ??= "pk_test_not-a-secret";
-```
-
-Direct `process.env` access is intentional in this bootstrap file because it prepares the boundary being tested.
+- Test private-build and server-runtime schemas independently.
+- Provide harmless fake values only before importing the lifecycle boundary under test.
+- Do not place server-secret placeholders in global browser test setup.
+- Verify a production build without unrelated runtime-only credentials.
+- Verify server composition/startup with required runtime configuration.
+- Test explicit configuration modes for optional providers or jobs.
 
 ## Review Checklist
 
-- [ ] One validated Next.js env boundary owns ordinary `process.env` access.
-- [ ] Server variables are under `server` and have no public prefix.
-- [ ] Browser variables are under `client`, use `NEXT_PUBLIC_`, and appear in the explicit runtime map.
-- [ ] Boolean, numeric, URL, enum, optional, and default semantics are validated deliberately.
-- [ ] Runtime factories inject narrow configuration instead of the env object.
-- [ ] Shared contracts and inner application layers do not import the env module.
-- [ ] Build-time or runtime-start validation matches the deployment's secret availability.
-- [ ] Standalone builds transpile the required T3 Env packages.
-- [ ] `.env.example` contains safe placeholders and no credentials.
-- [ ] Node test setup supplies only the minimum fake values needed for import-time validation.
+- [ ] Private build and server runtime fields are classified by actual consumption.
+- [ ] Runtime-only secrets are not required by unrelated builds.
+- [ ] Output-affecting build values influence build cache identity.
+- [ ] Publication/deployment credentials are supplied to a separate side-effect task and do not hash the cached build.
+- [ ] A build cache hit cannot skip a requested publication/deployment side effect.
+- [ ] T3 Env/Next.js stay at the outer adapter boundary.
+- [ ] Inner layers and reusable packages receive only narrow normalized configuration or ports.
+- [ ] Unknown ambient variables are permitted but excluded from application configuration.
+- [ ] Schema/example parity is enforced without real secrets.
+- [ ] Validation failures never print supplied values.
+- [ ] Exact integration and packaging follow current official documentation for installed versions.
 
-## References
+## Official References
 
-- [T3 Env: Next.js](https://env.t3.gg/docs/nextjs)
-- [T3 Env: Customization](https://env.t3.gg/docs/customization)
 - [Next.js: Environment Variables](https://nextjs.org/docs/app/guides/environment-variables)
+- [Next.js Configuration](https://nextjs.org/docs/app/api-reference/config/next-config-js)
+- [T3 Env for Next.js](https://env.t3.gg/docs/nextjs)
+- [T3 Env Customization](https://env.t3.gg/docs/customization)

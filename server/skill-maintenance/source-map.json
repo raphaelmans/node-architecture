@@ -14,33 +14,35 @@
         "server/runtime/nodejs/libraries/openapi/README.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "94faae7765d517b44cdfc995006a58385997d6ae729c4b20f3cc00bb9423d5e5"
+      "fingerprint": "cadb5b42c45524cf12a8730b8a424d152a1aaa22617ce6ca7f1a7ffe654a6fdb"
     },
     "data-flow": {
       "reference": "server/skill/references/data-flow.md",
       "sources": [
         "server/core/README.md",
         "server/core/controllers.md",
+        "server/core/configuration.md",
         "server/core/conventions.md",
         "server/core/id-generation.md",
         "server/core/transaction.md",
         "server/runtime/nodejs/libraries/supabase/integration.md",
         "server/runtime/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "96303a2b1f57f7763eb1cb5c22761aa90922f851e1f4db045dd13d17f0fc9cd9"
+      "fingerprint": "9d09f1dc4ab9449346587de2076d2c00b57cbaf9bb3608ab0341108353cb9d75"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
       "sources": [
         "server/README.md",
         "server/core/README.md",
+        "server/core/configuration.md",
         "server/core/controllers.md",
         "server/core/conventions.md",
         "server/core/transaction.md",
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md"
       ],
-      "fingerprint": "bc64146bc37c1fb1405ad8e67c7c62fefc5ba54cfef7b6e7562966ea39e5b41a"
+      "fingerprint": "8166d74fc8919f7c10e079e52bc64095257f89fb3a7a3de59577c6d67b856432"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -50,10 +52,11 @@
         "server/core/conventions.md",
         "server/core/scaffolding.md",
         "monorepo/core/architecture.md",
+        "monorepo/core/environment.md",
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "38322d1c3c72e3da8458377e51425ed2b3d8778e653858bdc393a6d3f19ccf91"
+      "fingerprint": "86a07beb60196eeac8e1c99d153d825b7d5bc2bedd0ed3602da2421c71b21c1e"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -70,6 +73,7 @@
     "runtimes": {
       "reference": "server/skill/references/runtimes.md",
       "sources": [
+        "server/core/configuration.md",
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md",
         "server/runtime/nodejs/libraries/README.md",
@@ -88,6 +92,7 @@
         "server/runtime/nodejs/metaframeworks/hono/README.md",
         "server/runtime/nodejs/metaframeworks/hono/scaffolding.md",
         "server/runtime/nodejs/metaframeworks/nestjs/README.md",
+        "server/runtime/nodejs/metaframeworks/nestjs/configuration.md",
         "server/runtime/nodejs/metaframeworks/nextjs/README.md",
         "server/runtime/nodejs/metaframeworks/nextjs/caching-revalidation.md",
         "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md",
@@ -99,7 +104,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
         "server/runtime/nodejs/scaffolding.md"
       ],
-      "fingerprint": "b398982d9240bec0a6d513bb5aeb8f1a6acc3eca4030c29038415f941baf7d6a"
+      "fingerprint": "79059d0ff45ad4406d95c0db25a2f4200d0d6e1df3511b55d7d7d54ce41a0cf5"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -109,6 +114,7 @@
         "server/core/api-contracts-zod-first.md",
         "server/core/api-response.md",
         "server/core/controllers.md",
+        "server/core/configuration.md",
         "server/core/error-handling.md",
         "server/core/logging.md",
         "server/core/observability.md",
@@ -116,7 +122,7 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "be0e74758e9d9e3c6355df112ac11985f4b67266f3de3e0e852813175078131b"
+      "fingerprint": "838384840bd155fb244d197af94f51aba79d3d928c25f591223b14d064394ed3"
     },
     "security": {
       "reference": "server/skill/references/security.md",

@@ -119,12 +119,14 @@ Do not place this infrastructure in a parallel `src/runtime/` or `src/lib/common
 
 ```text
 composition root
+  -> BrowserBuildConfig -> focused public adapter values
+  -> live consent policy -> createProductAnalytics(adapters, consent, logger)
   -> createAppLogger(sinks, context, redaction, sampling)
-  -> createProductAnalytics(adapters, consent, logger)
   -> createClientApi(transport, logger)
   -> create<Feature>Api(clientApi, toAppError, child logger)
 ```
 
+- `BrowserBuildConfig` never owns mutable consent or another live runtime service. The analytics adapter receives a separate policy that observes current consent for future delivery.
 - Browser instances are application-scoped.
 - SSR instances are request-scoped only when they capture headers, cookies, actor, request ID, or trace context.
 - Feature code receives `AppLogger` or `ProductAnalytics`, never `debug`, Sentry, a vendor SDK, or the runtime container.
@@ -138,6 +140,14 @@ composition root
 - Test analytics success-only emission, failure suppression, consent, identify/reset, and non-fatal delivery with a fake port.
 - Feature tests assert only standardized records/events, not vendor formatting.
 - Never initialize live telemetry vendors in unit tests.
+
+## Official Implementation References
+
+- [debug](https://github.com/debug-js/debug#readme)
+- [Sentry for JavaScript](https://docs.sentry.io/platforms/javascript/)
+- [OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
+
+`debug` is the documented local diagnostic adapter, Sentry is an optional remote error and telemetry adapter, and OpenTelemetry supplies runtime correlation when selected. Preserve the separation between operational logging, product analytics, and runtime context if providers change; retrieve exact SDK setup and APIs from current official documentation.
 
 ## Derivation Sources
 

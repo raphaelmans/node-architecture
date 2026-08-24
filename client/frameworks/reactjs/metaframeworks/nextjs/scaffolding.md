@@ -37,7 +37,7 @@ Preserve the repository's existing supported config format. Do not place ESM syn
 - `next.config.mjs` with `import`/`export default` for ESM;
 - a TypeScript config only when the installed Next.js version supports it.
 
-For environment validation, follow [Environment Variables](./environment.md). Detect the installed Next.js and T3 Env versions, choose their version-applicable runtime wiring, and verify build-time validation through a production build.
+For configuration, follow [Next.js Configuration](./environment.md). Detect the installed Next.js and environment-adapter versions, classify fields by consumer and lifecycle, choose version-applicable wiring, validate only genuine build inputs during the production build, and verify server-runtime/browser-runtime boundaries independently when activated.
 
 ## Verification
 

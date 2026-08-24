@@ -30,17 +30,17 @@ Keep stores under `src/features/<feature>/stores/` unless they are genuinely cro
 
 - Select primitives or narrow projections rather than the whole store.
 - Use shallow comparison for multi-value projections when appropriate.
-- Persist only an explicit allowlist with `partialize`.
+- Persist only an explicit allowlist through the installed store library's supported persistence selector.
 - Do not render browser-storage state as authoritative before hydration in SSR applications.
 
 Use a state machine when transitions, guards, and actions are the domain of the interaction rather than accumulating conditional `useState` branches.
 
 ## URL State
 
-In Next.js, use typed nuqs parsers for user-visible filters, search, pagination, tabs, and modal state.
+In Next.js, nuqs is the documented typed URL-state specialization for user-visible filters, search, pagination, tabs, and modal state.
 
-- Use `history: "replace"` for filters, search, and pagination.
-- Use `history: "push"` for tabs or modals where back navigation matters.
+- Replace the current history entry for filters, search, and pagination.
+- Push a history entry for tabs or modals where back navigation matters.
 - Centralize parameter names.
 - Reset page state when result-changing filters change.
 - Debounce free-text search before using it in a query key; do not debounce selects or toggles.
@@ -78,7 +78,7 @@ Reconnect policy:
 - On the next successful connection, invalidate affected scopes once.
 - If ordering matters, carry a monotonic sequence/version and ignore stale events.
 
-In React, subscribe inside an effect, return idempotent teardown, resolve a stable composition-root-owned realtime API, and keep non-rendering connection bookkeeping in refs. Test with a fake feature realtime API and a fresh QueryClient.
+In React, subscribe inside an effect, return idempotent teardown, resolve a stable composition-root-owned realtime API, and keep non-rendering connection bookkeeping in refs. Test with a fake feature realtime API and a fresh server-state cache client.
 
 For Supabase, keep publication, replica identity, grants, and RLS in reviewed server/database migrations. Client setup code must not apply production SQL.
 
@@ -92,6 +92,17 @@ For Supabase, keep publication, replica identity, grants, and RLS in reviewed se
 - Reconnection recovers missed events without invalidating on the initial connection.
 - Unsubscribe is idempotent and always called during teardown.
 - Realtime failures have one operational owner and do not become product analytics.
+
+## Official Implementation References
+
+- [Zustand documentation](https://zustand.docs.pmnd.rs/)
+- [Zustand persistence reference](https://zustand.docs.pmnd.rs/reference/middlewares/persist)
+- [nuqs documentation](https://nuqs.dev/docs)
+- [nuqs options](https://nuqs.dev/docs/options)
+- [TanStack Query React documentation](https://tanstack.com/query/latest/docs/framework/react/overview)
+- [Supabase Realtime documentation](https://supabase.com/docs/guides/realtime)
+
+Zustand is the documented client-coordination specialization, nuqs owns typed URL state, TanStack Query owns server cache state, and Supabase Realtime is a reference event-delivery provider. Preserve those distinct ownership roles and keep database authorization server-owned if a library changes; retrieve the installed libraries' current option names and call shapes before implementation.
 
 ## Derivation Sources
 
