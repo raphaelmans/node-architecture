@@ -127,3 +127,11 @@ _Avoid_: Tool configuration, copied vendor guidance
 **Thin specialization**:
 A stack-specific mapping from architecture conventions to a detected tool or framework whose version-sensitive behavior is resolved from matching authoritative sources at execution time.
 _Avoid_: Embedded vendor manual, frozen configuration cookbook
+
+**Skill slice**:
+A top-level progressive-loading unit that routes a broad architecture concern through one curated skill reference.
+_Avoid_: Vertical slice, convention leaf
+
+**Convention leaf**:
+A conditionally loaded, opinionated reference nested beneath one or more skill slices for a narrower architecture convention.
+_Avoid_: Nested slice, top-level slice

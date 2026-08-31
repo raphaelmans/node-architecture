@@ -39,7 +39,8 @@ This section documents **Next.js App Router** patterns that sit on top of the ge
 
 | Concern | Pattern | Location |
 | --- | --- | --- |
-| Route registry | `app-routes.ts` single source of truth | `src/common/app-routes.ts` |
+| Internal URL construction | `appRoutes` literals and dynamic builders | `src/common/routing/app-routes.ts` |
+| Route access classification | Colocated route policy registry | `src/common/routing/route-policies.ts` |
 | Auth guarding | `proxy.ts` (replaces middleware) | `src/proxy.ts` |
 | Server auth checks | `server-session.ts`-style helpers | project-specific server layer (for example `src/lib/shared/infra/auth/server-session.ts`) |
 | Layout groups | Route groups per access level | `src/app/(<group>)/...` |
@@ -151,13 +152,17 @@ Rules:
 | Document | Description |
 | --- | --- |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Mixed invalidation ownership patterns and scenario matrix |
+| [Opinionated Routing Convention](./routing-convention.md) | `appRoutes`, route policies, params, and query-state composition |
 | [Routing + SSR + Params](./routing-ssr-params.md) | Route parsing, access control boundaries, and layout guard ownership |
 
 ## Checklist for New Routes
 
-- [ ] Add route to `app-routes.ts`
-- [ ] Use `appRoutes` helpers for links and redirects
-- [ ] Ensure `proxy.ts` covers access requirements
+- [ ] Add the pathname literal or dynamic builder to `appRoutes`
+- [ ] Use `appRoutes` for links, redirects, and router operations
+- [ ] Add or update the colocated route policy when access classification changes
+- [ ] Define a feature-owned query parser map when the route has shareable URL state
+- [ ] Parse route input at the smallest page/layout boundary
+- [ ] Ensure `proxy.ts` covers early access requirements
 - [ ] Confirm layout guard for route group
 - [ ] Confirm client runtime composition does not recreate application-scoped dependencies per render
 - [ ] Confirm request-contextual SSR dependencies cannot leak context across requests

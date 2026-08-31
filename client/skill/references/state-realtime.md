@@ -39,9 +39,11 @@ Use a state machine when transitions, guards, and actions are the domain of the 
 
 In Next.js, nuqs is the documented typed URL-state specialization for user-visible filters, search, pagination, tabs, and modal state.
 
+When URL state is selected for a Next.js implementation, also read [Next.js Routing Convention](nextjs/routing.md). This slice decides state ownership; the convention leaf owns the application-specific route registry, query parser/serializer, page-boundary, and history approach.
+
 - Replace the current history entry for filters, search, and pagination.
 - Push a history entry for tabs or modals where back navigation matters.
-- Centralize parameter names.
+- Centralize the feature's complete query representation rather than only parameter-name strings.
 - Reset page state when result-changing filters change.
 - Debounce free-text search before using it in a query key; do not debounce selects or toggles.
 - Include every result-changing URL value in the query key.
@@ -87,6 +89,7 @@ For Supabase, keep publication, replica identity, grants, and RLS in reviewed se
 - Each piece of state has one authoritative owner.
 - Server data is not duplicated into client stores.
 - URL-visible state remains shareable and has intentional history behavior.
+- Activated Next.js URL-state work loads the routing convention leaf.
 - Provider payloads are validated and mapped before feature use.
 - Cache patches are pure, safe, and followed by reconciliation.
 - Reconnection recovers missed events without invalidating on the initial connection.

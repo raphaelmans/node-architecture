@@ -138,16 +138,16 @@ Use this rule of thumb:
 
 ## Maintaining the Client Skill
 
-The client docs remain canonical. The `$client` skill reorganizes their guidance into concern-based references for portable, progressive loading.
+The client docs remain canonical. The `$client` skill reorganizes their guidance into concern-based skill slices and conditionally loaded convention leaves for portable, progressive loading.
 
 When changing a mapped client source document:
 
 1. Run `python3 client/skill-maintenance/check-source-drift.py`.
-2. Review every slice reported as stale and update its reference when the source change affects the derived guidance.
-3. Refresh only reviewed slices with `python3 client/skill-maintenance/check-source-drift.py --refresh <slice>`.
+2. Review every slice or convention leaf reported as stale and update its reference when the source change affects the derived guidance.
+3. Refresh only reviewed references with `python3 client/skill-maintenance/check-source-drift.py --refresh <slice-or-leaf>`.
 4. Run the drift check again and validate `client/skill/` with the official skill validator.
 
-Do not refresh a fingerprint without reviewing the associated reference. Update `client/skill-maintenance/source-map.json` when a source document starts or stops informing a slice. Maintenance tooling stays outside `client/skill/` so it is not copied into consumer installations.
+Do not refresh a fingerprint without reviewing the associated reference. Update `client/skill-maintenance/source-map.json` when a source document starts or stops informing a slice or convention leaf. Maintenance tooling stays outside `client/skill/` so it is not copied into consumer installations.
 
 ## Maintaining the Server Skill
 

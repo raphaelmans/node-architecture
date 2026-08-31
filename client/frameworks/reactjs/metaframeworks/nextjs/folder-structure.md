@@ -27,6 +27,9 @@ src/
     layout.tsx
     page.tsx
   common/
+    routing/
+      app-routes.ts                 # Internal pathname literals and builders
+      route-policies.ts             # Pathname access classification
     clients/                       # HTTP/realtime provider adapters
     logging/                       # AppLogger + debug/Sentry adapters
     analytics/                     # ProductAnalytics + consent/vendor adapters
@@ -38,6 +41,7 @@ src/
       shared/
         contracts/                  # Shared client/server Zod wire contracts
   features/<feature>/
+    search-params.ts                # Optional feature-owned query parser/serializer map
     api.ts                          # Parses shared response contracts
     hooks.ts                        # TanStack Query adapter
     sync.ts                         # Optional named cache-sync operations
@@ -53,6 +57,8 @@ Notes:
 - `route.ts` and the corresponding client `featureApi` import the same contract from `lib/modules/<module>/shared/contracts/`.
 - `common/runtime/browser.ts` owns browser singletons created through factories; feature modules do not construct hidden singletons.
 - `common/runtime/request.ts` is used only when SSR dependencies capture request context.
+- `common/routing/` remains owned by the deployable Next.js application; workspace topology alone does not make routes a shared package concern.
+- `features/<feature>/search-params.ts` exists only when the feature owns shareable query state.
 - Runtime consumers receive specific ports or feature API accessors, never the whole runtime container.
 
 For the framework-agnostic feature module structure, see `client/core/folder-structure.md`.

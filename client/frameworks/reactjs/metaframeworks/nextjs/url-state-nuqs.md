@@ -1,15 +1,14 @@
 # URL Query State (nuqs)
 
-nuqs provides type-safe URL query parameter state that:
+nuqs is the documented Next.js specialization for typed, shareable query state. Use it for bookmarkable, non-sensitive filters, search, sorting, pagination, tabs, and navigation-like modal state.
 
-- syncs state with URL automatically
-- supports SSR
-- provides type-safe parsers
-- works with Next.js App Router
+The broader pathname, route-policy, and boundary convention lives in [Opinionated Next.js Routing Convention](./routing-convention.md). For deeper historical examples, see `legacy/client/06-nuqs-url-state.md`.
 
-For deeper historical examples, see `legacy/client/06-nuqs-url-state.md`.
+Before implementation, detect the installed nuqs and Next.js versions and retrieve their current official documentation. The examples below illustrate the current documented shape; vendor API names and options remain version-sensitive.
 
 ## Setup
+
+Mount the App Router adapter once at the application root:
 
 ```typescript
 // src/app/layout.tsx
@@ -26,105 +25,154 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-## Basic Usage
+## Feature-Owned Parser Maps
+
+Centralize the complete query representation, not only parameter-name strings. A feature-owned parser map defines domain-facing names, short URL keys, parsing, defaults, server loading, and link serialization in one place.
 
 ```typescript
-import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { appQueryParams } from "@/common/constants";
-
-const tabs = ["overview", "settings", "billing"] as const;
-
-export const useQueryTab = () => {
-  return useQueryState(
-    appQueryParams.tab,
-    parseAsStringLiteral(tabs).withDefault("overview").withOptions({ history: "push" }),
-  );
-};
-```
-
-## Available Parsers
-
-```typescript
+// src/features/items/search-params.ts
 import {
-  parseAsString,
+  createLoader,
+  createSerializer,
   parseAsInteger,
-  parseAsFloat,
-  parseAsBoolean,
+  parseAsString,
   parseAsStringLiteral,
-  parseAsArrayOf,
-  parseAsJson,
-} from "nuqs";
-```
+  type UrlKeys,
+} from "nuqs/server";
 
-## History Modes
+const ITEM_STATUSES = ["active", "archived"] as const;
+const ITEM_SORTS = ["newest", "oldest"] as const;
 
-| Mode      | Behavior               | Use Case                         |
-| --------- | ---------------------- | -------------------------------- |
-| `push`    | Creates history entry  | Tabs, modals (back button works) |
-| `replace` | Replaces current entry | Filters, search, pagination      |
+export const itemSearchParams = {
+  search: parseAsString.withDefault(""),
+  status: parseAsStringLiteral(ITEM_STATUSES),
+  sort: parseAsStringLiteral(ITEM_SORTS).withDefault("newest"),
+  page: parseAsInteger.withDefault(1),
+};
 
-## Centralized Param Names
-
-Centralize param names to prevent drift:
-
-```typescript
-// src/common/constants.ts
-export const appQueryParams = {
-  page: "page",
-  limit: "limit",
+export const itemSearchParamKeys: UrlKeys<typeof itemSearchParams> = {
   search: "q",
   status: "status",
   sort: "sort",
-  tab: "tab",
-  modal: "modal",
-  id: "id",
-} as const;
+  page: "page",
+};
+
+export const loadItemSearchParams = createLoader(itemSearchParams);
+export const serializeItemSearchParams = createSerializer(itemSearchParams, {
+  urlKeys: itemSearchParamKeys,
+});
 ```
 
-## Filters + Search + Pagination Pattern
+Keep a global query-key registry only for parameters with genuinely application-wide semantics. Most filters belong to the feature that interprets them.
 
-nuqs is the canonical mechanism for all user-facing filter, search, and pagination state. This keeps URLs shareable and supports browser back/forward navigation.
+## Coupled Filters and Pagination
+
+Use one multi-key hook when values form a single state unit:
 
 ```typescript
-// Feature filter hook
+"use client";
+
+import { useQueryStates } from "nuqs";
+import {
+  itemSearchParamKeys,
+  itemSearchParams,
+} from "./search-params";
+
 export function useItemFilters() {
-  const replace = { history: "replace" } as const;
-  const [status, setStatusValue] = useQueryState(
-    appQueryParams.status,
-    parseAsStringLiteral(STATUSES).withOptions(replace),
-  );
-  const [sort, setSortValue] = useQueryState(
-    appQueryParams.sort,
-    parseAsStringLiteral(SORT_OPTIONS).withDefault("newest").withOptions(replace),
-  );
-  const [search, setSearchValue] = useQueryState(
-    appQueryParams.search,
-    parseAsString.withDefault("").withOptions(replace),
-  );
-  const [page, setPage] = useQueryState(
-    appQueryParams.page,
-    parseAsInteger.withDefault(1).withOptions(replace),
-  );
+  const [filters, setFilters] = useQueryStates(itemSearchParams, {
+    history: "replace",
+    urlKeys: itemSearchParamKeys,
+  });
 
-  const debouncedSearch = useDebounce(search, 300);
+  const setStatus = (status: typeof filters.status) =>
+    setFilters({ status, page: 1 });
 
-  // nuqs batches updates issued in the same tick into one URL update.
-  const setStatus = (next: (typeof STATUSES)[number] | null) =>
-    Promise.all([setStatusValue(next), setPage(1)]);
-  const setSort = (next: (typeof SORT_OPTIONS)[number]) =>
-    Promise.all([setSortValue(next), setPage(1)]);
-  const setSearch = (next: string) =>
-    Promise.all([setSearchValue(next), setPage(1)]);
+  const setSort = (sort: typeof filters.sort) =>
+    setFilters({ sort, page: 1 });
 
-  return { status, setStatus, sort, setSort, search, setSearch, debouncedSearch, page, setPage };
+  const setSearch = (search: string) =>
+    setFilters({ search, page: 1 });
+
+  return { filters, setFilters, setStatus, setSort, setSearch };
 }
 ```
 
-Rules:
+Related updates are applied as one URL transition. Reset pagination whenever a result-changing filter changes.
 
-- All filter/search/pagination state in URL — never in React state or Zustand for filterable lists
-- Use `replace` history mode for filters (don't pollute browser history)
-- Debounce text search at 300ms before passing to TanStack Query
-- Reset page to 1 when filters change
+## History Behavior
 
-See `client/core/server-state-tanstack-query.md` for the TanStack Query integration pattern.
+| Mode | Use case |
+| --- | --- |
+| Replace | Filters, search, sorting, pagination |
+| Push | Tabs or modal state when Back/Forward navigation is useful |
+
+Push history only when the query state acts like navigation. Repeated filter edits must not pollute browser history.
+
+## Server Boundary
+
+Use the same parser map at the page boundary, then apply domain validation:
+
+```typescript
+// src/app/(protected)/items/page.tsx
+import { ItemListInputSchema } from "@/features/items/schemas";
+import { loadItemSearchParams } from "@/features/items/search-params";
+
+export default async function ItemsPage(props: PageProps<"/items">) {
+  const queryState = await loadItemSearchParams(props.searchParams);
+  const input = ItemListInputSchema.parse(queryState);
+
+  return <ItemList input={input} />;
+}
+```
+
+nuqs owns query-string representation, defaults, and serialization. Zod or the selected feature/domain schema owns business and cross-field validity. A value accepted by a URL parser can still be invalid for the application.
+
+Prefer a page-boundary loader and explicit typed input. Use nuqs request-local search-parameter caching only when deeply nested Server Components genuinely need access without prop passing.
+
+## Link Serialization
+
+Use the shared serializer to produce links with query state:
+
+```typescript
+import { appRoutes } from "@/common/routing/app-routes";
+import { serializeItemSearchParams } from "@/features/items/search-params";
+
+const archivedItemsHref = serializeItemSearchParams(appRoutes.items.index, {
+  status: "archived",
+  page: 1,
+});
+```
+
+Do not manually concatenate query strings or maintain separate link-only serialization rules.
+
+## Client-Cache versus Server-Driven Updates
+
+nuqs query updates are client-local by default in its current Next.js integration. Choose behavior from the data owner:
+
+- For TanStack Query-driven lists, keep updates client-local and debounce only the free-text value used in the query key. Include every result-changing parsed value in that key.
+- If an RSC page must rerun when a query value changes, opt into the installed nuqs version's server-notification behavior and rate-limit free-text updates.
+- Do not debounce select, toggle, tab, or pagination changes unless measured behavior justifies it.
+
+## Limits
+
+Do not store secrets, large payloads, drafts, or disposable presentation state in the URL. Use component state, a feature store, a form abstraction, or server state according to the state-ownership decision guide.
+
+## Verification
+
+- Parser defaults and clearing behavior are intentional.
+- Client hooks and server loading use the same parser map.
+- Serializer output round-trips through that parser map.
+- Result-changing filters reset pagination atomically.
+- Back/Forward behavior matches the selected history mode.
+- Client-local updates do not accidentally rerender the RSC tree.
+- Server-driven updates refresh the intended boundary without excessive requests.
+
+See `client/core/server-state-tanstack-query.md` for query-key integration and testing guidance.
+
+## Official References
+
+- [nuqs adapters](https://nuqs.dev/docs/adapters)
+- [nuqs multi-key state](https://nuqs.dev/docs/batching)
+- [nuqs server-side usage](https://nuqs.dev/docs/server-side)
+- [nuqs serializers](https://nuqs.dev/docs/utilities)
+- [nuqs options](https://nuqs.dev/docs/options)

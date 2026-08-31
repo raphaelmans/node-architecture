@@ -2,6 +2,8 @@
 
 This document captures Next.js App Router conventions that affect client-side architecture.
 
+For the opinionated URL-construction, access-policy, and query-state approach, see [Opinionated Next.js Routing Convention](./routing-convention.md).
+
 Examples target Next.js 16 request APIs, where route params and page search params are asynchronous.
 
 ## Core Rules
@@ -18,7 +20,7 @@ Examples target Next.js 16 request APIs, where route params and page search para
 Conventions:
 
 - Normalize/validate at the boundary (Zod recommended).
-- Keep “URL state” implementation in Next.js + `nuqs` docs.
+- Keep URL-state representation and serialization in the feature-owned nuqs parser map.
 - In current App Router releases, page/layout `params` and page `searchParams` are promises. Await them in Server Components or read them with React `use(...)` in a Client Component.
 
 ```typescript
@@ -38,10 +40,10 @@ Prefer generated `PageProps<"/literal/route">` when available. Route parsing sta
 ## Auth and Access Control
 
 - Server-side guarding belongs in layouts/route groups.
-- Keep a single source of truth for route access.
+- Keep one application-owned route policy registry for pathname access classification.
 
 Implementation guide:
 
-- Keep route access rules in your route registry and `proxy.ts`.
+- Keep route access rules in the colocated route policy registry and consume them from `proxy.ts`.
 - Keep layout/route-group guards server-side.
 - Use `proxy.ts` for fast request-boundary checks, redirects, and header/cookie propagation—not as the sole authorization or session-management layer.

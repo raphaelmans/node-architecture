@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "algorithm": "sha256(path-null-content-null, sources sorted by path)",
   "slices": {
     "scaffolding": {
@@ -90,7 +90,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "31b7886d0d6cde287ae304f104f12ffea996186d564b1bdef7faa1da09c3d4da"
+      "fingerprint": "1b5bed9d29db7271f67b905d0b86e9b1f4dab156a282b2d0f364e1ef08c7defe"
     },
     "telemetry": {
       "reference": "client/skill/references/telemetry.md",
@@ -105,7 +105,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
       ],
-      "fingerprint": "f6b73b0e856cfa8904156805c5595ecc2d81153680e1c288ef874af0b8f142ea"
+      "fingerprint": "d0332cfe0a6a8e88f234961a8454cd58861cfbfb81cdc9f71d678ee3f78fe650"
     },
     "testing": {
       "reference": "client/skill/references/testing.md",
@@ -157,7 +157,23 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "4233dd8197c0e32b0501f3ac94f542e38cecae8a56901539572b5cd2b2ac945b"
+      "fingerprint": "ab95c32c3c5dff229392b9075cd93695dbc65b398d68b556ff0889ec76ac5610"
+    }
+  },
+  "leaves": {
+    "nextjs/routing": {
+      "parents": [
+        "nextjs",
+        "state-realtime"
+      ],
+      "reference": "client/skill/references/nextjs/routing.md",
+      "sources": [
+        "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/routing-convention.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
+      ],
+      "fingerprint": "61de0ae6a5c9b8f3400c63664a9fc3d064dc6b61a555d817edbf6a58e5e18434"
     }
   }
 }

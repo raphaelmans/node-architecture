@@ -14,10 +14,11 @@ Read order before using this folder:
 | --- | --- |
 | [Next.js Client Scaffolding](./scaffolding.md) | Next.js specialization of the portable client scaffolding contract |
 | [Overview](./overview.md) | App Router conventions, guards, route registry |
+| [Opinionated Routing Convention](./routing-convention.md) | `appRoutes`, route policies, boundary parsing, and nuqs integration |
 | [Routing + SSR + Params](./routing-ssr-params.md) | Where route parsing/validation belongs |
 | [Configuration](./environment.md) | Browser/private build, server runtime, optional browser runtime, and T3 Env adaptation |
 | [Folder Structure (Next.js)](./folder-structure.md) | App Router file layout and route groups |
-| [URL State (nuqs)](./url-state-nuqs.md) | URL query state patterns |
+| [URL State (nuqs)](./url-state-nuqs.md) | Feature-owned query parser, loader, serializer, and history patterns |
 | [Testing with Vitest — Next.js Additions](./testing-vitest.md) | Next.js-specific runner additions (`jsdom`, React plugin, `server-only` shim, env bootstrapping). Core runner: `client/core/testing-vitest.md` |
 | [tRPC (Next.js)](./trpc.md) | tRPC strategy within the client-api architecture |
 | [Ky Fetch](./ky-fetch.md) | Non-tRPC HTTP clients with `ky` + typed errors |

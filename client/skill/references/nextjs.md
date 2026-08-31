@@ -5,6 +5,7 @@ Use this slice for Next.js App Router ownership, SSR/RSC boundaries, route param
 ## Contents
 
 - [App Router ownership](#app-router-ownership)
+- [Convention leaves](#convention-leaves)
 - [Routing and request context](#routing-and-request-context)
 - [Runtime composition](#runtime-composition)
 - [Transport integration](#transport-integration)
@@ -21,10 +22,16 @@ In a workspace, also load `workspace`. Treat all `src/*` paths below as relative
 - Pages and layouts are metaframework composition boundaries, not feature business layers.
 - Route groups partition layouts and access policies; exact group names remain project-specific.
 - Parse and validate route params/search params in the smallest page/layout boundary, then pass typed values into feature components.
-- Keep a central route registry for links, redirects, and access classification.
+- Keep a central `appRoutes` API for links and redirects, with a colocated route policy registry for access classification.
 - Keep fast request-boundary redirects and header propagation in the framework's current interception boundary, with authoritative session and authorization checks in the appropriate server boundary.
 
 Resolve the installed version's route-param and search-param shapes at the page/layout boundary and keep route parsing out of feature components. Current official documentation owns whether those values are synchronous, asynchronous, or otherwise wrapped.
+
+## Convention Leaves
+
+Read [Next.js Routing Convention](nextjs/routing.md) before acting when the task involves `appRoutes`, route policies, internal links or redirects, dynamic path builders, route params, search params, nuqs, or URL-backed filters, pagination, tabs, and modal state.
+
+Do not load that leaf for unrelated environment, transport, realtime-provider, composition-root, or test-runner work. When the request first requires a state-ownership decision, keep `state-realtime` loaded; the routing leaf owns the Next.js implementation after URL state is selected.
 
 ## Routing and Request Context
 
@@ -88,6 +95,7 @@ The shim is not an import-safety check. Keep a Next.js build or equivalent bound
 ## Review Checklist
 
 - App Router files own route parsing, layouts, SSR/RSC, and access composition only.
+- Routing tasks load the routing convention leaf; unrelated Next.js tasks do not.
 - Feature code remains independent of route shape and transport providers.
 - Browser infrastructure is composed once; request context cannot leak through an SSR singleton.
 - Shared contracts are isomorphic and imported by both server and client boundaries.
@@ -109,4 +117,4 @@ Next.js owns routing, rendering, request-boundary, configuration, and build conv
 
 ## Derivation Sources
 
-Derived from all source repository documents under the Next.js metaframework directory, plus the React and core contracts they extend. These paths are provenance only in an installed skill.
+Derived from the broad source repository documents under the Next.js metaframework directory, plus the React and core contracts they extend. Opinionated routing details are progressively disclosed through the routing convention leaf. These paths are provenance only in an installed skill.

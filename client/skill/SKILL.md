@@ -33,6 +33,16 @@ Route client work through modular architecture slices. Load only the references 
 | `react` | React composition, hooks, forms, presentation boundaries, UI and toast facades | [references/react.md](references/react.md) |
 | `nextjs` | App Router, SSR/RSC, params, environment, tRPC/Ky adapters, Next.js tests | [references/nextjs.md](references/nextjs.md) |
 
+## Convention Leaves
+
+Slices may route to a convention leaf for a narrower, opinionated concern. Load a leaf only when its trigger matches; do not load every child reference whenever its parent slice is selected.
+
+| Parent slice | Convention leaf | Load when the task involves | Reference |
+| --- | --- | --- | --- |
+| `nextjs`; add `state-realtime` while state ownership is undecided | `nextjs/routing` | `appRoutes`, route policies, links/redirects, dynamic path builders, params/search params, nuqs, or URL-backed interaction state | [references/nextjs/routing.md](references/nextjs/routing.md) |
+
+A convention leaf refines its parent slices; it does not become a top-level routing alias or override their invariants.
+
 Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `config`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 
 When the user names multiple concerns, load all matching references. Examples:
@@ -42,6 +52,7 @@ When the user names multiple concerns, load all matching references. Examples:
 - `$client scaffold users/create`: `scaffolding` + `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `nextjs`, `telemetry`, or state slices only when detected/requested capabilities require them
 - `$client scaffold users/create` in Vue or Svelte: `scaffolding` + capability slices; derive framework integration from repository evidence and current official docs
 - Next.js logging or Sentry: `telemetry` + `nextjs`
+- Next.js route registry or nuqs implementation: `nextjs` + `nextjs/routing`; add `state-realtime` if deciding whether the state belongs in the URL
 - Standalone React configuration: `foundations` + `react`; add `workspace` or `nextjs` only when those boundaries exist
 - Create a React feature: `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `telemetry` when the implementation emits operational records or product events
 - Realtime React cache synchronization: `state-realtime` + `data-flow` + `react` + `testing`
