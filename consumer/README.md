@@ -4,6 +4,8 @@ The generated `guides/` bundle is deprecated and `copy-guides.sh` is disabled.
 
 Use [INSTALL-SKILLS.md](./INSTALL-SKILLS.md) to install `$client`, `$server`, `$monorepo`, and `$development`.
 
+Then use [Architecture Initialization](./ARCHITECTURE-INIT.md) with `/development init` to create a sectioned reference index and lightweight entry point. Detailed conventions remain in their authoritative references and load only when relevant.
+
 ## Source Model
 
 - `development/core/`, `development/tools/`, `development/frameworks/`, and `development/runtimes/` own local development guidance; `development/skill/` packages it and `development/skill-maintenance/` checks source drift.

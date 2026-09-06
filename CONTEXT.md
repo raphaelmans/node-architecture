@@ -144,6 +144,10 @@ _Avoid_: Vertical slice, convention leaf
 A conditionally loaded, opinionated reference nested beneath one or more skill slices for a narrower architecture convention.
 _Avoid_: Nested slice, top-level slice
 
+**Architecture reference index**:
+A navigation document that groups applicable engineering guidance by concern and identifies the authoritative references and prerequisites needed for a task. It owns discoverability, not the conventions themselves.
+_Avoid_: Architecture rulebook, implementation inventory, copied skill manual
+
 **UI foundation**:
 The owned shadcn component tier that defines the application's shared visual vocabulary and component variants, including components that are internally composed.
 _Avoid_: Single-element primitive, unmodified vendor copy

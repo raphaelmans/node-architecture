@@ -1,16 +1,19 @@
 ---
 name: development
-description: Configure, explain, review, and troubleshoot local application startup, stable origins, and concurrent worktrees. Install and configure Portless for Next.js, Express, Hono, and other Node.js HTTP servers, including Turborepo workspaces. Production deployment is outside this skill.
+description: Create a navigation-only ARCHITECTURE.md reference index and minimal agent entry point from installed guidance and repository concerns. Configure, explain, review, and troubleshoot local application startup, stable origins, and concurrent worktrees. Install and configure Portless for Next.js, Express, Hono, and other Node.js HTTP servers, including Turborepo workspaces. Production deployment is outside this skill.
 ---
 
-# Local Development
+# Development
 
 Preserve the requested operation. Setup includes necessary installation, package scripts, configuration, and verification; explanation and review remain read-only.
 
-Read [foundations](references/foundations.md) for all work. Select additional references by the processes being configured:
+For `/development init` (also `$development init`), read [init](references/init.md) first. Maintain a minimal agent-entrypoint pointer and root `ARCHITECTURE.md` as a sectioned index of direct authoritative references, task triggers and prerequisites. Keep conventions in their owning references; report missing guidance without authoring it. Load other references only when needed to establish applicability and complete prerequisite coverage.
+
+For local startup, setup, review and troubleshooting, read [foundations](references/foundations.md). Select additional references by the processes being configured:
 
 | Slice | Load when |
 | --- | --- |
+| [init](references/init.md) | Creating or refreshing the architecture reference index and minimal entrypoint pointer |
 | [portless](references/portless.md) | Portless installation, startup, routing, or worktree integration |
 | [nextjs](references/nextjs.md) | A Next.js app, including its integrated server routes |
 | [nodejs](references/nodejs.md) | An Express, Hono, or other Node.js HTTP server process |
@@ -23,4 +26,4 @@ Inspect the consuming repository and installed versions. Resolve version-sensiti
 
 Coordinate with `$client` for browser configuration, `$server` for callback/cookie/trusted-origin behavior, and `$monorepo` for cross-package manifests and task coordination when available. These skills own their existing boundaries. The references here retain the minimum required coordination rules when companion skills are unavailable.
 
-When invoked without a task, show the relevant setup/review/troubleshooting choices; do not start installation automatically.
+When invoked without a task, show the relevant init/setup/review/troubleshooting choices; do not start initialization or installation automatically.

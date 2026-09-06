@@ -17,7 +17,7 @@ DEVELOPMENT_DIR = MAINTENANCE_DIR.parent
 SKILL_DIR = DEVELOPMENT_DIR / "skill"
 MANIFEST_PATH = MAINTENANCE_DIR / "source-map.json"
 HASH_ALGORITHM = "sha256(path-null-file-sha256-newline, sources sorted by path)"
-EXPECTED_SLICES = {"foundations", "portless", "nextjs", "nodejs"}
+EXPECTED_SLICES = {"init", "foundations", "portless", "nextjs", "nodejs"}
 
 
 class DriftError(RuntimeError):

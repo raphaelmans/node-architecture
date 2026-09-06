@@ -24,7 +24,7 @@ https://github.com/raphaelmans/node-architecture/tree/main/monorepo/skill
 with the destination name monorepo.
 ```
 
-For local development setup, also install:
+For architecture initialization and local development setup, also install:
 
 ```text
 Use $skill-installer to install the skill from
@@ -60,6 +60,10 @@ For tools that discover project skills under `.agents/skills/`, place the comple
 Copy or vendor the directory only after confirming the destination does not contain local changes. Do not install only `SKILL.md`; the router requires its references.
 
 For repository-local development guidance, place the complete `development/skill/` directory at `.agents/skills/development/`. Its maintainer-only sibling directory is not installed.
+
+## Project Architecture Artifact
+
+Run `/development init` (also `$development init`) to discover applicable installed guidance, create a sectioned `ARCHITECTURE.md` reference index and maintain a minimal agent-entrypoint pointer. See [Architecture Initialization](./ARCHITECTURE-INIT.md) for direct links, task triggers and prerequisites. Initialization resolves actual configured skill paths, including symlinked installations, instead of imposing a default root.
 
 ## Local Development Setup
 
