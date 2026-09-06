@@ -43,14 +43,16 @@ def load_manifest() -> dict[str, Any]:
     except json.JSONDecodeError as error:
         raise DriftError(f"Invalid JSON in {MANIFEST_PATH}: {error}") from error
 
-    if manifest.get("version") != 1:
-        raise DriftError("source-map.json must use version 1")
+    if manifest.get("version") != 2:
+        raise DriftError("source-map.json must use version 2")
     if manifest.get("hashAlgorithm") != HASH_ALGORITHM:
         raise DriftError(f"source-map.json must use {HASH_ALGORITHM!r}")
     if not isinstance(manifest.get("sourceRoot"), str):
         raise DriftError("source-map.json must declare sourceRoot")
     if not isinstance(manifest.get("slices"), dict):
         raise DriftError("source-map.json must declare a slices object")
+    if not isinstance(manifest.get("leaves"), dict):
+        raise DriftError("source-map.json must declare a leaves object")
     if set(manifest["slices"]) != EXPECTED_SLICES:
         missing = EXPECTED_SLICES - set(manifest["slices"])
         extra = set(manifest["slices"]) - EXPECTED_SLICES
@@ -61,6 +63,34 @@ def load_manifest() -> dict[str, Any]:
             parts.append(f"unexpected: {', '.join(sorted(extra))}")
         raise DriftError("Invalid slice set (" + "; ".join(parts) + ")")
     return manifest
+
+
+def reference_entries(manifest: dict[str, Any]) -> dict[str, Any]:
+    slices = manifest["slices"]
+    leaves = manifest["leaves"]
+    duplicate_names = set(slices) & set(leaves)
+    if duplicate_names:
+        raise DriftError(
+            "Names must be unique across slices and leaves: "
+            + ", ".join(sorted(duplicate_names))
+        )
+    for name, entry in leaves.items():
+        parents = entry.get("parents") if isinstance(entry, dict) else None
+        if (
+            not isinstance(parents, list)
+            or not parents
+            or not all(isinstance(parent, str) for parent in parents)
+        ):
+            raise DriftError(f"Convention leaf {name!r} must declare non-empty slice parents")
+        if len(parents) != len(set(parents)):
+            raise DriftError(f"Convention leaf {name!r} declares duplicate slice parents")
+        unknown = set(parents) - set(slices)
+        if unknown:
+            raise DriftError(
+                f"Convention leaf {name!r} has unknown slice parents: "
+                + ", ".join(sorted(unknown))
+            )
+    return {**slices, **leaves}
 
 
 def resolve_repo_root(manifest: dict[str, Any], override: str | None) -> Path:
@@ -93,22 +123,24 @@ def source_fingerprint(repo_root: Path, sources: list[str]) -> str:
 
 def validate_entry(repo_root: Path, name: str, entry: Any) -> str:
     if not isinstance(entry, dict):
-        raise DriftError(f"Slice {name!r} must be an object")
+        raise DriftError(f"Reference {name!r} must be an object")
 
     reference = entry.get("reference")
     sources = entry.get("sources")
     expected = entry.get("fingerprint")
 
     if not isinstance(reference, str) or not (repo_root / reference).is_file():
-        raise DriftError(f"Slice {name!r} has a missing reference: {reference!r}")
-    if not reference.startswith("server/skill/references/"):
-        raise DriftError(f"Slice {name!r} reference must stay inside server/skill/references")
+        raise DriftError(f"Reference {name!r} has a missing reference: {reference!r}")
+    if not (repo_root / reference).resolve().is_relative_to(
+        (repo_root / "server/skill/references").resolve()
+    ):
+        raise DriftError(f"Reference {name!r} must stay inside server/skill/references")
     if not isinstance(sources, list) or not sources or not all(
         isinstance(value, str) for value in sources
     ):
-        raise DriftError(f"Slice {name!r} must declare a non-empty source list")
+        raise DriftError(f"Reference {name!r} must declare a non-empty source list")
     if len(sources) != len(set(sources)):
-        raise DriftError(f"Slice {name!r} declares duplicate source paths")
+        raise DriftError(f"Reference {name!r} declares duplicate source paths")
     if any(
         (
             not source.startswith("server/")
@@ -116,16 +148,17 @@ def validate_entry(repo_root: Path, name: str, entry: Any) -> str:
         )
         or source.startswith("server/skill/")
         or source.startswith("monorepo/skill/")
+        or ".." in Path(source).parts
         or not source.endswith(".md")
         for source in sources
     ):
-        raise DriftError(f"Slice {name!r} contains an invalid source path")
+        raise DriftError(f"Reference {name!r} contains an invalid source path")
     if not isinstance(expected, str) or len(expected) != 64:
-        raise DriftError(f"Slice {name!r} must declare a 64-character fingerprint")
+        raise DriftError(f"Reference {name!r} must declare a 64-character fingerprint")
     try:
         bytes.fromhex(expected)
     except ValueError as error:
-        raise DriftError(f"Slice {name!r} fingerprint must be hexadecimal") from error
+        raise DriftError(f"Reference {name!r} fingerprint must be hexadecimal") from error
 
     return source_fingerprint(repo_root, sources)
 
@@ -134,14 +167,14 @@ def canonical_sources(repo_root: Path) -> set[str]:
     return {
         path.relative_to(repo_root).as_posix()
         for path in (repo_root / "server").rglob("*.md")
-        if SKILL_DIR.resolve() not in path.resolve().parents
+        if (repo_root / "server/skill").resolve() not in path.resolve().parents
     }
 
 
-def validate_coverage(repo_root: Path, slices: dict[str, Any]) -> None:
+def validate_coverage(repo_root: Path, references: dict[str, Any]) -> None:
     mapped = {
         source
-        for entry in slices.values()
+        for entry in references.values()
         if isinstance(entry, dict) and isinstance(entry.get("sources"), list)
         for source in entry["sources"]
         if isinstance(source, str)
@@ -179,9 +212,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("check", help="Check mappings and fingerprints (default).")
     refresh = subparsers.add_parser(
-        "refresh", help="Refresh one reviewed slice fingerprint."
+        "refresh", help="Refresh reviewed slice or convention-leaf fingerprints."
     )
-    refresh.add_argument("slice", help="Reviewed slice name.")
+    refresh.add_argument("references", nargs="+", help="Reviewed slice or convention-leaf names.")
     return parser.parse_args(argv)
 
 
@@ -192,26 +225,30 @@ def main(argv: list[str]) -> int:
         manifest = load_manifest()
         repo_root = resolve_repo_root(manifest, args.repo_root)
         slices: dict[str, Any] = manifest["slices"]
+        leaves: dict[str, Any] = manifest["leaves"]
+        references = reference_entries(manifest)
 
-        validate_coverage(repo_root, slices)
         actual = {
             name: validate_entry(repo_root, name, entry)
-            for name, entry in sorted(slices.items())
+            for name, entry in sorted(references.items())
         }
+        validate_coverage(repo_root, references)
 
+        requested = set(getattr(args, "references", []))
         if command == "refresh":
-            name = args.slice
-            if name not in slices:
-                raise DriftError(f"Unknown slice: {name}")
-            slices[name]["fingerprint"] = actual[name]
+            unknown = requested - set(references)
+            if unknown:
+                raise DriftError(f"Unknown reference(s): {', '.join(sorted(unknown))}")
+            for name in sorted(requested):
+                references[name]["fingerprint"] = actual[name]
+                print(f"Refreshed server reference {name}: {actual[name]}")
             write_manifest(manifest)
-            print(f"Refreshed server slice {name}: {actual[name]}")
 
         drifted = [
             name
-            for name in sorted(slices)
-            if name != getattr(args, "slice", None)
-            and slices[name]["fingerprint"] != actual[name]
+            for name in sorted(references)
+            if name not in requested
+            and references[name]["fingerprint"] != actual[name]
         ]
         if drifted:
             print("Server skill references require review:", file=sys.stderr)
@@ -221,7 +258,7 @@ def main(argv: list[str]) -> int:
                     file=sys.stderr,
                 )
             print(
-                "Review each affected reference, then run refresh SLICE.",
+                "Review each affected reference, then run refresh REFERENCE [REFERENCE ...].",
                 file=sys.stderr,
             )
             return 1
@@ -229,7 +266,8 @@ def main(argv: list[str]) -> int:
         if command == "check":
             print(
                 f"Server skill source map is current "
-                f"({len(slices)} slices, {len(canonical_sources(repo_root))} guides)."
+                f"({len(slices)} slices, {len(leaves)} convention leaves, "
+                f"{len(canonical_sources(repo_root))} guides)."
             )
         return 0
     except DriftError as error:

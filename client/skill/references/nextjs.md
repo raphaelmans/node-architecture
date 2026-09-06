@@ -31,6 +31,8 @@ Resolve the installed version's route-param and search-param shapes at the page/
 
 ## Convention Leaves
 
+Read [Next.js Access Control](nextjs/access-control.md) together with [React Access Control](react/access-control.md) for protected SSR/RSC data, access hydration, or organization/branch navigation. It adds request/rendering isolation; it does not replace the React UI contract or the server's capability authorization.
+
 Read [Next.js Routing Convention](nextjs/routing.md) before acting when the task involves `appRoutes`, route policies, internal links or redirects, dynamic path builders, route params, search params, nuqs, or URL-backed filters, pagination, tabs, and modal state.
 
 Do not load that leaf for unrelated environment, transport, realtime-provider, composition-root, or test-runner work. When the request first requires a state-ownership decision, keep `state-realtime` loaded; the routing leaf owns the Next.js implementation after URL state is selected.

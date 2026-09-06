@@ -204,7 +204,7 @@ When persistence is required but no durable adapter exists, define the narrow re
 
 Transaction state is opaque and persistence-only. Request IDs, trace IDs, actors, loggers, analytics, and generic metadata never enter transaction options.
 
-Activate transactions only for atomic persistence writes. A service may own a self-contained transaction; a use case owns a transaction spanning services.
+Activate transaction infrastructure only when required atomicity or consistent reads need it. A service may own a self-contained transaction; a use case owns a transaction spanning services. For data APIs without shared transaction participation, use an application-owned atomic repository operation implemented by a database function rather than a fake callback transaction. Repository records remain independent of the selected provider; see [transactions](./transaction.md#choose-the-atomicity-boundary).
 
 Classify effects before generating them:
 

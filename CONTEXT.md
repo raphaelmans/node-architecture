@@ -20,6 +20,18 @@ _Avoid_: Capability authorization
 An application invariant deciding whether an actor may perform a specific operation on a particular domain resource, including ownership and tenant rules.
 _Avoid_: Transport authorization
 
+**Product workspace**:
+An organization-backed collaboration boundary for a product's members and resources, distinct from a monorepo workspace package. The product may present this boundary as a business, organization, or workspace without changing its access-isolation meaning.
+_Avoid_: Workspace package, team as tenant by default
+
+**Application record**:
+An application-owned representation of domain state exchanged across service and repository boundaries, independent of the selected persistence provider and public wire representation.
+_Avoid_: ORM row as application contract, wire DTO
+
+**Repository implementation**:
+A persistence adapter that fulfills an application-owned repository contract using the selected data-access mechanism. Alternative implementations preserve the contract's observable behavior and required atomicity.
+_Avoid_: Mandatory ORM layer, provider client as application interface
+
 **Monorepo foundation**:
 The repository-wide architectural baseline that establishes workspace and package boundaries without assuming any deployable application or business behavior.
 _Avoid_: Starter application, application foundation

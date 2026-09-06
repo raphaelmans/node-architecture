@@ -2,6 +2,8 @@
 
 > Vendor-specific integration patterns for Supabase, including authentication, storage, and database access within the layered architecture.
 
+Read [the data-access convention](./data-access.md) for current architecture ownership. The concrete auth and database examples here demonstrate a combined Supabase + Drizzle stack, not a mandatory ORM layer. Provider commands and APIs must be checked against matching official documentation before use.
+
 > **For complete authentication implementation**, see [auth.md](./auth.md) which covers tRPC integration, user roles, Next.js Proxy, and the full registration flow.
 
 ## Overview
@@ -12,7 +14,7 @@ Supabase provides three main services used in this architecture:
 | ------------ | ------------------------------------------ | ------------------------------ | ------------- |
 | **Auth**     | User authentication, sessions, magic links | Controller → Service/Use Case → Repository | [auth.md](./auth.md) |
 | **Storage**  | Object/file storage with signed URLs       | Controller → Use Case → Provider adapter | Below |
-| **Database** | PostgreSQL via Drizzle ORM                 | Repository                     | Below |
+| **Database** | Direct data API/functions or selected Drizzle adapter | Repository | [Data access](./data-access.md) |
 
 ```text
 framework adapter
@@ -291,7 +293,7 @@ export type AppDatabase = typeof db;
 
 ### Repository Pattern
 
-Repositories use Drizzle, not the Supabase client, for database operations:
+This example selects Drizzle for database operations. A Supabase-only repository instead calls the SDK/data API behind the same application-owned contract; atomic multi-write methods use a database function. Map provider rows to application records in either implementation.
 
 ```typescript
 // modules/profile/repositories/profile.repository.ts
@@ -524,16 +526,16 @@ publishable/secret key names consistently.
 
 ### Database
 
-- [ ] Set up Drizzle with Supabase connection string
-- [ ] Generate types from Supabase schema
-- [ ] Repositories use Drizzle (not Supabase client)
+- [ ] Select direct Supabase access or Drizzle for each repository; no ORM is required for direct access
+- [ ] Keep provider-generated row types inside adapters and return application records
+- [ ] Use one database function for an atomic data-API operation; test preconditions, rollback, and replay
 
 ### Integration
 
 - [ ] Request-scoped factories accept `CookieMethodsServer`
 - [ ] Auth and Storage use Supabase client
-- [ ] Database uses Drizzle client
-- [ ] Service role key for server-side operations
+- [ ] Database uses the explicitly selected adapter; mixed HTTP and SQL calls do not share a transaction
+- [ ] User-scoped clients are the ordinary path; privileged keys appear only in narrowly authorized server-only factories
 
 ---
 
@@ -545,4 +547,4 @@ publishable/secret key names consistently.
 | **Interface abstraction** | `ObjectStorage` interface hides Supabase      |
 | **Repository pattern**    | AuthRepo, ProfileRepo encapsulate data access |
 | **Application/domain**    | Use cases orchestrate providers; services own one domain |
-| **Transaction context**   | Drizzle repos accept `tx` parameter           |
+| **Atomicity**             | Real shared transaction for Drizzle or a purpose-specific Supabase database function |

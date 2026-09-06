@@ -1,6 +1,16 @@
 # Transaction Management
 
-> Transaction management abstraction, Drizzle implementation, and usage patterns.
+> Application-owned atomicity, optional shared transaction context, and a Drizzle reference implementation.
+
+## Choose the Atomicity Boundary
+
+Application services/use cases define which changes must succeed or fail together. Use a shared transaction manager only when the selected driver can provide a real transaction across participating calls. A single atomic database write does not need a ceremonial transaction wrapper.
+
+For data APIs that cannot share a transaction across requests, define a purpose-specific application-owned repository operation containing all required changes. A [Supabase implementation](../runtime/nodejs/libraries/supabase/data-access.md) uses one database function; a [Drizzle implementation](../runtime/nodejs/libraries/drizzle/README.md) may fulfill the same contract with an internal transaction. That adapter realizes the declared atomic boundary rather than deciding new workflow policy. Do not emulate callback transactions with several HTTP calls, ignore supplied transaction options, or promise one transaction across different systems.
+
+Both implementations preserve application records, preconditions, safe errors, rollback, and retry/idempotency outcomes. Protect authorization-critical membership, scope, and lifecycle preconditions through commit, not only in a preflight read. Persist required outbox/audit intent atomically; external side effects remain outside the database transaction.
+
+The shared-context interfaces and Drizzle examples below apply when that implementation is selected, not as mandatory infrastructure for Supabase-only applications. Resolve exact ORM/driver syntax from matching official documentation; this guide does not own vendor APIs.
 
 ## Principles
 
@@ -8,7 +18,7 @@
 - Implementation details (Drizzle, Prisma, etc.) are hidden from business logic
 - Services own transactions for single-service writes OR participate in external transactions
 - Use cases own transactions for multi-service orchestration
-- Repositories receive transaction context, never create transactions
+- Repositories participating in a shared transaction receive its context; an adapter for an explicitly atomic operation may encapsulate a transaction to fulfill that contract
 
 ## Key Components
 
@@ -391,7 +401,7 @@ export class RegisterUserUseCase {
 
 ### Read Operations
 
-**No transaction needed** - use direct repository calls.
+**No transaction needed for an ordinary independent read** - use direct repository calls. Reads requiring a consistent multi-query snapshot or protecting a later write follow the operation's atomicity contract.
 
 ```typescript
 // Service
@@ -614,7 +624,7 @@ src/lib/
 │        └─ register-user.use-case.ts  # Owns multi-service transactions
 ```
 
-## Checklist
+## Shared-Context Implementation Checklist
 
 - [ ] `TransactionManager` interface defined in `shared/kernel/transaction.ts`
 - [ ] `TransactionContext` type alias in kernel (framework-agnostic)

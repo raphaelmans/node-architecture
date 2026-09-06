@@ -12,6 +12,9 @@ This folder contains patterns for integrating Supabase services while maintainin
 |----------|-------------|
 | [Authentication](./auth.md) | Complete auth implementation with tRPC, user roles, middleware |
 | [Integration](./integration.md) | Auth, Storage, and Database patterns (overview) |
+| [Data Access Convention](./data-access.md) | Direct repositories, atomic database functions, security, and coexistence with Drizzle |
+
+The [data-access convention](./data-access.md) owns persistence selection. Older examples below and in the auth/integration guides demonstrate a Drizzle-backed application; they do not require Drizzle for Supabase-only repositories. Resolve exact installation, configuration, SDK, key, and migration details from current version-applicable [Supabase docs](https://supabase.com/docs).
 
 ## Quick Reference
 
@@ -21,9 +24,11 @@ This folder contains patterns for integrating Supabase services while maintainin
 |------------------|-------------------|---------|
 | Auth | Controller → Service/Use Case → Repository | Request-scoped controller factories |
 | Storage | Controller → Use Case → Provider adapter | Interface abstraction + compensating workflow |
-| Database | Repository (Drizzle) | Not using Supabase client |
+| Database | Application-owned repository contract | Direct Supabase SDK/data API, or independently selected Drizzle |
 
 ### Key Files
+
+This is the combined Drizzle + Supabase example. In a Supabase-only application, omit ORM infrastructure and use direct repositories plus database functions where atomicity requires them.
 
 ```
 shared/infra/
@@ -86,7 +91,7 @@ const authRouter = router({
 3. **User Roles in DB** - Application roles separate from Supabase auth
 4. **Session in Context** - tRPC context extracts and enriches session
 5. **Storage Adapter** - Implements `ObjectStorage` interface, vendor-replaceable
-6. **Database via Drizzle** - Uses Supabase Postgres through Drizzle ORM
+6. **Independent Persistence Choice** - Use direct Supabase repositories or Drizzle; neither is a prerequisite for the other
 
 ## Environment Variables
 
@@ -106,7 +111,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 SUPABASE_SECRET_KEY=sb_secret_xxx
 
-# Database
+# Database connection only when a SQL adapter or migration tool needs it
 DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
 ```
 

@@ -19,16 +19,18 @@ Do not pass a framework request, generic context, logger, trace ID, or service c
 
 ## Reads and Writes
 
+For concrete persistence, load only the selected [Drizzle](runtimes/drizzle.md) or [Supabase](runtimes/supabase.md) leaf. Application-owned repository interfaces and records must not be derived from ORM or generated Supabase row types; map at the adapter boundary.
+
 - Simple read: controller -> one service -> repository.
 - Single-domain write: controller -> one service; let the service own its atomic write behavior.
-- Multi-service write: controller -> use case -> transaction manager -> participating services/repositories.
+- Multi-service write: controller -> use case -> participating services/repositories through a real shared transaction, or one purpose-specific atomic repository operation when the data API cannot share a transaction context.
 - Write plus external side effect: persist business state and an outbox/job record atomically, then dispatch after commit.
 
 Controllers map public wire values to commands and internal values back to view models. Services return domain/application results rather than transport envelopes.
 
 ## Transactions
 
-Keep the kernel transaction contract opaque:
+When the selected driver supports a shared transaction, keep its kernel contract opaque:
 
 ```ts
 declare const transactionContextBrand: unique symbol;
@@ -42,18 +44,20 @@ export interface TransactionOptions {
 }
 ```
 
-Only transaction infrastructure creates the context, and only repositories bridge it to a concrete ORM transaction. Use cases own multi-service transactions. Services and repositories accept optional `TransactionOptions` only when they participate in database work.
+Only transaction infrastructure creates the context, and only persistence infrastructure/repositories bridge it to a concrete transaction. Use cases own multi-service atomicity. Services and repositories accept optional `TransactionOptions` only when they can participate in that real transaction.
+
+For Supabase data-API multi-write work, define an application-owned atomic operation and implement it with one database function. A Drizzle implementation may fulfill the same operation with a transaction inside its adapter. Preserve preconditions, outcomes, rollback, errors, and replay semantics; do not fake `TransactionManager.run` over separate HTTP requests or accept ignored transaction options. Functions enforce authorization-critical preconditions at commit, and external effects remain outside the database transaction.
 
 Never add request IDs, actors, loggers, analytics, or arbitrary metadata to `TransactionOptions`. Never retry generic work inside a PostgreSQL transaction after the transaction has entered an aborted state.
 
 ## Repository Boundary
 
 - Accept domain/application values and optional transaction options.
-- Return entities or explicit persistence results, not wire envelopes.
-- Select the transaction client through one private helper.
+- Return application-owned records or explicit results, not generated provider rows or wire envelopes.
+- Select the transaction client through one private helper when shared transaction participation is supported.
 - Translate only recognized constraints/provider codes to typed errors.
 - Let unknown database failures propagate to central sanitization.
-- Keep authorization and cross-entity business rules in services/use cases.
+- Keep authorization and cross-entity policy owned by services/use cases; scoped queries, constraints, RLS, and atomic functions enforce that declared policy at the persistence boundary.
 - Route workers, CLIs, and alternate transports through the same service/use-case capability authorization rather than duplicating ownership or tenant checks in adapters.
 - Keep the repository beside its domain module. Shared database infrastructure supplies clients, schemas, and transaction plumbing but does not own domain-specific queries.
 
@@ -85,7 +89,7 @@ When infrastructure depends on cookies, headers, or an authenticated provider se
 - [PostgreSQL error codes](https://www.postgresql.org/docs/current/errcodes-appendix.html)
 - [Drizzle ORM documentation](https://orm.drizzle.team/docs/overview)
 
-PostgreSQL is the documented durable store and Drizzle is the TypeScript persistence specialization. The stable rationale is to classify provider failures structurally and match domain conflicts by exact constraint; the installed database and driver documentation own concrete codes and error-object shapes.
+Drizzle and direct Supabase access are independent persistence specializations. The stable rationale is to classify provider failures structurally and match domain conflicts by exact constraint; the selected database and driver documentation own concrete codes and error-object shapes. No standalone PostgreSQL leaf is required.
 
 ## Derivation Sources
 

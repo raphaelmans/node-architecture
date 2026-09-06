@@ -16,6 +16,7 @@ Read order before using this folder:
 | --- | --- |
 | [Next.js Client Scaffolding](./scaffolding.md) | Next.js specialization of the portable client scaffolding contract |
 | [Overview](./overview.md) | App Router conventions, guards, route registry |
+| [Access Control](./access-control.md) | React permission UX plus protected SSR/RSC and request/cache isolation |
 | [Opinionated Routing Convention](./routing-convention.md) | `appRoutes`, route policies, boundary parsing, and nuqs integration |
 | [Routing + SSR + Params](./routing-ssr-params.md) | Where route parsing/validation belongs |
 | [Configuration](./environment.md) | Browser/private build, server runtime, optional browser runtime, and T3 Env adaptation |

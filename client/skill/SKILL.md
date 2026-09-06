@@ -42,9 +42,13 @@ Slices may route to a convention leaf for a narrower, opinionated concern. Load 
 | Parent slice | Convention leaf | Load when the task involves | Reference |
 | --- | --- | --- | --- |
 | `react` | `react/shadcn` | creating/updating UI components, shared compositions, themes, variants, or reviewing feature styling | [references/react/shadcn.md](references/react/shadcn.md) |
+| `react`; add `data-flow` for access queries/mutations | `react/access-control` | permission gates, role-sensitive UX, membership management, organization/branch switching | [references/react/access-control.md](references/react/access-control.md) |
+| `nextjs` + `react` | `nextjs/access-control` | protected SSR/RSC, access hydration, Next.js workspace navigation, client/server access composition | [references/nextjs/access-control.md](references/nextjs/access-control.md) |
 | `nextjs`; add `state-realtime` while state ownership is undecided | `nextjs/routing` | `appRoutes`, route policies, links/redirects, dynamic path builders, params/search params, nuqs, or URL-backed interaction state | [references/nextjs/routing.md](references/nextjs/routing.md) |
 
 A convention leaf refines its parent slices; it does not become a top-level routing alias or override their invariants.
+
+For Next.js access-control work, compose the React and Next.js access-control leaves; standalone React needs only its own mapping. Product workspaces are organization/access state, not the monorepo `workspace` slice unless package topology is involved. Client controls are UX only; coordinate authoritative capability changes with installed `$server` when available.
 
 Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `config`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 

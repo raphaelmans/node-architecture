@@ -150,6 +150,8 @@ Use a service for one-domain behavior. Use a use case only for multi-service orc
 
 ## Persistence, Transactions, and Effects
 
+Load only selected persistence leaves: [Drizzle](runtimes/drizzle.md), [Supabase](runtimes/supabase.md), or both. Keep application records/ports independent of provider schemas. Resolve required atomicity as a real shared transaction or a purpose-specific database operation; never scaffold a fake callback transaction across HTTP requests. Organization access work also loads the tenancy/authorization/RBAC leaves as relevant.
+
 A persistence-promising public capability remains blocked until durable storage is resolved. Transaction state is opaque and database-only; never mix request IDs, traces, actors, loggers, analytics, or generic metadata into it.
 
 Classify effects:

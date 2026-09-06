@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "sourceRoot": "../..",
   "hashAlgorithm": "sha256(path-null-file-sha256-newline, sources sorted by path)",
   "slices": {
@@ -28,7 +28,7 @@
         "server/runtime/nodejs/libraries/supabase/integration.md",
         "server/runtime/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "9d09f1dc4ab9449346587de2076d2c00b57cbaf9bb3608ab0341108353cb9d75"
+      "fingerprint": "b355d439b95ee7f33c6a3b1434f51364fdeac043195cb9826a7f7b8f6487928e"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
@@ -42,7 +42,7 @@
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md"
       ],
-      "fingerprint": "ef6da8861e656ee352d22543e279a26322b07a60b938fb193b00d3c313ba5dd0"
+      "fingerprint": "8a89787050ada8acd97468d0fc28d77c53fe60be1788ae74c7fb9aee95d922e1"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -56,7 +56,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "86a07beb60196eeac8e1c99d153d825b7d5bc2bedd0ed3602da2421c71b21c1e"
+      "fingerprint": "0328f395cbe592469f57f8c274fbbfce323bb2a58b30c1874323554f8bffcecf"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -104,7 +104,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
         "server/runtime/nodejs/scaffolding.md"
       ],
-      "fingerprint": "66c1d3064d8aa6f3163e24db964790e1638c1aa5041ed928ca67cf37c0021df0"
+      "fingerprint": "d43ea108372dec9a8b9efecf571c7500748b17375c3c472729ee921c76813ba9"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -122,7 +122,7 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "838384840bd155fb244d197af94f51aba79d3d928c25f591223b14d064394ed3"
+      "fingerprint": "3da4cad8b6d52d634aa3a2c5bddce5073d98ee6f2a4eda52b96728b235651d4d"
     },
     "security": {
       "reference": "server/skill/references/security.md",
@@ -137,7 +137,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
         "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md"
       ],
-      "fingerprint": "02e70ae4ab0ba03547a3dd883e9baa94dfaa686ad1cb38d8f3ff344cff486a94"
+      "fingerprint": "db6dd4fde3ed42cfc2b8d6f8a14a8bfa9cd09b9d9c4a5a6c7e70d71b9586fc8a"
     },
     "telemetry": {
       "reference": "server/skill/references/telemetry.md",
@@ -169,7 +169,64 @@
         "server/runtime/nodejs/metaframeworks/express/README.md",
         "server/runtime/nodejs/metaframeworks/hono/README.md"
       ],
-      "fingerprint": "d7843704c4a81dd32502ffb1e5206f2e30eac5082628f6d1b6a90bb6e59df8e7"
+      "fingerprint": "6dd230a09212214aead8bd037277df3294b1055b524349e2d1c73a43bb67a970"
+    }
+  },
+  "leaves": {
+    "foundations/tenancy": {
+      "parents": [
+        "foundations"
+      ],
+      "reference": "server/skill/references/foundations/tenancy.md",
+      "sources": [
+        "server/core/tenancy.md"
+      ],
+      "fingerprint": "ac5dd94ea554a32345aa6dd2337aeedaf742c5895efe7f1e1b9952636559512e"
+    },
+    "security/authorization": {
+      "parents": [
+        "security"
+      ],
+      "reference": "server/skill/references/security/authorization.md",
+      "sources": [
+        "server/core/authorization.md"
+      ],
+      "fingerprint": "7f55ed97a170e063599a2159df61f2952ab24737c645188a81879e1f58661f1c"
+    },
+    "security/rbac": {
+      "parents": [
+        "security"
+      ],
+      "reference": "server/skill/references/security/rbac.md",
+      "sources": [
+        "server/core/rbac.md"
+      ],
+      "fingerprint": "0be89689475f48158dfef565bc0f99c0475b5eee39efd49eea9b24013e9cbb25"
+    },
+    "runtimes/drizzle": {
+      "parents": [
+        "runtimes",
+        "data-flow"
+      ],
+      "reference": "server/skill/references/runtimes/drizzle.md",
+      "sources": [
+        "server/runtime/nodejs/libraries/drizzle/README.md",
+        "server/core/transaction.md"
+      ],
+      "fingerprint": "32d4fd6a9b8542a2e129aa4700eda880a3afa17152618a7461644d1792c5765c"
+    },
+    "runtimes/supabase": {
+      "parents": [
+        "runtimes",
+        "data-flow",
+        "security"
+      ],
+      "reference": "server/skill/references/runtimes/supabase.md",
+      "sources": [
+        "server/runtime/nodejs/libraries/supabase/data-access.md",
+        "server/runtime/nodejs/libraries/supabase/README.md"
+      ],
+      "fingerprint": "b81293483a12dc002ef036a923072e282f8f700dfd5865ea59981fb69f2220a5"
     }
   }
 }

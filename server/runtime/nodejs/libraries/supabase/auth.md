@@ -4,6 +4,8 @@
 
 ## Overview
 
+This concrete example combines Supabase Auth with Drizzle-backed global application roles. It does not require an ORM for Supabase-only repositories and does not model organization/branch roles; use [data access](./data-access.md), [tenancy](../../../../core/tenancy.md), and [RBAC](../../../../core/rbac.md) for those conventions. Resolve vendor APIs and migration details from the installed version's official documentation rather than copying this example unchanged.
+
 This document covers the full authentication flow using Supabase Auth integrated with the layered architecture:
 
 | Component | Location | Responsibility |
@@ -648,8 +650,8 @@ export const userRoles = pgTable("user_roles", {
 export const UserRoleSchema = createSelectSchema(userRoles);
 export const InsertUserRoleSchema = createInsertSchema(userRoles);
 
-export type UserRoleRecord = typeof userRoles.$inferSelect;
-export type InsertUserRole = typeof userRoles.$inferInsert;
+export type UserRoleRow = typeof userRoles.$inferSelect;
+export type InsertUserRoleRow = typeof userRoles.$inferInsert;
 ```
 
 **Key Points:**
@@ -659,11 +661,30 @@ export type InsertUserRole = typeof userRoles.$inferInsert;
 
 ### Repository
 
+Define the application record/input independently of the table. In this example global role names remain project-specific strings; validation and grant policy belong to the owning application operation.
+
+```typescript
+// modules/user-role/models/user-role.ts
+export interface UserRoleRecord {
+  id: string;
+  userId: string;
+  role: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InsertUserRole {
+  userId: string;
+  role: string;
+}
+```
+
 ```typescript
 // modules/user-role/repositories/user-role.repository.ts
 
 import { eq } from "drizzle-orm";
-import { userRoles, type UserRoleRecord, type InsertUserRole } from "@/shared/infra/db/schema";
+import { userRoles, type UserRoleRow } from "@/shared/infra/db/schema";
+import type { UserRoleRecord, InsertUserRole } from "../models/user-role";
 import type { TransactionOptions } from "@/shared/kernel/transaction";
 import type { DbClient, DrizzleTransaction } from "@/shared/infra/db/types";
 
@@ -671,6 +692,16 @@ export interface IUserRoleRepository {
   findByUserId(userId: string, options?: TransactionOptions): Promise<UserRoleRecord | null>;
   create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord>;
   ensureExists(data: InsertUserRole, options: TransactionOptions): Promise<UserRoleRecord>;
+}
+
+function toUserRoleRecord(row: UserRoleRow): UserRoleRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    role: row.role,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
 }
 
 export class UserRoleRepository implements IUserRoleRepository {
@@ -688,13 +719,13 @@ export class UserRoleRepository implements IUserRoleRepository {
       .where(eq(userRoles.userId, userId))
       .limit(1);
 
-    return result[0] ?? null;
+    return result[0] ? toUserRoleRecord(result[0]) : null;
   }
 
   async create(data: InsertUserRole, options?: TransactionOptions): Promise<UserRoleRecord> {
     const client = this.getClient(options);
     const result = await client.insert(userRoles).values(data).returning();
-    return result[0];
+    return toUserRoleRecord(result[0]);
   }
 
   async ensureExists(
@@ -708,7 +739,9 @@ export class UserRoleRepository implements IUserRoleRepository {
       .onConflictDoNothing({ target: userRoles.userId })
       .returning();
 
-    return inserted[0] ?? (await this.findByUserId(data.userId, options))!;
+    return inserted[0]
+      ? toUserRoleRecord(inserted[0])
+      : (await this.findByUserId(data.userId, options))!;
   }
 }
 ```
@@ -721,7 +754,7 @@ export class UserRoleRepository implements IUserRoleRepository {
 import type { TransactionManager } from "@/shared/kernel/transaction";
 import type { TransactionOptions } from "@/shared/kernel/transaction";
 import type { IUserRoleRepository } from "../repositories/user-role.repository";
-import type { UserRoleRecord, InsertUserRole } from "@/shared/infra/db/schema";
+import type { UserRoleRecord, InsertUserRole } from "../models/user-role";
 import { UserRoleAlreadyExistsError } from "../errors/user-role.errors";
 
 export interface IUserRoleService {

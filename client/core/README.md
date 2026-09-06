@@ -78,6 +78,7 @@ Rule:
 | [Server State](./server-state-tanstack-query.md) | TanStack Query playbook |
 | [Query Keys](./query-keys.md) | Query key conventions (tRPC + non-tRPC) |
 | [State Management](./state-management.md) | Conceptual state decision guide |
+| [Permission-Aware UX](./access-control.md) | Safe scoped access state and server-authoritative decisions |
 | [Error Handling](./error-handling.md) | Error taxonomy + handling rules |
 | [Operational Logging](./logging.md) | Structured records, `debug` scoping, correlation, optional Sentry |
 | [Product Analytics](./product-analytics.md) | Typed product events, consent, identity, vendor adapters |

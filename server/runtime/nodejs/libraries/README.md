@@ -11,3 +11,7 @@ Libraries are adapters. They may depend on Node.js and vendor SDKs, but controll
 - [tRPC Rate Limiting](./trpc/rate-limiting.md)
 - [tRPC Authentication](./trpc/authentication.md)
 - [Supabase](./supabase/README.md)
+- [Supabase Data Access](./supabase/data-access.md)
+- [Drizzle Repository Convention](./drizzle/README.md)
+
+Drizzle and Supabase are independent choices. Use one or both only for the selected stack; database hosting, authentication, and business-data access need not use the same adapter.

@@ -30,7 +30,7 @@ This documentation emphasizes:
 | Framework adapters | Next.js, Express, or Hono; tRPC/OpenAPI as applicable |
 | API Layer | tRPC, OpenAPI/REST migration path |
 | Database | PostgreSQL |
-| ORM | Drizzle |
+| Persistence adapters | Drizzle or direct Supabase repositories |
 | Validation | Zod |
 | Logging | Pino behind `AppLogger` |
 | Tracing | OpenTelemetry context and semantic conventions |
@@ -45,6 +45,9 @@ This documentation emphasizes:
 | [Core Index](./core/README.md) | Architecture summary, folder structure, quick reference |
 | [Server Scaffolding Contract](./core/scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./core/conventions.md) | Layer responsibilities, DI patterns, kernel rules |
+| [Tenancy](./core/tenancy.md) | Product workspaces, memberships, invitations, tenant/resource isolation |
+| [Authorization](./core/authorization.md) | Application policy and enforceable data boundaries |
+| [RBAC](./core/rbac.md) | Better Auth-aligned roles and permissions; application-owned branch scopes |
 | [Configuration Boundaries](./core/configuration.md) | Private build/server runtime schemas and narrow injection |
 | [Framework-Neutral Controllers](./core/controllers.md) | Portable capability boundary shared by Next.js, Express, Hono, tRPC, OpenAPI, and other adapters |
 | [Error Handling](./core/error-handling.md) | Public error policy, translation rules, response structure |
@@ -78,6 +81,7 @@ This documentation emphasizes:
 | [tRPC Rate Limiting](./runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tiers and enforcement patterns |
 | [Authentication](./runtime/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
 | [Supabase](./runtime/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
+| [Drizzle](./runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
 | [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
 | [Express](./runtime/nodejs/metaframeworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
 | [Hono](./runtime/nodejs/metaframeworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |

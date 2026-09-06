@@ -14,6 +14,8 @@ Use this slice for server layering, framework-neutral controllers, module struct
 
 ## Canonical Flow
 
+For organization-backed product workspaces, membership, invitations, or resource scopes, load [tenancy](foundations/tenancy.md). This is distinct from the monorepo `workspace` slice. Authorization and RBAC are conditional security leaves, not mandatory foundations for every module.
+
 For scaffolding, treat this flow as a portable role contract rather than a universal language syntax or directory tree. A documented runtime specialization may map it to concrete paths; for an unlisted runtime/language, derive and approve that mapping from repository evidence and current official guidance before writing.
 
 Single-project and monorepo topologies are equal canonical mappings. Load `workspace` when roles cross package boundaries; the Node.js/TypeScript tree below is one mapping, not a requirement to colocate deployable apps and reusable packages.

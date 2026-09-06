@@ -16,6 +16,8 @@ Use this slice for React component boundaries, composition, browser configuratio
 
 ## Convention Leaves
 
+Read [React Access Control](react/access-control.md) for permission gates, role-sensitive UX, membership management, or organization/branch switching. It owns scoped access-state composition and fail-closed UX, not authoritative server policy. In Next.js, add its access-control leaf for server-rendering/request boundaries.
+
 Read [Shadcn Component Convention](react/shadcn.md) before creating, updating or reviewing UI components, shared compositions, themes, variants or feature styling. Shadcn adoption is mandatory for this UI convention; the leaf owns its three tiers, customization policy and update discipline. Load it conditionally, not for every React task.
 
 ## Scaffolding

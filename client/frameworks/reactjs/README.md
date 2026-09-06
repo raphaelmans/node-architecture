@@ -19,6 +19,7 @@ Read core first:
 - [Conventions](./conventions.md)
 - [Server State Patterns (Cookbook)](./server-state-patterns-react.md)
 - [Composition](./composition-react.md)
+- [Access Control](./access-control.md)
 - [Error Handling (React)](./error-handling.md)
 - [Forms (react-hook-form + StandardForm)](./forms-react-hook-form.md)
 - [UI Component Convention (shadcn/ui)](./ui-shadcn-radix.md)

@@ -34,7 +34,7 @@
         "client/core/onboarding.md",
         "client/diagrams.md"
       ],
-      "fingerprint": "7c643884d31b141c5b6859e787b9c311e96201e9723d4accab413ba73d089dd3"
+      "fingerprint": "fe99be35bf2682071febd225f0be27f58b4297a2f5958dfb632f599747851583"
     },
     "workspace": {
       "reference": "client/skill/references/workspace.md",
@@ -49,7 +49,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "5b0fcdac90b9fe467fa9ff8d59073ce53e9fd86716d63441bf09a85a93a7fd2f"
+      "fingerprint": "526546894ba90de9f85de99513a05a4d21444a860db6e3e7bef81221f9f9fc89"
     },
     "contracts": {
       "reference": "client/skill/references/contracts.md",
@@ -139,7 +139,7 @@
         "client/frameworks/reactjs/state-zustand.md",
         "client/frameworks/reactjs/ui-shadcn-radix.md"
       ],
-      "fingerprint": "6ec573e51fd8b1df0abecae13025e115679450364c813b4330efa09eb5ca81ab"
+      "fingerprint": "ae01d51638ca6b68e0e358324d6c28d14565cf41ceebb2778a79a076489a3763"
     },
     "nextjs": {
       "reference": "client/skill/references/nextjs.md",
@@ -157,10 +157,35 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "5105d572708419a07fa3341e2f123e52b729148f0bc5407367eb58ddb4d1d751"
+      "fingerprint": "1fdc17a98df9ccdb03756a5096d01770c7cce1e6d919226feacb51873dcf374d"
     }
   },
   "leaves": {
+    "react/access-control": {
+      "parents": [
+        "react",
+        "data-flow"
+      ],
+      "reference": "client/skill/references/react/access-control.md",
+      "sources": [
+        "client/core/access-control.md",
+        "client/frameworks/reactjs/access-control.md"
+      ],
+      "fingerprint": "365201d07096ed5a3c0e3b7abdf9e6c2b37293c61116e251656fc0bc97aabe46"
+    },
+    "nextjs/access-control": {
+      "parents": [
+        "nextjs",
+        "react"
+      ],
+      "reference": "client/skill/references/nextjs/access-control.md",
+      "sources": [
+        "client/core/access-control.md",
+        "client/frameworks/reactjs/access-control.md",
+        "client/frameworks/reactjs/metaframeworks/nextjs/access-control.md"
+      ],
+      "fingerprint": "309590110833403d621f1fee4995250a14dbcc105fb35a8ac347e2253bee29b2"
+    },
     "nextjs/routing": {
       "parents": [
         "nextjs",

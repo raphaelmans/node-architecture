@@ -33,7 +33,21 @@ Route server work through modular architecture slices. Load only the references 
 | `security` | authentication, sessions, authorization, cookies, redirects, keys, RLS, secrets, security headers | [references/security.md](references/security.md) |
 | `telemetry` | `AppLogger`, Pino, OpenTelemetry, correlation, event naming, product analytics, privacy | [references/telemetry.md](references/telemetry.md) |
 | `testing` | adapter/controller/application/repository tests, database concurrency, webhook fixtures, transport parity | [references/testing.md](references/testing.md) |
-| `runtimes` | Node.js and framework/runtime-specific configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Supabase | [references/runtimes.md](references/runtimes.md) |
+| `runtimes` | Node.js and framework/runtime-specific configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Drizzle, Supabase | [references/runtimes.md](references/runtimes.md) |
+
+## Convention Leaves
+
+Load only leaves matching the task, along with their parent slices. A leaf refines ownership and verification; it does not require installing a named library.
+
+| Parent slice(s) | Leaf | Load when | Reference |
+| --- | --- | --- | --- |
+| `foundations` | `foundations/tenancy` | product workspaces, organization membership, invitations, tenant/resource scope | [tenancy](references/foundations/tenancy.md) |
+| `security` | `security/authorization` | actor/resource access, ownership, capability policy, server enforcement | [authorization](references/security/authorization.md) |
+| `security` | `security/rbac` | roles, resource/action permissions, delegated grants, scoped assignments | [RBAC](references/security/rbac.md) |
+| `runtimes` + `data-flow` | `runtimes/drizzle` | Drizzle repositories, row mapping, transactions, migration ownership | [Drizzle](references/runtimes/drizzle.md) |
+| `runtimes`; add `data-flow` for persistence or `security` for access | `runtimes/supabase` | direct Supabase repositories/functions or Auth/Storage/Realtime integration | [Supabase](references/runtimes/supabase.md) |
+
+Product `workspace` means tenancy here; select the existing `workspace` slice only for repository/package topology. For organization RBAC, combine tenancy + authorization + RBAC. Load neither, one, or both persistence leaves based on the actual stack; Supabase does not require Drizzle. For React/Next.js UI, coordinate with installed `$client` access-control leaves when available. Next.js server routes and Node.js servers use the same server capability rules through their existing runtime adapters.
 
 Treat `scaffold`, `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `layers`, `module`, `config`, `configuration`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `schema`, `api`, `dto`, and `error` as aliases for `contracts`; `transaction`, `database`, `repository`, and `persistence` as aliases for `data-flow`; `job`, `event`, `outbox`, `webhook`, and `cron` as aliases for `operations`; `auth` as an alias for `security`; `logging`, `analytics`, `observability`, and `tracing` as aliases for `telemetry`; and `framework`, `adapter`, `runtime`, `trpc`, `openapi`, `next`, `express`, `hono`, `nestjs`, and `supabase` as aliases for `runtimes`.
 
@@ -64,7 +78,7 @@ When invoked as `$server scaffold ...`, read `scaffolding` first, then every arc
 - Keep repositories responsible for persistence only. Translate known provider/database failures at the adapter boundary and never leak vendor errors inward.
 - Define one shared Zod wire contract under the topology's resolved isomorphic contract boundary. Keep envelopes in the shared kernel and server-only commands inside the server capability boundary.
 - Normalize malformed input to `ValidationError`; throw typed `AppError` subclasses for expected failures; expose only allowlisted public details.
-- Keep `TransactionContext` opaque and database-only. Do not merge request, tracing, logger, actor, or analytics data into transaction options.
+- Keep `TransactionContext` opaque and database-only where a real shared transaction is supported. Use operation-level atomic contracts for database-function implementations; never emulate a shared transaction across separate HTTP requests. Do not merge request, tracing, logger, actor, or analytics data into transaction options.
 - Inject narrow ports through factories. Never pass a container or generic context object through application layers.
 - Treat environment access as a deployable-owned outer boundary. Validate declared fields at the build/runtime lifecycle that consumes them, then inject narrow configuration; inner layers and shared contracts never read the host environment or receive a complete env object.
 - Keep operational `AppLogger` records separate from typed `ProductAnalytics` events. Obtain request and trace correlation from active runtime context rather than business DTOs.

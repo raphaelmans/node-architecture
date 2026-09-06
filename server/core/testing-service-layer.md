@@ -277,7 +277,7 @@ server—not `createCaller`—when asserting `errorFormatter` output.
 
 - Test pure domain rules and branching.
 - Test behavior with repository returning null/conflict/existing states.
-- Test transaction participation (`options.tx` path) vs self-owned transactions.
+- Test transaction participation (`options.tx` path) vs self-owned transactions where supported; for atomic operation ports, test their declared outcomes without requiring a callback transaction API.
 
 **Concrete Pattern: Harness Factory**
 
@@ -305,13 +305,14 @@ function createHarness(overrides?: Partial<HarnessOptions>) {
 }
 ```
 
-This provides typed partial stubs for all repository dependencies without touching the DB. Helper functions like `toEntityRecord(partial)` construct test entity records from partial data typed against real schema types.
+This provides typed partial stubs for all repository dependencies without touching the DB. Helper functions like `toEntityRecord(partial)` construct records from application-owned types, not ORM/generated database schemas.
 
 ### Repository
 
 - Validate persistence semantics and query filters.
-- Validate `options.tx` vs base client usage.
-- Keep domain rule assertions out of repository tests.
+- Validate `options.tx` vs base client usage when shared transactions are supported.
+- For Supabase atomic functions, use real database/API integration tests for preconditions, grants/RLS, rollback, replay, and concurrency. Fake SDK calls do not prove these guarantees.
+- Keep policy-definition assertions in service/domain tests; repository integration tests prove that scoped queries, constraints, and functions enforce the declared contract. Compare the same operation outcomes across implementations actually shipped.
 
 ### Logging and Product Analytics
 

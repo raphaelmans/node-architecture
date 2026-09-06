@@ -69,6 +69,7 @@ This documentation emphasizes:
 | [Server State](./core/server-state-tanstack-query.md) | TanStack Query core patterns |
 | [Query Keys](./core/query-keys.md) | Query key conventions |
 | [State Management](./core/state-management.md) | State decision guide |
+| [Permission-Aware UX](./core/access-control.md) | Safe scoped access results, freshness, and server-authoritative decisions |
 | [Error Handling](./core/error-handling.md) | Error taxonomy + handling rules |
 | [Operational Logging](./core/logging.md) | Structured records, local `debug`, optional Sentry |
 | [Product Analytics](./core/product-analytics.md) | Typed behavioral events and vendor adapters |
@@ -85,8 +86,10 @@ This documentation emphasizes:
 | [ReactJS Index](./frameworks/reactjs/README.md) | React-specific implementation |
 | [React Scaffolding](./frameworks/reactjs/scaffolding.md) | React implementation of the portable scaffolding contract |
 | [React Configuration](./frameworks/reactjs/environment.md) | Build-tool configuration and optional browser runtime delivery |
+| [React Access Control](./frameworks/reactjs/access-control.md) | Feature APIs, query hooks, permission gates, and scope switching |
 | [Next.js Index](./frameworks/reactjs/metaframeworks/nextjs/README.md) | Next.js App Router + SSR/params + adapters |
 | [Next.js Scaffolding](./frameworks/reactjs/metaframeworks/nextjs/scaffolding.md) | Next.js specialization for repository-aware generation |
+| [Next.js Access Control](./frameworks/reactjs/metaframeworks/nextjs/access-control.md) | Protected SSR/RSC, hydration, and request/cache isolation |
 
 ### Supplemental
 

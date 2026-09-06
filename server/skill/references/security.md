@@ -4,12 +4,14 @@ Use this slice for authentication, sessions, authorization, cookies, trusted ori
 
 ## Authentication and Authorization
 
+Load [capability authorization](security/authorization.md) for operation/resource rules and [RBAC](security/rbac.md) when roles grant permissions. Add [tenancy](foundations/tenancy.md) for organization membership/scope. For Supabase implementation mechanics, load [its runtime leaf](runtimes/supabase.md) rather than assuming an ORM.
+
 Authentication establishes an actor. Authorization decides whether that actor may perform the requested action.
 
 - Transport middleware may enforce a coarse authenticated-session or role gate.
 - Services enforce reusable domain permissions and resource ownership.
 - Use cases enforce workflow-level policy spanning multiple domains.
-- Repositories never own authorization policy.
+- Repositories never own authorization policy; scoped queries, constraints, RLS, and functions enforce the application-owned rule at the persistence boundary, including directly exposed APIs and race-sensitive transitions.
 
 Convert transport/session data to a plain `Actor` before calling a controller. Do not pass framework context or provider user objects inward.
 

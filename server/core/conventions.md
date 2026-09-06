@@ -2,6 +2,8 @@
 
 > Core architectural conventions defining layer responsibilities, dependency injection, and the kernel.
 
+Concrete SQL examples below use Drizzle as one implementation. Application records and repository ports are provider-independent; direct Supabase repositories and atomic database functions follow [the transaction contract](./transaction.md#choose-the-atomicity-boundary). Do not generate shared transaction infrastructure for a data API that cannot participate in it.
+
 ## Layer Responsibilities
 
 ### Transport + Contract Strategy
@@ -282,8 +284,8 @@ export class UserService implements IUserService {
 
 - Repositories return entities, not DTOs
 - ORM/database code lives here
-- Accept transaction context via `TransactionOptions`
-- Never create transactions
+- Accept `TransactionOptions` only when participating in a real shared transaction
+- Do not invent transaction boundaries; an adapter may encapsulate a transaction when implementing an explicitly atomic application operation
 - Repository interfaces MUST be defined and implemented explicitly
 
 ```typescript
@@ -318,7 +320,7 @@ export class UserRepository implements IUserRepository {
 
 **Pessimistic Locking (`FOR UPDATE`) Pattern:**
 
-For contended-state entities (reservations, availability slots), repositories expose `findByIdForUpdate` variants:
+For contended-state entities using a shared SQL transaction (reservations, availability slots), repositories may expose `findByIdForUpdate` variants. Data-API implementations instead keep the protected check and write inside one atomic operation:
 
 ```typescript
 async findByIdForUpdate(id: string, options: TransactionOptions): Promise<Entity | null> {
@@ -553,7 +555,7 @@ shared/kernel/
 - Contain business behavior
 - Do NOT represent API contracts
 
-**Approach:** Use Drizzle schema types for database records. Add domain entity classes only when you need behavior attached to data.
+**Approach:** Define application records beside the module's application/repository contract, independently of the persistence provider. Drizzle schema-derived and generated Supabase types stay inside their adapters and map to those records; add domain entity classes only when behavior attached to data justifies them. The schema example below defines a persistence row, not a service or public API contract.
 
 ```typescript
 // shared/infra/db/schema.ts
@@ -709,13 +711,15 @@ makeRegisterUserController()
 
 | Layer | Returns | Type source |
 | --- | --- | --- |
-| Repository | Entity/record | Drizzle/ORM schema |
+| Repository | Application record or explicit operation result | Application-owned repository/domain contract |
 | Service | Entity or internal domain result | Repository/domain model |
 | Use case | Internal application result | Use-case contract |
 | Controller | Shared response shape | `modules/<module>/shared/contracts/` |
 | Framework adapter | Kernel envelope + validated shared response payload | `shared/kernel/` + `modules/<module>/shared/contracts/` |
 
 **Rule:** Entities may flow internally, but every public transport maps and validates output through a shared response contract before serialization.
+
+For organization-scoped behavior, compose [tenancy](./tenancy.md), [authorization](./authorization.md), and [RBAC](./rbac.md) as needed. Persistence implementations remain independent: [Drizzle](../runtime/nodejs/libraries/drizzle/README.md), [Supabase directly](../runtime/nodejs/libraries/supabase/data-access.md), or both. Shared callback transaction examples in this guide apply only to participating drivers; data-API atomic operations follow [the transaction contract](./transaction.md#choose-the-atomicity-boundary).
 
 ## Implemented Event-Driven Patterns
 
@@ -764,9 +768,9 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 
 - [ ] Interface `I<Entity>Repository` defined with all method signatures
 - [ ] Class implements interface: `implements I<Entity>Repository`
-- [ ] Constructor accepts `DbClient`
-- [ ] `getClient(options)` bridges the opaque context only at the repository boundary
-- [ ] Methods that may participate in a transaction accept `options?: TransactionOptions`
+- [ ] Constructor accepts the selected persistence client; application interfaces/records expose no provider types
+- [ ] When shared transactions are supported, `getClient(options)` bridges the opaque context only at the repository boundary
+- [ ] Methods accept `options?: TransactionOptions` only when they can participate; otherwise an operation-level contract declares required atomicity
 - [ ] Returns `null` for not found (never throws)
 - [ ] Known database constraint violations caught and translated to domain errors
 - [ ] Raw database error messages never propagated as-is
@@ -778,9 +782,9 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 - [ ] Interface `I<Entity>Service` defined with all method signatures
 - [ ] Class implements interface: `implements I<Entity>Service`
 - [ ] Constructor accepts **interface** types: `I<Entity>Repository` (not concrete)
-- [ ] Constructor accepts `TransactionManager`
-- [ ] Read methods: pass transaction `options` through when provided
-- [ ] Write methods: check `options?.tx` - participate if present, otherwise create transaction
+- [ ] Constructor accepts `TransactionManager` only for real shared-transaction work
+- [ ] Read methods: pass supported transaction `options` through when provided
+- [ ] Writes preserve the required atomicity through shared transactions or an explicit atomic repository operation; no fake cross-request transaction
 - [ ] Operational business events use injected `AppLogger`
 - [ ] Does not emit product analytics or call external providers; those belong in a use case
 - [ ] Event names: `<entity>.<past_tense_action>` format
@@ -791,7 +795,7 @@ export class <Entity><ErrorType>Error extends <BaseError> {
 
 - [ ] Only created for multi-service orchestration or side effects
 - [ ] Constructor accepts **interface** types (not concrete classes)
-- [ ] Constructor accepts `TransactionManager`
+- [ ] Constructor accepts `TransactionManager` only when the workflow uses a real shared transaction; otherwise compose an explicit atomic operation or compensating workflow
 - [ ] Constructor accepts interface-typed `AppLogger`/`ProductAnalytics` only when used
 - [ ] Throws **domain errors** (NOT generic `Error`)
 - [ ] Required external delivery intent is enqueued INSIDE the transaction through an outbox port

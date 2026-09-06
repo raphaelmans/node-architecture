@@ -78,12 +78,14 @@ For OpenAPI, generate schemas from canonical Zod contracts and route operations 
 
 ## Supabase
 
+Load the [Supabase convention leaf](runtimes/supabase.md) for concrete integration work. Load [Drizzle](runtimes/drizzle.md) independently when it is present or selected; either or both can implement application-owned repository contracts.
+
 - Use request-scoped publishable-key clients for authenticated user operations.
 - Isolate secret-key clients in explicit privileged server-only factories.
 - Put Auth, Storage, and database SDK mechanics behind ports/adapters.
 - Translate provider errors before they cross inward.
 - Keep storage paths scoped and validate uploads before adapter calls.
-- Use Drizzle repositories for application persistence and RLS for direct user-scoped Supabase access according to the chosen boundary.
+- Use direct Supabase repositories or Drizzle according to the selected stack. Use purpose-specific database functions for atomic Supabase data-API operations and enforce RLS/grants for exposed user access; separate HTTP requests cannot share an ORM transaction.
 
 ## Pino
 

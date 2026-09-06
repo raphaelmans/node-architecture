@@ -64,7 +64,7 @@ Dependencies point toward contracts and application/domain policy. The kernel ne
 | Framework adapters | Next.js, Express, or Hono               |
 | API Layer  | tRPC (current), OpenAPI (migration path) |
 | Database   | PostgreSQL                               |
-| ORM        | Drizzle                                  |
+| Persistence adapters | Drizzle or direct Supabase repositories; load only what is selected |
 | Validation | Zod (canonical contracts)                |
 | Logging    | Pino behind `AppLogger`                  |
 | Tracing    | OpenTelemetry context + semantic conventions |
@@ -78,9 +78,11 @@ Dependencies point toward contracts and application/domain policy. The kernel ne
 | **Controller**        | Framework-neutral contract/command/result mapping; calls one use case or service | No |
 | **Use Case**          | Multi-service orchestration, side effects      | Yes (owns)                 |
 | **Service**           | Business logic, single-service operations      | Yes (owns or receives transaction options) |
-| **Repository**        | Data access, entity persistence                | No (receives transaction options) |
+| **Repository**        | Data access, application record mapping        | Participates in a real transaction or implements a declared atomic operation |
 
 ### Controller Decision Flow
+
+Transaction ownership below means ownership of required atomicity. The selected adapter may use a shared transaction context or one purpose-specific database function; see [the transaction contract](./transaction.md#choose-the-atomicity-boundary).
 
 ```
 Controller receives validated shared input
@@ -98,7 +100,8 @@ Controller receives validated shared input
 
 | Type | Source | Used By | Purpose |
 | --- | --- | --- | --- |
-| **Entity** | Drizzle/ORM schema | Repository, service | Internal persistence/domain representation |
+| **Application record/entity** | Application-owned domain/repository contract | Repository boundary, service | Provider-independent internal representation |
+| **Persistence row** | Selected ORM or generated database types | Persistence adapter only | Stored representation mapped to application records |
 | **Shared API contract** | Resolved module/package contract boundary | Client feature API, server adapter, controller | Serialized request/response boundary |
 | **Internal command DTO** | Server module/use case | Use case/service | Optional server-only orchestration shape |
 
@@ -148,6 +151,8 @@ Client Request
 Server-side code is organized under `src/lib/`, with `shared/` for cross-cutting concerns and `modules/` for domain logic.
 Examples may use alias shortcuts such as `@/shared/*` and `@/modules/*`; those refer to `src/lib/shared/*` and `src/lib/modules/*`.
 Choose the entrypoint branch for the framework in use; a project does not need all adapter folders.
+
+The database subtree below illustrates the Drizzle implementation. A Supabase-only application uses its selected client, generated persistence types, and reviewed function/policy migrations without unused ORM infrastructure.
 
 For the monorepo mapping, keep transports and composition in deployable apps. New modules use package placement for activated contracts, capabilities, and adapters by default; domain packages remain conditional on genuine sharing, and cohesive existing app-local modules remain until explicitly migrated. A workspace package may contain several onion layers and must preserve their inward source dependencies.
 
@@ -248,6 +253,9 @@ src/
 | ------------------------------------------- | ------------------------------------------- |
 | [Server Scaffolding Contract](./scaffolding.md) | Runtime-agnostic safety, evidence, access, atomicity, and boundary policy |
 | [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
+| [Tenancy](./tenancy.md) | Organization membership, invitations, product workspaces, scope isolation |
+| [Authorization](./authorization.md) | Authoritative capability policy and persistence enforcement |
+| [RBAC](./rbac.md) | Better Auth-aligned roles/permissions with application-owned resource scopes |
 | [Configuration Boundaries](./configuration.md) | Private build/server runtime surfaces, schema authority, and narrow injection |
 | [Framework-Neutral Controllers](./controllers.md) | Portable boundary between framework adapters and application logic |
 | [Error Handling](./error-handling.md)       | Error classes, flow, response structure     |
@@ -273,6 +281,7 @@ src/
 | [tRPC Rate Limiting](../runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tier patterns        |
 | [Authentication](../runtime/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
 | [Supabase](../runtime/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
+| [Drizzle](../runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
 | [Next.js](../runtime/nodejs/metaframeworks/nextjs/README.md)         | Metaframework route handling      |
 | [Express](../runtime/nodejs/metaframeworks/express/README.md)       | Express adapter boundary          |
 | [Hono](../runtime/nodejs/metaframeworks/hono/README.md)             | Hono adapter boundary             |
@@ -350,7 +359,7 @@ These remain out of scope:
 Use `$server scaffold <feature>/<operation>` to apply this checklist through repository-aware preflight, or follow it manually.
 
 - [ ] Create module folder under `src/lib/modules/<module>/`
-- [ ] Define entities in `src/lib/shared/infra/db/schema.ts`
+- [ ] Define application records in the owning module; keep persistence schemas/generated row types inside the selected adapter boundary
 - [ ] Create repository interface and implementation
 - [ ] Create service interface and implementation
 - [ ] Create domain-specific errors in `errors/`
@@ -359,7 +368,7 @@ Use `$server scaffold <feature>/<operation>` to apply this checklist through rep
 - [ ] Add a server-only command DTO only when internal orchestration differs from the public input
 - [ ] Create one framework-neutral controller per public capability
 - [ ] Controller maps shared input/output and calls one use case or service
-- [ ] Create factory with lazy singletons
+- [ ] Create factories with appropriate lifetimes; session/user-scoped dependencies are never global singletons
 - [ ] Create transport adapter (`tRPC`, `OpenAPI`, or both)
 - [ ] Transport adapter calls a controller factory only
 - [ ] Register the adapter with the shared transport error mapping; do not map domain errors per route
