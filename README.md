@@ -1,4 +1,4 @@
-# Client, Server, and Monorepo Architecture Documentation
+# Client, Server, Monorepo, and Development Architecture Documentation
 
 > Source repository for portable architecture guides and installable agent skills derived from them.
 
@@ -11,6 +11,8 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | [server/README.md](./server/README.md) | Canonical backend architecture docs |
 | [client/README.md](./client/README.md) | Canonical frontend architecture docs |
 | [monorepo/README.md](./monorepo/README.md) | Canonical workspace topology and package-boundary docs |
+| [development/README.md](./development/README.md) | Canonical local startup and origin guidance |
+| [development/skill/SKILL.md](./development/skill/SKILL.md) | Installable `$development` skill for Next.js and Node.js servers with Portless |
 | [client/skill/SKILL.md](./client/skill/SKILL.md) | Installable `$client` router derived from the client docs |
 | [server/skill/SKILL.md](./server/skill/SKILL.md) | Installable `$server` router derived from the server docs |
 | [monorepo/skill/SKILL.md](./monorepo/skill/SKILL.md) | Installable `$monorepo` router derived from the monorepo docs |
@@ -39,6 +41,7 @@ node-architecture/
   client/       canonical frontend docs + portable skill + maintenance metadata
   server/       canonical backend docs + portable skill + maintenance metadata
   monorepo/     canonical workspace docs + thin build-system mappings + portable skill
+  development/  local startup contracts + Portless + Next.js/Node.js mappings + skill
   legacy/       historical references, not source of truth
   consumer/     skill installation and migration guidance
   assets/       supplemental artifacts
@@ -62,6 +65,7 @@ node-architecture/
 3. Install GitHub path `server/skill` with destination name `server`.
 4. Install GitHub path `monorepo/skill` with destination name `monorepo` when working across workspace packages.
 5. Invoke `$client`, `$server`, or `$monorepo` with a concern or task, such as `$server contracts review this route` or `$monorepo scaffold slice users/create`.
+6. Install `development/skill` with destination name `development` for `$development setup nextjs`, including dependency installation, scripts, and worktree-aware local origins.
 
 `copy-guides.sh` is disabled. Installable skills are the supported agent-facing distribution path.
 

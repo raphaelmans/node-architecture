@@ -5,6 +5,8 @@ description: Apply this repository's server architecture when designing, explain
 
 # Server Architecture
 
+For Next.js, Express, Hono, or other Node.js server local startup, Portless setup, or worktree origins, select `runtimes` and coordinate with installed `$development` when available.
+
 Route server work through modular architecture slices. Load only the references required by the task, compose slices when concerns cross boundaries, and preserve the user's requested operation: explanation, diagnosis, review, planning, or implementation.
 
 ## Start

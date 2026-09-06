@@ -1,5 +1,7 @@
 # Next.js Server Documentation
 
+For local startup and worktree origins, use [Next.js with Portless](../../../../../development/frameworks/nextjs/README.md). Development tooling supplies the existing application-origin variable; callbacks, cookies, and trusted-origin validation remain server-owned.
+
 > Next.js-specific conventions layered on top of the backend architecture.
 
 This section focuses on how to implement **Next.js App Router** server concerns (`route.ts`, cache/revalidation, metadata/SEO, cron operations, and transport boundaries) while adhering to:

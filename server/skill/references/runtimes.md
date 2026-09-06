@@ -1,5 +1,7 @@
 # Runtimes Slice
 
+For local startup and concurrent worktree origins, coordinate with installed `$development` using its Next.js or Node.js mapping as appropriate. Express/Hono and other HTTP servers must consume the assigned port at their actual listener through generic bootstrap configuration. Development tooling supplies existing self-origin variables only when needed and resolves separate frontend/API targets within the same checkout. Keep callback, cookie, and trusted-origin validation here; application source and schemas stay unaware of the proxy.
+
 Use this slice for the documented Node.js composition and concrete tRPC, OpenAPI, Next.js, Express, Hono, NestJS, Supabase, Pino, FormData, caching, cron, metadata, and security adapter behavior.
 
 ## Scaffolding

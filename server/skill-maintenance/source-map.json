@@ -42,7 +42,7 @@
         "server/runtime/README.md",
         "server/runtime/nodejs/README.md"
       ],
-      "fingerprint": "8166d74fc8919f7c10e079e52bc64095257f89fb3a7a3de59577c6d67b856432"
+      "fingerprint": "ef6da8861e656ee352d22543e279a26322b07a60b938fb193b00d3c313ba5dd0"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -104,7 +104,7 @@
         "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
         "server/runtime/nodejs/scaffolding.md"
       ],
-      "fingerprint": "79059d0ff45ad4406d95c0db25a2f4200d0d6e1df3511b55d7d7d54ce41a0cf5"
+      "fingerprint": "66c1d3064d8aa6f3163e24db964790e1638c1aa5041ed928ca67cf37c0021df0"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",

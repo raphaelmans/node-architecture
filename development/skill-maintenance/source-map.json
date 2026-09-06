@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "hashAlgorithm": "sha256(path-null-file-sha256-newline, sources sorted by path)",
+  "sourceRoot": "../..",
+  "slices": {
+    "foundations": {
+      "reference": "development/skill/references/foundations.md",
+      "sources": [
+        "development/README.md",
+        "development/core/local-development.md"
+      ],
+      "fingerprint": "7008c79f4d2f8d9d6c7615ac101cec7f316d76e048e5f1eb9ee12719de66e839"
+    },
+    "nextjs": {
+      "reference": "development/skill/references/nextjs.md",
+      "sources": [
+        "development/core/local-development.md",
+        "development/frameworks/nextjs/README.md"
+      ],
+      "fingerprint": "595aea4b65fdbc660670417ec995ee7942270acaf2bb93e006646b0e30fa4cbc"
+    },
+    "portless": {
+      "reference": "development/skill/references/portless.md",
+      "sources": [
+        "development/core/local-development.md",
+        "development/tools/portless/README.md"
+      ],
+      "fingerprint": "4e5544db928dc6af3f5f9ac6bbbc8346897079224135cdb100c74420f19da44c"
+    },
+    "nodejs": {
+      "reference": "development/skill/references/nodejs.md",
+      "sources": [
+        "development/core/local-development.md",
+        "development/runtimes/nodejs/README.md"
+      ],
+      "fingerprint": "959ce755ff60b95d4ef4e810fae02c2e0f128c013d39738659a8c4f75dcaff75"
+    }
+  }
+}

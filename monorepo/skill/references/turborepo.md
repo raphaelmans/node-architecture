@@ -1,5 +1,7 @@
 # Turborepo Slice
 
+For named local origins and concurrent worktrees, coordinate with installed `$development` when available. Retain package-owned startup and existing root orchestration. Check task environment availability at the actual origin-injection boundary; do not add development-proxy variables to application schemas.
+
 Use this slice only when Turborepo is detected or requested. It is a thin execution router, not a configuration reference.
 
 ## Resolve Before Acting

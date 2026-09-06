@@ -5,6 +5,8 @@ description: Apply this repository's portable monorepo architecture when designi
 
 # Monorepo Architecture
 
+For local origin/proxy setup and concurrent worktrees, coordinate with installed `$development` when available while retaining workspace manifest and task ownership.
+
 Route workspace work through the smallest relevant architecture slices. Preserve the user's requested operation and do not turn explanation, diagnosis, review, or planning into repository mutation.
 
 ## Start

@@ -1,5 +1,7 @@
 # Next.js Slice
 
+For local process setup, Portless, or concurrent worktree origins, coordinate with installed `$development nextjs` when available. Keep browser configuration ownership here. Development tooling supplies the existing app-origin variable before startup; application source and schemas stay unaware of the proxy. Preserve same-origin relative browser calls.
+
 Use this slice for Next.js App Router ownership, SSR/RSC boundaries, route params, access composition, environment variables, tRPC/Ky transport integration, realtime adapters, and Next.js-specific Vitest setup.
 
 ## Contents

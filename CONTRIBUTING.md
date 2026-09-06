@@ -14,12 +14,16 @@ When contributing, treat these docs as a system of contracts, not isolated notes
 - Monorepo canonical base: `monorepo/core/*`
 - Monorepo build-system layer: `monorepo/build-systems/*`
 - Monorepo agent skill: curated derivatives under `monorepo/skill/references/*`
+- Development canonical base: `development/core/*`
+- Development mappings: `development/frameworks/*`, `development/runtimes/*`, and `development/tools/*`
+- Development agent skill: curated derivatives under `development/skill/references/*`
 
 Rule:
 
 - Keep `core/*` framework/runtime-agnostic.
 - Put framework/runtime-specific behavior in framework/runtime folders.
 - Keep `monorepo/core/*` build-system and package-manager agnostic.
+- Keep `development/core/*` framework/tool-agnostic; application-origin and workspace ownership remain with their existing boundaries.
 - Keep build-system specializations thin and resolve version-sensitive behavior from matching authoritative sources.
 - Curate portable skills down to durable concepts, rationale, outcomes, and decision criteria. Retain named libraries and official links when they clarify a supported specialization or selection choice. Do not copy vendor-owned API symbols, framework filenames, configuration keys, flags, version matrices, deprecations, or migration recipes from canonical examples into a skill; the executing agent detects installed versions, retrieves current primary documentation, and verifies the derived implementation.
 
@@ -174,3 +178,7 @@ When changing a mapped monorepo source document:
 4. Run the drift check again and validate `monorepo/skill/` with the official skill validator.
 
 Do not refresh a fingerprint without reviewing its reference. Every canonical `monorepo/**/*.md` guide outside `monorepo/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside the portable skill.
+
+## Maintaining the Development Skill
+
+Edit `development/core/` and the applicable framework, runtime, or tool guide first. Review the corresponding portable reference, then run `python3 development/skill-maintenance/check-source-drift.py refresh <slice>` and the check again without arguments. Every canonical development guide must be mapped. Validate `development/skill/` with the official skill validator. Review client/server and workspace cross-routing when changing ownership; keep vendor syntax in execution-time source resolution.

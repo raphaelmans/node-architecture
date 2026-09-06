@@ -1,5 +1,7 @@
 # Node.js Runtime Documentation
 
+For Express, Hono, or other Node.js HTTP server startup, use [Node.js Local Development](../../../development/runtimes/nodejs/README.md). It coordinates assigned listener configuration, optional self-origins, and same-checkout frontend/API targets while preserving server architecture ownership.
+
 Node.js runtime-specific documentation layered on top of `server/core/`.
 
 Node.js supplies the concrete execution environment for async observability context, database clients, logger adapters, and transport libraries. It inherits the layer boundaries, contracts, error kinds, transaction rules, and DI rules from [Core](../../core/README.md).

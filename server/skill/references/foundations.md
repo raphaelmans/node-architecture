@@ -107,6 +107,8 @@ Adapters resolve controller factories only. Services and use cases receive narro
 
 ## Configuration Boundaries
 
+For local listener setup or worktree-specific origins, add `runtimes` and coordinate with installed `$development` when available. Generic host/port configuration remains deployable-owned; proxy-specific values remain development tooling concerns.
+
 Treat validated environment configuration the same way. The deployable owns separate `PrivateBuildConfig` and `ServerRuntimeConfig` schemas for values genuinely consumed in those lifecycles. Schemas permit unrelated ambient variables, return only declared normalized fields, and remain the source of truth for a checked `.env.example` projection.
 
 Build/runtime composition passes only focused values such as `{ connectionString }` or `{ apiKey }` into infrastructure. Never inject a process environment, complete configuration surface, or environment service locator into controllers or application layers. Framework-native DI may compose focused providers at the outer boundary without coupling portable application code to framework configuration lookup.

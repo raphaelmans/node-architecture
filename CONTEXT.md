@@ -128,6 +128,14 @@ _Avoid_: Tool configuration, copied vendor guidance
 A stack-specific mapping from architecture conventions to a detected tool or framework whose version-sensitive behavior is resolved from matching authoritative sources at execution time.
 _Avoid_: Embedded vendor manual, frozen configuration cookbook
 
+**Local development contract**:
+The tool-agnostic guarantees for starting and reaching deployable applications during local work, including stable origins, topology awareness, explicit machine prerequisites, and a direct-run escape hatch. It crosses client and server boundaries without owning their application architecture or production delivery.
+_Avoid_: DevOps contract, Portless contract, deployment contract
+
+**Local development specialization**:
+A thin, version-resolved mapping from the local development contract to a detected framework, runtime, or development tool.
+_Avoid_: Local development contract, embedded Portless manual
+
 **Skill slice**:
 A top-level progressive-loading unit that routes a broad architecture concern through one curated skill reference.
 _Avoid_: Vertical slice, convention leaf

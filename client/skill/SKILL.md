@@ -5,6 +5,8 @@ description: Apply this repository's client architecture when designing, explain
 
 # Client Architecture
 
+For Next.js local startup, Portless setup, or worktree origins, select `nextjs` and coordinate with installed `$development` when available.
+
 Route client work through modular architecture slices. Load only the references required by the task, compose multiple slices when concerns cross boundaries, and preserve the user's requested operation: explanation, diagnosis, review, planning, or implementation.
 
 ## Start

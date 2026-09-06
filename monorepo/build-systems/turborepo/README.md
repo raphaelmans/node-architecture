@@ -1,5 +1,7 @@
 # Turborepo Specialization
 
+For local named origins and worktree startup, coordinate with [Local Development](../../../development/README.md). Keep package-local commands and root orchestration here; development supplies per-checkout origins before application startup.
+
 Turborepo is the first supported implementation of the monorepo contracts. This guide intentionally does not duplicate its configuration reference.
 
 ## Authority Boundary

@@ -24,7 +24,15 @@ https://github.com/raphaelmans/node-architecture/tree/main/monorepo/skill
 with the destination name monorepo.
 ```
 
-The explicit destination names matter because the source folders are named `skill`, while the installed invocations are `$client`, `$server`, and `$monorepo`.
+For local development setup, also install:
+
+```text
+Use $skill-installer to install the skill from
+https://github.com/raphaelmans/node-architecture/tree/main/development/skill
+with the destination name development.
+```
+
+The explicit destination names matter because the source folders are named `skill`, while the installed invocations are `$client`, `$server`, `$monorepo`, and `$development`.
 
 The installer places the package under the active Codex skills directory. The skill becomes available on the next turn.
 
@@ -50,6 +58,12 @@ For tools that discover project skills under `.agents/skills/`, place the comple
 ```
 
 Copy or vendor the directory only after confirming the destination does not contain local changes. Do not install only `SKILL.md`; the router requires its references.
+
+For repository-local development guidance, place the complete `development/skill/` directory at `.agents/skills/development/`. Its maintainer-only sibling directory is not installed.
+
+## Local Development Setup
+
+Invoke `$development setup nextjs`, `$development setup express`, or `$development setup hono` to install and configure local development using version-matched official documentation. Other Node.js HTTP servers use the detected adapter's official startup guidance. Mixed Next.js/API monorepos load both mappings. The skill updates package scripts, preserves direct startup, verifies assigned listener ports, and supplies existing origin variables only where needed, keeping peer targets within the same worktree. Machine trust and privileged setup need authorization for those effects. Canonical sources live under `development/core/`, `development/tools/`, `development/frameworks/`, and `development/runtimes/`.
 
 ## Server Scaffolding
 

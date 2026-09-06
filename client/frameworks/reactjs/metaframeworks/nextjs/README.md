@@ -1,5 +1,7 @@
 # Next.js Documentation
 
+For local startup, named HTTPS origins, and concurrent worktrees, use [Next.js with Portless](../../../../../development/frameworks/nextjs/README.md). Development tooling supplies the existing app-origin variable before startup; client configuration and browser visibility remain owned here.
+
 > Next.js-specific conventions layered on top of `client/core/` and `client/frameworks/reactjs/`.
 
 This section focuses on App Router patterns, routing/params, SSR/RSC considerations, server-side auth guarding, and backend IO adapters used by React features (tRPC and/or route-handler HTTP clients).

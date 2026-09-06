@@ -2,9 +2,11 @@
 
 The generated `guides/` bundle is deprecated and `copy-guides.sh` is disabled.
 
-Use [INSTALL-SKILLS.md](./INSTALL-SKILLS.md) to install the `$client` and `$server` architecture routers.
+Use [INSTALL-SKILLS.md](./INSTALL-SKILLS.md) to install `$client`, `$server`, `$monorepo`, and `$development`.
 
 ## Source Model
+
+- `development/core/`, `development/tools/`, `development/frameworks/`, and `development/runtimes/` own local development guidance; `development/skill/` packages it and `development/skill-maintenance/` checks source drift.
 
 - `client/core/` and `client/frameworks/` remain the canonical authoring documents.
 - `server/core/` and `server/runtime/` remain the canonical server authoring documents.
