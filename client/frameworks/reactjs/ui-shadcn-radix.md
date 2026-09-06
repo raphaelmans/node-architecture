@@ -1,202 +1,76 @@
-# UI Patterns (shadcn/ui + Radix)
+# UI Component Convention (shadcn/ui)
 
-> Conventions for UI components using shadcn/ui, Tailwind CSS, and component separation.
+Shadcn/ui is mandatory for new and modified React UI under this convention. Use its components as the owned foundation of the application design system. Framework-agnostic component-system guidance is deferred.
 
-## Component Hierarchy
+This requirement selects the component system; it does not authorize an unrelated application-wide migration. For an existing alternative system, identify the affected migration boundary and dependencies before implementation. Apply the requested scope and existing scaffolding/dependency rules. Reviews report noncompliance without changing code.
 
-```
+## Component Ownership
+
+```text
 src/components/
-├── ui/                    # Layer 1: Primitives (shadcn/ui)
-│   ├── button.tsx
-│   ├── input.tsx
-│   ├── form.tsx
-│   └── ...
-├── form/                  # Layer 2: StandardForm components
-│   ├── StandardFormProvider.tsx
-│   ├── StandardFormInput.tsx
-│   └── ...
-└── custom-ui/             # Layer 3: Composed application UI
-    ├── data-table.tsx
-    └── ...
+├── ui/                    # Owned shadcn foundation components and variants
+├── composed-ui/           # Shared compositions without feature knowledge
+└── form/                  # Existing StandardForm composition namespace
 
 src/features/<feature>/components/
-├── <feature>-form.tsx         # Business component
-└── <feature>-form-fields.tsx  # Presentation components
+└── ...                    # Feature business and presentation components
 ```
 
-## Layer Definitions
+These are three ownership tiers. `form/` is a specialized namespace within the shared composition tier, not a fourth tier. See [Forms](./forms-react-hook-form.md).
 
-### UI Primitives (shadcn/ui)
+| Tier | Responsibility | Examples |
+| --- | --- | --- |
+| UI foundation | Shadcn components, their anatomy, shared styling and variants | Button, Input, Dialog, Card |
+| Shared composition | A reusable arrangement or interaction built from the foundation, with props, slots and callbacks | ConfirmDialog, SearchToolbar, a generic DataTable |
+| Feature component | Feature vocabulary, business coordination or feature-specific presentation | DeleteCustomerDialog, CustomerTable, ProfileForm |
 
-**Location:** `src/components/ui/`
+“Primitive” means an application foundation component here, not necessarily a single element or a headless library primitive. Installed shadcn components can be internally composed and still belong in `ui/`. Complexity or child count does not decide placement.
 
-- Direct shadcn/ui components
-- Built on Radix UI
-- Generic, reusable across any project
-- No business logic
+Use `composed-ui/` for new shared compositions. Existing `custom-ui/` may remain during incremental migration; extend its cohesive namespace instead of creating competing directories unless the task includes renaming it. Resolve actual paths and aliases from the target application. In a monorepo, keep the same ownership rules in the resolved application or shared UI package; folder names alone do not justify package extraction.
 
-### StandardForm Components
+Dependencies point toward shared UI: features may consume shared compositions and foundation components directly; compositions may consume other shared compositions and foundation components; the foundation must not import compositions or features. Keep composition dependencies acyclic. Shared UI must not import feature schemas, business APIs, query adapters, route policies or application infrastructure containers.
 
-**Location:** `src/components/form/`
+Feature-specific presentation stays with its feature even if it has no fetching. A reusable customer card still belongs to its domain owner; reuse alone does not make it generic UI. Extract a shared composition when it has a coherent feature-independent contract, not merely because markup is long.
 
-- Form-specific abstractions
-- Built on react-hook-form + shadcn/ui
-- Reduce form boilerplate
-- See [Forms](./forms-react-hook-form.md) for details
+## Choose Before Creating
 
-### Custom UI Components
+1. Reuse an existing component that owns the needed behavior and satisfies the requirement.
+2. Use the appropriate installed shadcn component and its existing variants.
+3. Add the matching shadcn component when missing, using the target setup and current official documentation.
+4. Extend a foundation component for a shared visual variant, or compose components for a reusable arrangement or interaction.
+5. Keep feature behavior in the feature component.
 
-**Location:** `src/components/custom-ui/`
+Do not hand-build a replacement button, dialog, input or other control when shadcn supplies the needed component. When no suitable component exists, inspect the available registry and composition options, then document why a custom foundation component is necessary. Preserve accessible semantics and the established component API conventions. This exception addresses missing coverage; it does not make shadcn optional.
 
-- Composed from primitives
-- Application-specific styling
-- Reusable patterns (data tables, cards, etc.)
-- Still no feature-specific business logic
+Normal semantic markup and layout containers are allowed. Do not introduce a component wrapper for every element.
 
-### Feature Components
+## Themes, Variants and Overrides
 
-**Location:** `src/features/<feature>/components/`
+| Change | Owner | Example |
+| --- | --- | --- |
+| Shared palette or theme | Semantic design tokens in the established theme source | Brand color, light/dark surface values |
+| Reusable visual choice of one component | That component's variant definition | Button intent or size; Badge tone |
+| Shared arrangement or interaction | Shared composition | Confirmation title, message and actions |
+| Feature behavior or content | Feature component | Customer deletion mutation and wording |
+| Placement within a parent | Consumer layout | Width, grid placement, alignment |
 
-- Feature-specific UI
-- May contain business logic (business components)
-- Or pure presentation (form fields, cards)
+Use semantic tokens rather than hardcoded theme colors. A new theme changes token values; it does not require separate themed copies of each component or a variant for every brand. A shared change to the default appearance belongs in the foundation component's base styles; an opt-in choice belongs in a named variant.
 
-## shadcn/ui Conventions
+Reuse an existing variant first. Add a meaningful, feature-independent variant to the owning component when needed, following its existing variant mechanism (such as CVA). Do not copy the component or wrap it solely to recolor it. A composition can own its own variants when they describe the composition rather than an underlying primitive.
 
-### Installation
+At call sites, use variants, props and slots for supported changes. Reserve `className` overrides for placement/layout; keep colors, typography, internal spacing and interaction-state styling in the owning component or tokens. If a feature needs a distinct treatment, give the visual choice a reusable semantic name and keep the business meaning in the feature. Avoid feature-named primitive variants and cascading selectors that reach into shared internals.
 
-```bash
-npx shadcn@latest add button input form
-```
+For example, DeleteCustomerDialog supplies feature copy and an action callback to ConfirmDialog, which selects the Button destructive variant. The feature owns the mutation and resulting navigation; ConfirmDialog owns the generic dialog arrangement; Button owns destructive styling. Neither shared component knows what a customer is.
 
-### cn() Utility
+## Creating and Updating Components
 
-```typescript
-// src/lib/utils.ts
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+Before editing, inspect the owning workspace's configuration, aliases, component source, theme source, configured primitive base, installed versions and current consumers. Follow the configured base (for example Radix or Base UI); do not assume their composition APIs are interchangeable.
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-```
+Use the installed `shadcn` skill when available and current official documentation for exact CLI commands, component anatomy and version-specific integration. This convention owns placement and styling decisions; vendor guidance owns the current implementation syntax.
 
-**Usage:**
+For additions, use the project package runner and resolved component destinations. Review generated source and dependencies, then adapt the owned source to this convention. For updates, compare upstream changes with local source before applying them. Merge deliberately so local variants, tokens, accessibility behavior and consumer contracts survive; do not blindly overwrite customized components.
 
-```typescript
-<div className={cn(
-  'base-class',
-  isActive && 'active-class',
-  className,  // Allow override via props
-)} />
-```
-
-### Component Variants (CVA)
-
-```typescript
-import { cva, type VariantProps } from 'class-variance-authority'
-
-const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground',
-        outline: 'border border-input bg-background',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-      },
-      size: {
-        default: 'h-9 px-4 py-2',
-        sm: 'h-8 px-3 text-xs',
-        lg: 'h-10 px-8',
-        icon: 'h-9 w-9',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
-  },
-)
-
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  isLoading?: boolean
-}
-
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, isLoading, children, ...props }, ref) => (
-    <button
-      className={cn(buttonVariants({ variant, size, className }))}
-      ref={ref}
-      disabled={isLoading || props.disabled}
-      {...props}
-    >
-      {isLoading && <Spinner className='mr-2' />}
-      {children}
-    </button>
-  ),
-)
-```
-
-## Tailwind Conventions
-
-### Spacing
-
-Prefer `gap` over margins:
-
-```typescript
-// Good
-<div className='flex gap-4'>
-
-// Avoid
-<div className='flex'>
-  <div className='mr-4'>
-```
-
-### Responsive Design
-
-Mobile-first approach:
-
-```typescript
-<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-```
-
-### Color Usage
-
-Use semantic colors from CSS variables:
-
-```typescript
-// Good - semantic
-className = "bg-background text-foreground";
-className = "bg-primary text-primary-foreground";
-className = "text-muted-foreground";
-
-// Avoid - hardcoded
-className = "bg-white text-black";
-className = "bg-blue-500";
-```
-
-### CSS Variables
-
-```css
-/* globals.css */
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    /* ... */
-  }
-}
-```
+Identify affected consumers before changing a default, token, prop contract or shared variant. Prefer an opt-in variant when the requested difference applies to only some consumers. Keep loading, disabled, focus, validation and responsive behavior consistent with the actual component requirements.
 
 ## Component Separation
 
@@ -298,101 +172,20 @@ export function ProfileFirstNameField() {
 }
 ```
 
-## Common Patterns
+## Verification
 
-### Card Pattern
+- Confirm ownership and import direction, including feature presentation that has no data fetching.
+- Check variant typing and affected consumers when a public contract changes.
+- Render affected components and representative screens in supported themes and required viewports.
+- Verify relevant keyboard, focus, accessible naming, disabled, error and loading behavior; preserve the configured primitive's accessibility contract.
+- Run affected type, lint and existing test checks. Add focused behavior tests when interaction or contracts change, rather than tests that merely repeat styling implementation.
+- Review upstream merges for preserved local customizations and unintended default changes.
 
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle>Title</CardTitle>
-    <CardDescription>Description</CardDescription>
-  </CardHeader>
-  <CardContent>
-    {/* Content */}
-  </CardContent>
-  <CardFooter>
-    <Button>Action</Button>
-  </CardFooter>
-</Card>
-```
+## Official Implementation References
 
-### Dialog Pattern
+- [shadcn/ui philosophy and composition](https://ui.shadcn.com/docs)
+- [shadcn/ui theming](https://ui.shadcn.com/docs/theming)
+- [shadcn/ui component configuration](https://ui.shadcn.com/docs/components-json)
+- [shadcn/ui CLI](https://ui.shadcn.com/docs/cli)
 
-```typescript
-<Dialog open={open} onOpenChange={setOpen}>
-  <DialogTrigger asChild>
-    <Button>Open</Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Title</DialogTitle>
-      <DialogDescription>Description</DialogDescription>
-    </DialogHeader>
-    {/* Content */}
-    <DialogFooter>
-      <Button onClick={() => setOpen(false)}>Close</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
-### Select Pattern
-
-```typescript
-<Select value={value} onValueChange={onChange}>
-  <SelectTrigger>
-    <SelectValue placeholder='Select...' />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value='option1'>Option 1</SelectItem>
-    <SelectItem value='option2'>Option 2</SelectItem>
-  </SelectContent>
-</Select>
-```
-
-### Skeleton Pattern
-
-```typescript
-export function ProfileFormSkeleton() {
-  return (
-    <div className='space-y-4'>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div className='space-y-2' key={i}>
-          <Skeleton className='h-4 w-20' />
-          <Skeleton className='h-10 w-full' />
-        </div>
-      ))}
-      <Skeleton className='h-10 w-32' />
-    </div>
-  )
-}
-```
-
-## Best Practices
-
-### Do
-
-- Use `cn()` for conditional classes
-- Use semantic color variables
-- Use `gap` for spacing
-- Keep primitives generic
-- Separate business from presentation
-
-### Don't
-
-- Don't hardcode colors
-- Don't use margins when gap works
-- Don't put business logic in primitives
-- Don't fetch data in presentation components
-
-## Checklist
-
-- [ ] UI primitives in `components/ui/`
-- [ ] Custom components in `components/custom-ui/`
-- [ ] Feature components in `features/<feature>/components/`
-- [ ] Business components handle data, presentation components render
-- [ ] Using `cn()` for class composition
-- [ ] Using semantic colors from CSS variables
-- [ ] Mobile-first responsive design
-- [ ] Skeletons for loading states
+Resolve exact vendor APIs from the target versions at execution time. This guide defines repository ownership and customization rules.

@@ -4,6 +4,7 @@ Use this slice for React component boundaries, composition, browser configuratio
 
 ## Contents
 
+- [Convention leaves](#convention-leaves)
 - [Scaffolding](#scaffolding)
 - [Component layers](#component-layers)
 - [Hooks and composition](#hooks-and-composition)
@@ -12,6 +13,10 @@ Use this slice for React component boundaries, composition, browser configuratio
 - [Error and toast handling](#error-and-toast-handling)
 - [UI and state](#ui-and-state)
 - [Review checklist](#review-checklist)
+
+## Convention Leaves
+
+Read [Shadcn Component Convention](react/shadcn.md) before creating, updating or reviewing UI components, shared compositions, themes, variants or feature styling. Shadcn adoption is mandatory for this UI convention; the leaf owns its three tiers, customization policy and update discipline. Load it conditionally, not for every React task.
 
 ## Scaffolding
 
@@ -80,16 +85,7 @@ The framework error boundary owns unhandled render/runtime exceptions. Do not bl
 
 ## UI and State
 
-Use this hierarchy when present:
-
-```text
-components/ui/          shadcn/Radix primitives
-components/form/        reusable form abstractions
-components/custom-ui/   application-wide composed UI
-features/<feature>/components/  feature business and presentation UI
-```
-
-Keep primitives generic and business-free. Use semantic design tokens, `cn` for class composition, CVA for meaningful variants, mobile-first styles, and `gap` for sibling spacing.
+Apply the [Shadcn Component Convention](react/shadcn.md) for UI work. Its tiers are foundation components, shared compositions and feature components. Existing StandardForm components remain a specialized composition namespace. Keep the parent component/business boundaries above intact.
 
 Use Zustand only for client coordination state. Keep stores feature-local, select narrow values, persist an explicit allowlist, and account for SSR hydration. Use refs for subscription bookkeeping that does not affect rendering.
 
@@ -119,7 +115,7 @@ For realtime, subscribe in an effect, return teardown, use a stable feature real
 - [Radix Primitives documentation](https://www.radix-ui.com/primitives/docs/overview/introduction)
 - [Class Variance Authority documentation](https://cva.style/docs)
 
-React Hook Form is the documented form-state specialization, Zod owns executable validation, and TanStack Query owns asynchronous server state. shadcn/ui, Radix Primitives, and Class Variance Authority are reference specializations for accessible primitives, composition, and variant styling. Preserve those responsibilities when another compatible library is selected; resolve exact components, hooks, state properties, and mutation methods from installed-version documentation.
+React Hook Form is the documented form-state specialization, Zod owns executable validation, and TanStack Query owns asynchronous server state. Shadcn/ui is the required UI foundation under the component convention. Follow its configured primitive base and existing variant mechanism; resolve exact components, hooks, state properties, and mutation methods from installed-version documentation.
 
 ## Derivation Sources
 

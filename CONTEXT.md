@@ -143,3 +143,15 @@ _Avoid_: Vertical slice, convention leaf
 **Convention leaf**:
 A conditionally loaded, opinionated reference nested beneath one or more skill slices for a narrower architecture convention.
 _Avoid_: Nested slice, top-level slice
+
+**UI foundation**:
+The owned shadcn component tier that defines the application's shared visual vocabulary and component variants, including components that are internally composed.
+_Avoid_: Single-element primitive, unmodified vendor copy
+
+**Shared UI composition**:
+A feature-independent arrangement or interaction assembled from the UI foundation and exposed through a reusable contract.
+_Avoid_: Custom UI layer, feature component
+
+**Feature UI**:
+Components owned by a feature because their presentation or coordination carries that feature's vocabulary and behavior, whether or not they perform data operations.
+_Avoid_: Shared UI merely because reused, business components only

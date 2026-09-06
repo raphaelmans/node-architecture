@@ -139,7 +139,7 @@
         "client/frameworks/reactjs/state-zustand.md",
         "client/frameworks/reactjs/ui-shadcn-radix.md"
       ],
-      "fingerprint": "b1e6da5578019d042e099c9ec749b22fe15c4a240e62279e3c72e30fa017a4fd"
+      "fingerprint": "6ec573e51fd8b1df0abecae13025e115679450364c813b4330efa09eb5ca81ab"
     },
     "nextjs": {
       "reference": "client/skill/references/nextjs.md",
@@ -174,6 +174,16 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
       "fingerprint": "61de0ae6a5c9b8f3400c63664a9fc3d064dc6b61a555d817edbf6a58e5e18434"
+    },
+    "react/shadcn": {
+      "parents": [
+        "react"
+      ],
+      "reference": "client/skill/references/react/shadcn.md",
+      "sources": [
+        "client/frameworks/reactjs/ui-shadcn-radix.md"
+      ],
+      "fingerprint": "74aebcd0faa9b4b725071f823c423b084f49430c475647faec50aa405a479da8"
     }
   }
 }

@@ -21,7 +21,7 @@ Read core first:
 - [Composition](./composition-react.md)
 - [Error Handling (React)](./error-handling.md)
 - [Forms (react-hook-form + StandardForm)](./forms-react-hook-form.md)
-- [UI (shadcn/ui + Radix)](./ui-shadcn-radix.md)
+- [UI Component Convention (shadcn/ui)](./ui-shadcn-radix.md)
 - [Client State (Zustand)](./state-zustand.md)
 - [Realtime Subscriptions (React)](./realtime-react.md)
 

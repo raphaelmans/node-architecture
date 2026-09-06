@@ -1,6 +1,6 @@
 ---
 name: client
-description: Apply this repository's client architecture when designing, explaining, reviewing, scaffolding, testing, implementing, or refactoring frontend features. Use for any client framework when work involves repository bootstrapping, feature scaffolds, feature boundaries, shared contracts, client APIs, state synchronization, telemetry, composition roots, dependency injection, errors, forms, or tests. Known React and Next.js slices are specializations, not an allowlist. Route each request through the smallest relevant architecture slices and do not use for backend-only work.
+description: Apply this repository's client architecture when designing, explaining, reviewing, scaffolding, testing, implementing, or refactoring frontend features. Use for any client framework when work involves repository bootstrapping, feature scaffolds, feature boundaries, shared contracts, client APIs, state synchronization, telemetry, composition roots, dependency injection, errors, forms, shadcn components, themes, variants, or tests. Known React and Next.js slices are specializations, not an allowlist. Route each request through the smallest relevant architecture slices and do not use for backend-only work.
 ---
 
 # Client Architecture
@@ -41,6 +41,7 @@ Slices may route to a convention leaf for a narrower, opinionated concern. Load 
 
 | Parent slice | Convention leaf | Load when the task involves | Reference |
 | --- | --- | --- | --- |
+| `react` | `react/shadcn` | creating/updating UI components, shared compositions, themes, variants, or reviewing feature styling | [references/react/shadcn.md](references/react/shadcn.md) |
 | `nextjs`; add `state-realtime` while state ownership is undecided | `nextjs/routing` | `appRoutes`, route policies, links/redirects, dynamic path builders, params/search params, nuqs, or URL-backed interaction state | [references/nextjs/routing.md](references/nextjs/routing.md) |
 
 A convention leaf refines its parent slices; it does not become a top-level routing alias or override their invariants.
@@ -58,6 +59,7 @@ When the user names multiple concerns, load all matching references. Examples:
 - Standalone React configuration: `foundations` + `react`; add `workspace` or `nextjs` only when those boundaries exist
 - Create a React feature: `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `telemetry` when the implementation emits operational records or product events
 - Realtime React cache synchronization: `state-realtime` + `data-flow` + `react` + `testing`
+- Create/update a shadcn component or theme: `react` + `react/shadcn`; add `workspace` when package ownership is involved
 - Form validation and error UX: `contracts` + `react` + `testing`
 
 When invoked without a task, show the slice menu with two or three context-aware examples. Do not start an audit or implementation automatically.
