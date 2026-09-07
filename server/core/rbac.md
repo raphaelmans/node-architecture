@@ -30,7 +30,9 @@ For new collaborative organizations, allow multiple administrative owners and pr
 
 ## Provider Adoption
 
-Keep one authoritative owner for memberships, invitations, and organization roles. A future Better Auth adapter delegates its supported lifecycle rather than writing its internal tables through a second implementation. Retain application-specific branch rules outside that provider and verify permission behavior during migration; matching names alone does not prove equivalence.
+When Better Auth is selected, apply [its integration convention](../runtime/nodejs/libraries/better-auth/README.md) for native endpoint enforcement, session mapping, and lifecycle/schema ownership.
+
+Keep one authoritative owner for memberships, invitations, and organization roles. A selected Better Auth integration delegates its supported lifecycle rather than writing its internal tables through a second implementation. Retain application-specific branch rules outside that provider and verify permission behavior during migration; matching names alone does not prove equivalence.
 
 Consult the installed version's official docs for custom/dynamic roles and server-backed permission checks. Static client role checks do not represent runtime-defined roles. Database migration, session replacement, identity references, and Supabase token/RLS integration are separate adoption work, not promised by the repository interface.
 

@@ -6,6 +6,8 @@ Use this slice for authentication, sessions, authorization, cookies, trusted ori
 
 Load [capability authorization](security/authorization.md) for operation/resource rules and [RBAC](security/rbac.md) when roles grant permissions. Add [tenancy](foundations/tenancy.md) for organization membership/scope. For Supabase implementation mechanics, load [its runtime leaf](runtimes/supabase.md) rather than assuming an ORM.
 
+For Better Auth, load [its independent integration leaf](runtimes/better-auth.md). Preserve native auth protocol behavior, normalize verified sessions into actors, and enforce required organization policy on direct plugin endpoints as well as application wrappers. Supabase-specific guidance below applies only when Supabase is selected.
+
 Authentication establishes an actor. Authorization decides whether that actor may perform the requested action.
 
 - Transport middleware may enforce a coarse authenticated-session or role gate.
@@ -69,7 +71,7 @@ Branch on stable provider error codes, never localized message text. Translate p
 - [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
-Supabase is the documented authentication and data-provider specialization. The durable security model distinguishes public application credentials, privileged server credentials, user identity, and RLS policy; current Supabase documentation owns credential labels, formats, compatibility, and migration steps.
+Supabase and Better Auth are independent documented authentication integrations. The Supabase security model distinguishes public application credentials, privileged server credentials, user identity, and RLS policy; current Supabase documentation owns its credential labels, formats, compatibility, and migration steps. Better Auth's selected-version docs own its session, origin, plugin, and handler mechanics.
 
 ## Derivation Sources
 

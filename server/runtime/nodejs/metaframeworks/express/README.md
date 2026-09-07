@@ -4,6 +4,8 @@
 
 For repository-aware generation, apply the [Express Scaffolding](./scaffolding.md) specialization.
 
+The controller/envelope rules below govern application-owned routes. [Better Auth native routes](../../libraries/better-auth/README.md) use its documented handler and middleware ordering while retaining the provider protocol and required access restrictions.
+
 ## Canonical Flow
 
 ```text

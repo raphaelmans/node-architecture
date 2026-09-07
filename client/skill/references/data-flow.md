@@ -128,6 +128,8 @@ Do not pass logger, trace ID, request ID, pathname, or analytics context through
 
 ## Transport Choices
 
+For selected provider-native authentication APIs such as Better Auth, compose the configured SDK as an auth-specific transport behind focused feature APIs. Do not apply the business-envelope decoder to native auth responses. Map results/errors into app-facing values; if provider-reactive session hooks are used, isolate them in integration hooks with one session-state owner and reconcile application caches on identity changes. This does not permit transport calls from presentation components or replace the normal business-request flow.
+
 For tRPC:
 
 - Treat tRPC as a transport adapter, not the feature boundary.

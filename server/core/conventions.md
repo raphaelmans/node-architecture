@@ -10,7 +10,7 @@ Concrete SQL examples below use Drizzle as one implementation. Application recor
 
 - Contract source of truth is `Zod` schemas (see `./api-contracts-zod-first.md`).
 - Current primary transport is `tRPC`; OpenAPI is supported as migration/coexistence transport.
-- Transport adapters (tRPC routers, Next.js/OpenAPI route handlers, Express/Hono/Nest handlers) must call framework-neutral controllers.
+- Transport adapters for application-owned capabilities (tRPC routers, Next.js/OpenAPI route handlers, Express/Hono/Nest handlers) must call framework-neutral controllers. Provider-native authentication/plugin routes follow the narrow [provider-managed endpoint boundary](./controllers.md#provider-managed-endpoints), retaining their native protocol without weakening application policy.
 - Business/domain layers MUST NOT import transport-specific types.
 - Capability naming and transport mapping rules are defined in `./endpoint-naming.md`.
 
@@ -717,7 +717,7 @@ makeRegisterUserController()
 | Controller | Shared response shape | `modules/<module>/shared/contracts/` |
 | Framework adapter | Kernel envelope + validated shared response payload | `shared/kernel/` + `modules/<module>/shared/contracts/` |
 
-**Rule:** Entities may flow internally, but every public transport maps and validates output through a shared response contract before serialization.
+**Rule:** Entities may flow internally, but every application-owned public transport maps and validates output through a shared response contract before serialization. Provider-managed auth endpoints retain their native protocol as defined above.
 
 For organization-scoped behavior, compose [tenancy](./tenancy.md), [authorization](./authorization.md), and [RBAC](./rbac.md) as needed. Persistence implementations remain independent: [Drizzle](../runtime/nodejs/libraries/drizzle/README.md), [Supabase directly](../runtime/nodejs/libraries/supabase/data-access.md), or both. Shared callback transaction examples in this guide apply only to participating drivers; data-API atomic operations follow [the transaction contract](./transaction.md#choose-the-atomicity-boundary).
 

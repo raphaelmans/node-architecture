@@ -2,6 +2,8 @@
 
 > Conventions for non-tRPC endpoints implemented via Next.js App Router route handlers.
 
+These conventions apply to application-owned endpoints. When mounting Better Auth's native handler, follow [its integration convention](../../libraries/better-auth/README.md) and preserve the provider's cookies, redirects, and response protocol instead of the business envelope below.
+
 ## Goals
 
 - Return a consistent response envelope (success + error)

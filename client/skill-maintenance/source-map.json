@@ -18,7 +18,7 @@
         "client/core/testing.md",
         "client/core/validation-zod.md"
       ],
-      "fingerprint": "b6855fa57abe82f2016aee6c5a2aab2871739ed0cb6574cc090783f103beb110"
+      "fingerprint": "2d71b667b33eb598ee56e51bdce0e0abea34d5b838522bc7fe25681545f88e8a"
     },
     "foundations": {
       "reference": "client/skill/references/foundations.md",
@@ -63,7 +63,7 @@
         "client/frameworks/reactjs/forms-react-hook-form.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "1f02b9cfb03ba30a157e41f5e2256d81fb516afbfba1b388f56fce9e98829822"
+      "fingerprint": "faf0a8d019a2cd1af6f33b7565ef85bf3f896c6a1dc5a8e1a6e9e0aefd4f8050"
     },
     "data-flow": {
       "reference": "client/skill/references/data-flow.md",
@@ -76,7 +76,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/ky-fetch.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
       ],
-      "fingerprint": "36783d7e8f76b1bb202a1c124a8f196803042ad954dfffd937303dc78322507a"
+      "fingerprint": "0779a7c9ee2b5ddde54b2bbede91922e297d95c95ad03d49d612af2bb4069e16"
     },
     "state-realtime": {
       "reference": "client/skill/references/state-realtime.md",
@@ -105,7 +105,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/overview.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md"
       ],
-      "fingerprint": "d0332cfe0a6a8e88f234961a8454cd58861cfbfb81cdc9f71d678ee3f78fe650"
+      "fingerprint": "17eeefa560ae8ee7b79a407fd441e6930983aad38953a3e4db7047f54a377455"
     },
     "testing": {
       "reference": "client/skill/references/testing.md",
@@ -171,7 +171,7 @@
         "client/core/access-control.md",
         "client/frameworks/reactjs/access-control.md"
       ],
-      "fingerprint": "365201d07096ed5a3c0e3b7abdf9e6c2b37293c61116e251656fc0bc97aabe46"
+      "fingerprint": "825f8897525316149bca9dbba1c3ee24c407c0f2c90bdbd0c0fa4715a42de9c8"
     },
     "nextjs/access-control": {
       "parents": [
@@ -184,7 +184,7 @@
         "client/frameworks/reactjs/access-control.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/access-control.md"
       ],
-      "fingerprint": "309590110833403d621f1fee4995250a14dbcc105fb35a8ac347e2253bee29b2"
+      "fingerprint": "cb1941788aaf1f84d8c25e1909b81752c92dc50bef305dbb0315398453251d22"
     },
     "nextjs/routing": {
       "parents": [

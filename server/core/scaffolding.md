@@ -171,7 +171,7 @@ Do not add persistence, transactions, authentication, analytics, outbox, configu
 
 ## Capability Roles
 
-Every public capability preserves:
+Every application-owned public capability preserves:
 
 ```text
 framework adapter
@@ -186,6 +186,8 @@ The framework adapter owns framework request/context types, input parsing, trans
 The controller accepts the shared input plus narrow plain actor/application values, maps them to an internal command, calls exactly one application boundary, and maps the internal result to the shared response. It imports no framework request/response types and receives no generic request, trace, transaction, or dependency context.
 
 Preserve existing compatible envelope and pagination contracts. Never double-wrap responses.
+
+For selected provider-managed authentication/plugin endpoints, use [the documented native-handler boundary](./controllers.md#provider-managed-endpoints) instead of generating parallel controllers/contracts. This does not exempt custom business operations or allow direct native routes to bypass required application policy.
 
 ## Application Boundary Selection
 

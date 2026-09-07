@@ -6,7 +6,9 @@ Apply [React access control](../../access-control.md) for Client Components and 
 
 Pages and layouts resolve typed route context, coordinate safe redirects, and compose features. Use the [routing convention](./routing-convention.md) when constructing paths or policies. Route groups, interception, and hidden layout content are not authoritative access checks.
 
-Authorize every protected server read before its data enters rendered HTML, the RSC payload, client props, or hydration state. A layout check is insufficient for descendant reads, direct endpoint access, or navigation that reuses a layout. Route handlers and Server Actions are public entrypoints and must independently authenticate and reach the protected application operation.
+Authorize every protected server read before its data enters rendered HTML, the RSC payload, client props, or hydration state. A layout check is insufficient for descendant reads, direct endpoint access, or navigation that reuses a layout. Application-owned route handlers and Server Actions are public entrypoints and must independently authenticate and reach the protected application operation.
+
+When Better Auth is selected, follow [its integration convention](../../../../../server/runtime/nodejs/libraries/better-auth/README.md) for native auth handler mounting, session verification, and cookie propagation from auth-mutating Server Actions. These provider-managed routes retain their native protocol; they are not wrapped in business response envelopes. Do not make login require an existing session or assume an in-process auth call updates browser cookies automatically.
 
 Keep Next.js cookies, headers, and session SDKs at request composition. Map identity into a plain actor and use the server's controller/service/use-case boundaries. Server prefetch can call the authorized application boundary directly; do not add an HTTP loopback merely to reuse checks, and do not bypass policy through direct repository access.
 
@@ -26,4 +28,4 @@ Test direct route-handler/action calls, unauthorized nested pages, layout reuse 
 - [Next.js data security](https://nextjs.org/docs/app/guides/data-security)
 - [Server capability authorization](../../../../../server/core/authorization.md)
 
-Resolve framework-specific authentication integration, request APIs, caching behavior, and file conventions from the target Next.js version's official docs. Better Auth remains an optional future integration, not a dependency of this leaf.
+Resolve framework-specific authentication integration, request APIs, caching behavior, and file conventions from the target Next.js version's official docs. Better Auth is a documented optional integration, not a dependency of this leaf.

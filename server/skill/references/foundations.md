@@ -42,7 +42,7 @@ Return plain typed results in reverse. Keep HTTP, RPC, framework, vendor, and da
 | Service | one-domain rules, capability authorization, and self-contained reads/writes | framework context, unrelated workflows |
 | Repository/provider adapter | persistence or vendor mechanics and known error translation | business policy or transport behavior |
 
-Every public capability enters through a framework-neutral controller. Internal workers may call a use case or service directly when they are not presenting the same public capability.
+Every application-owned public capability enters through a framework-neutral controller. Internal workers may call a use case or service directly when they are not presenting the same public capability. Provider-managed authentication/plugin endpoints may mount their native handler and retain its protocol; do not recreate them as controllers or let them bypass required application restrictions. See [Better Auth](runtimes/better-auth.md) when selected.
 
 ## Decision Flow
 

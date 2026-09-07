@@ -4,6 +4,8 @@ Use this slice for route-to-repository flow, service/use-case selection, transac
 
 ## Request Flow
 
+This is the application-owned capability flow. Selected provider-native authentication/plugin endpoints retain their own handler/protocol; use [Better Auth](runtimes/better-auth.md) when applicable. Their integration projects plain app-facing results without exempting custom business operations from this flow.
+
 ```text
 request
   -> adapter: extract/authenticate/validate

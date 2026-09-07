@@ -82,6 +82,7 @@ This documentation emphasizes:
 | [Authentication](./runtime/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
 | [Supabase](./runtime/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
 | [Drizzle](./runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [Better Auth](./runtime/nodejs/libraries/better-auth/README.md) | Native auth routes, session/actor mapping, organization policy, and independent database-adapter selection |
 | [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
 | [Express](./runtime/nodejs/metaframeworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
 | [Hono](./runtime/nodejs/metaframeworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |

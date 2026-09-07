@@ -30,6 +30,7 @@ These are references inside the existing skills, not separately installed plugin
 | Standalone React permission UX | `$client` react + [React access control](../client/skill/references/react/access-control.md) |
 | Next.js permission UX and protected rendering | React access control + `$client` nextjs + [Next.js access control](../client/skill/references/nextjs/access-control.md) |
 | Drizzle persistence | `$server` runtimes + data-flow + [Drizzle](../server/skill/references/runtimes/drizzle.md) |
+| Better Auth integration | `$server` runtimes + security + [Better Auth](../server/skill/references/runtimes/better-auth.md); add the chosen database adapter and organization leaves only when needed |
 | Supabase integration/direct persistence | `$server` runtimes + [Supabase](../server/skill/references/runtimes/supabase.md); add data-flow/security as needed |
 
-Drizzle and Supabase are independent siblings: load either or both for the actual stack. The access model follows Better Auth conventions without installing it or assuming its teams provide branch-level roles. There is no PostgreSQL leaf; vendor docs own database mechanics. Product workspaces do not activate the monorepo `workspace` slice unless package topology is involved.
+Better Auth, Drizzle, and Supabase are independent siblings: load only the selected integrations. Better Auth + Drizzle requires no Supabase leaf. The access model follows Better Auth conventions without automatically installing it or assuming its teams provide branch-level roles. There is no PostgreSQL leaf; vendor docs own database mechanics. Product workspaces do not activate the monorepo `workspace` slice unless package topology is involved.

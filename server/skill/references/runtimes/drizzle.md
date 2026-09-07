@@ -2,6 +2,8 @@
 
 Load only when Drizzle is present or selected. Read [runtimes](../runtimes.md) and [data-flow](../data-flow.md); add tenancy/security leaves for relevant policy. Drizzle is independent of Supabase and can use another supported host.
 
+When Better Auth uses this database, add [its integration leaf](better-auth.md) for auth schema generation, native lifecycle ownership, and cross-operation transaction limits. Business repositories remain independent of the auth adapter.
+
 ## Apply
 
 - Application-owned repository interfaces and records remain independent of ORM schemas and wire DTOs. Map rows at the adapter boundary; do not infer service contracts from tables.

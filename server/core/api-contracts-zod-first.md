@@ -11,7 +11,7 @@ Keep domain and service code transport-agnostic while supporting:
 
 ## Source of Truth
 
-`Zod` schemas are the single source of truth for request/response contracts.
+`Zod` schemas are the single source of truth for application-owned request/response contracts. [Provider-managed authentication/plugin endpoints](./controllers.md#provider-managed-endpoints) retain the vendor's protocol and supported client integration; do not maintain competing copies of their wire schemas. Application-facing values projected from that integration remain provider-independent.
 
 - Define each wire contract once in an isomorphic shared module
 - Derive TypeScript types from schema inference

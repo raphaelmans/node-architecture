@@ -282,6 +282,7 @@ src/
 | [Authentication](../runtime/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
 | [Supabase](../runtime/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
 | [Drizzle](../runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [Better Auth](../runtime/nodejs/libraries/better-auth/README.md) | Native auth integration and session/access boundaries; Supabase is optional |
 | [Next.js](../runtime/nodejs/metaframeworks/nextjs/README.md)         | Metaframework route handling      |
 | [Express](../runtime/nodejs/metaframeworks/express/README.md)       | Express adapter boundary          |
 | [Hono](../runtime/nodejs/metaframeworks/hono/README.md)             | Hono adapter boundary             |

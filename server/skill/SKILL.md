@@ -45,9 +45,12 @@ Load only leaves matching the task, along with their parent slices. A leaf refin
 | `security` | `security/authorization` | actor/resource access, ownership, capability policy, server enforcement | [authorization](references/security/authorization.md) |
 | `security` | `security/rbac` | roles, resource/action permissions, delegated grants, scoped assignments | [RBAC](references/security/rbac.md) |
 | `runtimes` + `data-flow` | `runtimes/drizzle` | Drizzle repositories, row mapping, transactions, migration ownership | [Drizzle](references/runtimes/drizzle.md) |
+| `runtimes` + `security` | `runtimes/better-auth` | Better Auth native routes, sessions, organization integration, database adapters, migration ownership | [Better Auth](references/runtimes/better-auth.md) |
 | `runtimes`; add `data-flow` for persistence or `security` for access | `runtimes/supabase` | direct Supabase repositories/functions or Auth/Storage/Realtime integration | [Supabase](references/runtimes/supabase.md) |
 
 Product `workspace` means tenancy here; select the existing `workspace` slice only for repository/package topology. For organization RBAC, combine tenancy + authorization + RBAC. Load neither, one, or both persistence leaves based on the actual stack; Supabase does not require Drizzle. For React/Next.js UI, coordinate with installed `$client` access-control leaves when available. Next.js server routes and Node.js servers use the same server capability rules through their existing runtime adapters.
+
+Better Auth is an independent integration leaf. For Better Auth + Drizzle, load those two leaves with their parents and the selected framework mapping; do not load Supabase unless it is also used. Add tenancy/authorization/RBAC for organization features rather than loading them for login-only work.
 
 Treat `scaffold`, `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `layers`, `module`, `config`, `configuration`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `schema`, `api`, `dto`, and `error` as aliases for `contracts`; `transaction`, `database`, `repository`, and `persistence` as aliases for `data-flow`; `job`, `event`, `outbox`, `webhook`, and `cron` as aliases for `operations`; `auth` as an alias for `security`; `logging`, `analytics`, `observability`, and `tracing` as aliases for `telemetry`; and `framework`, `adapter`, `runtime`, `trpc`, `openapi`, `next`, `express`, `hono`, `nestjs`, and `supabase` as aliases for `runtimes`.
 
@@ -63,6 +66,7 @@ When the user explicitly names slices, load those slices. Add another slice only
 - Migrate a tRPC capability to Express: `foundations` + `contracts` + `runtimes` + `testing`
 - Implement a Stripe webhook: `contracts` + `operations` + `security` + `telemetry` + `testing` + `runtimes`
 - Add Supabase authentication: `security` + `runtimes` + `testing`; add `data-flow` when application roles or user provisioning use the database
+- Add Better Auth: `security` + `runtimes` + `runtimes/better-auth` + `testing`; add the selected database adapter and client/framework leaves as needed
 - Audit logs and analytics: `telemetry`; add `operations` for outbox-backed reliable delivery
 - Explain portable environment validation: `foundations`; add `runtimes` when applying it to Next.js, NestJS, Express, Hono, or another detected specialization
 
@@ -72,7 +76,7 @@ When invoked as `$server scaffold ...`, read `scaffolding` first, then every arc
 
 ## Preserve These Invariants
 
-- Use the call chain `framework adapter -> framework-neutral controller -> one service or one use case -> repository/provider port`; return typed results in reverse.
+- For application-owned capabilities, use `framework adapter -> framework-neutral controller -> one service or one use case -> repository/provider port`; return typed results in reverse. Provider-managed authentication/plugin endpoints mount their documented native handler and preserve its protocol; custom business operations and required policy remain protected by application boundaries.
 - Keep controllers plain TypeScript. They map shared inputs and outputs, call exactly one application boundary, and never import framework request/response types.
 - Use a service for one-domain behavior and a use case for multi-service workflows, transaction ownership, outbox coordination, or post-commit side effects.
 - Keep repositories responsible for persistence only. Translate known provider/database failures at the adapter boundary and never leak vendor errors inward.

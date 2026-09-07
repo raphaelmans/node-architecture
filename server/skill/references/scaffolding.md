@@ -134,7 +134,7 @@ tests for created boundaries
 
 Do not activate persistence, transactions, auth, analytics, outbox, configuration variables, or providers without requested behavior. When configuration is activated, keep lifecycle schemas deployable-owned, permit unrelated ambient variables, and inject only normalized focused values. Treat publication/deployment credentials as inputs to separate side-effect execution rather than fields that invalidate cached artifact production.
 
-Every public capability preserves:
+Every application-owned public capability preserves:
 
 ```text
 framework adapter
@@ -145,6 +145,8 @@ framework adapter
 ```
 
 The adapter owns framework types, parsing, transport gates, observability, status/envelope, and centralized errors. The controller maps shared input and plain actor values, calls exactly one application boundary, maps the public response, and imports no framework types or generic context.
+
+For selected provider-native authentication/plugin endpoints, mount the documented handler without regenerating controllers or business-envelope wrappers. This boundary is limited to provider-managed behavior; custom application operations and directly reachable native endpoints must still enforce required policy. Load [Better Auth](runtimes/better-auth.md) when selected.
 
 Use a service for one-domain behavior. Use a use case only for multi-service orchestration, cross-service transactions, outbox coordination, or post-commit effects. Do not let controllers or adapters orchestrate services.
 

@@ -8,9 +8,11 @@ Construction and runtime lifetimes follow [Client Composition Root and Factories
 
 Components never talk to transport directly.
 
-All IO happens through this chain:
+Application-owned API IO happens through this chain:
 
 `components -> query adapter -> featureApi -> clientApi -> network`
+
+For provider-managed authentication endpoints, the configured native SDK may implement an auth-specific client transport behind the feature API. Preserve the provider protocol instead of feeding it through the business-envelope decoder; project results and errors into application-facing values. If provider-reactive session hooks are selected, isolate them in integration hooks and retain one session-state owner rather than a competing cache. Components still consume app-facing APIs/hooks, and ordinary business requests retain the chain above.
 
 Operational logging and product analytics branch from the layer that owns the occurrence; they do not add hops or metadata parameters to this business data flow.
 

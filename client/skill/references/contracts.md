@@ -25,6 +25,8 @@ In a monorepo, use an activated `packages/contracts/<module>/` boundary when the
 
 Both client and server import the same input and response schemas. Do not import wire contracts from routes, routers, services, repositories, DTO folders, or ORM schemas.
 
+This shared-contract rule governs application-owned APIs. Provider-native auth endpoints retain their documented protocol and supported SDK transport; do not recreate their wire schemas or decode them with the business envelope. The integration still projects safe application-owned results and normalized errors for feature consumers.
+
 Use JSON-safe representations. Model datetimes as ISO strings at the wire boundary and map them to `Date` only in runtime-specific models when necessary.
 
 ## Schema Layers

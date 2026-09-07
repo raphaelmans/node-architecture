@@ -72,7 +72,7 @@ When invoked as `$client scaffold`, read `scaffolding` first, then every capabil
 
 ## Preserve These Invariants
 
-- Use the call chain `components -> query adapter -> featureApi -> clientApi -> network`; typed results return in reverse.
+- Use `components -> query adapter -> featureApi -> clientApi -> network` for application requests; typed results return in reverse. Selected native auth SDKs may implement an auth-specific transport, and reactive session hooks stay behind app-facing integration hooks. Preserve native auth protocols without exposing providers to presentation components or duplicating session-state ownership.
 - Keep presentation components render-only. Business components coordinate UI flows but do not own transport or concrete cache mechanics.
 - Define one shared Zod request/response contract under the topology's resolved isomorphic contract boundary. Do not duplicate wire DTOs or import it from a server application package.
 - Normalize provider errors once to `AppError`. Preserve only user-safe messages and assign one operational reporting owner per failure.

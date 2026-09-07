@@ -21,7 +21,13 @@ Next.js route | Express/Hono handler | tRPC procedure | other adapter
 
 A controller is not a Next.js route, tRPC procedure, Express/Hono handler, or Nest controller decorator. Those are **framework adapters**. A canonical controller is a plain TypeScript module owned by a domain module.
 
-Every externally exposed HTTP/RPC capability MUST enter application code through a framework-neutral controller. Internal workers may call a use case/service directly when they are not presenting the same public capability; reuse the controller when they intentionally reuse that public input/output boundary.
+Every externally exposed application-owned HTTP/RPC capability MUST enter application code through a framework-neutral controller. Internal workers may call a use case/service directly when they are not presenting the same public capability; reuse the controller when they intentionally reuse that public input/output boundary.
+
+## Provider-Managed Endpoints
+
+A selected authentication provider's native protocol and enabled plugin endpoints may be mounted through its documented handler. The provider owns their wire format, cookies, redirects, and lifecycle; do not recreate these endpoints as application controllers or rewrite them into the business API envelope. [Better Auth](../runtime/nodejs/libraries/better-auth/README.md) is a concrete mapping of this boundary.
+
+This exception is limited to provider-managed behavior. Custom business operations, including those that call an auth provider, still use application controllers and protected services/use cases. Required application restrictions must also hold on directly reachable provider endpoints through supported configuration/hooks or an explicitly restricted exposure design; a stricter application wrapper does not secure an unrestricted native route. Provider hooks adapt to focused application operations without leaking provider types inward, and their transaction guarantees must be verified separately.
 
 ## Responsibilities
 

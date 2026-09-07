@@ -16,7 +16,9 @@ Read [authorization](authorization.md) first and [tenancy](../foundations/tenanc
 
 ## Adoption Boundary
 
-Keep organization membership/lifecycle under one authority. A future Better Auth integration uses its supported APIs rather than competing direct writes to provider-owned tables. Branch rules remain application-owned. Static client role checks do not cover dynamic roles or resource state; use server-backed decisions where required.
+When Better Auth is selected, load [its integration leaf](../runtimes/better-auth.md) for native endpoint policy enforcement, session mapping, and schema/lifecycle ownership.
+
+Keep organization membership/lifecycle under one authority. A selected Better Auth integration uses its supported APIs rather than competing direct writes to provider-owned tables. Branch rules remain application-owned. Static client role checks do not cover dynamic roles or resource state; use server-backed decisions where required.
 
 This alignment reduces migration work but does not migrate sessions, identity references, custom tables, or Supabase RLS/token integration. Do not install Better Auth merely because this leaf is loaded.
 

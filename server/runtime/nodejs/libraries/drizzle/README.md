@@ -2,6 +2,8 @@
 
 Use when Drizzle is installed or explicitly selected. It is an independent persistence implementation, not a prerequisite for Supabase and not tied to Supabase hosting. Apply [core conventions](../../../../core/conventions.md), [transactions](../../../../core/transaction.md), and the capability's access rules first.
 
+If Better Auth uses this database, also apply [its integration convention](../better-auth/README.md) for auth schema generation, lifecycle ownership, and cross-operation transaction limits. Business repositories remain independent of that auth adapter.
+
 ## Application Boundary
 
 - Keep repository contracts and application records owned by the domain/application module. Map selected rows into those records; ORM schema-derived types remain inside persistence infrastructure, not service interfaces or shared wire contracts.

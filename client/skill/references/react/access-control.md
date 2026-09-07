@@ -15,6 +15,8 @@ Load for permission gates, organization/branch switching, or membership/role-sen
 
 Keep permission/cache mechanics in feature hooks or sync modules, not TSX. Shared pure predicates may support UI consistency but cannot replace current server authorization.
 
+For Better Auth adoption, coordinate with installed `$server` and its `runtimes/better-auth` leaf when available. Compose native auth transport separately from business-envelope decoding. Project provider-reactive session hooks through focused integration hooks if used, keep one session-state owner, and reconcile application caches when identity changes.
+
 ## Verify and Sources
 
 Test permission fixtures, API result/error mapping, loading/allowed/denied/unavailable rendering, no privileged flash, revocation, logout/login, rapid scope changes, late requests, and mutations completing after navigation.

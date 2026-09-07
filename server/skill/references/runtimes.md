@@ -12,7 +12,7 @@ In a workspace, also load `workspace`. Apply runtime behavior inside resolved ap
 
 ## Runtime Rule
 
-Choose only the adapters present in the target project. Every runtime entrypoint must preserve:
+Choose only the adapters present in the target project. Every application-owned runtime entrypoint must preserve:
 
 ```text
 framework request/context
@@ -25,6 +25,8 @@ framework request/context
 ```
 
 No framework request/context type crosses the controller boundary. Adapters resolve controller factories only.
+
+Provider-native authentication/plugin endpoints instead mount their documented handler and preserve its protocol, cookies, and redirects. This core boundary is narrow: business routes still follow the flow above, and native endpoints cannot bypass required application restrictions. Load [Better Auth](runtimes/better-auth.md) when selected.
 
 Adapters authenticate and apply rate limits or transport-wide coarse gates. Ownership, tenant membership, domain roles, target-resource lookup, and operation-specific authorization remain in the selected service/use case so alternate transports cannot bypass them.
 
@@ -87,6 +89,10 @@ Load the [Supabase convention leaf](runtimes/supabase.md) for concrete integrati
 - Keep storage paths scoped and validate uploads before adapter calls.
 - Use direct Supabase repositories or Drizzle according to the selected stack. Use purpose-specific database functions for atomic Supabase data-API operations and enforce RLS/grants for exposed user access; separate HTTP requests cannot share an ORM transaction.
 
+## Better Auth
+
+Load [the Better Auth leaf](runtimes/better-auth.md) for native handlers, session-to-actor mapping, organization integration, migration ownership, and client coordination. Select its supported database adapter independently of business repositories. Better Auth + Drizzle does not activate Supabase. Preserve native auth responses; translate provider results only at app-facing integration boundaries.
+
 ## Pino
 
 Implement the kernel `AppLogger` port without exposing Pino types inward. Merge active correlation at the adapter, configure recursive/nested redaction, and ensure sink failure cannot change application behavior.
@@ -104,7 +110,7 @@ Implement the kernel `AppLogger` port without exposing Pino types inward. Merge 
 - Only installed/requested adapters influence the design.
 - Framework and provider types stop at infrastructure boundaries.
 - Request-scoped state cannot leak through global singletons.
-- All adapters share controllers, contracts, and central error policy.
+- Application-capability adapters share controllers, contracts, and central error policy; native auth handlers retain their protocol without weakening access restrictions.
 - Capability authorization remains effective through HTTP, workers, CLIs, and other transports.
 - Version-sensitive Next.js/tRPC/Supabase behavior is verified against the target dependencies.
 - Next.js configuration is validated at its consuming build/runtime lifecycle and injected narrowly; public exposure is explicit.

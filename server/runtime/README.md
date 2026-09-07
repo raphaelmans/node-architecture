@@ -15,7 +15,7 @@ libraries and metaframeworks
 - Core must not import runtime, library, or framework code.
 - Runtime guides may choose concrete implementations, but must not redefine core contracts.
 - Libraries adapt vendor APIs behind kernel/application interfaces.
-- Metaframeworks own entrypoints and lifecycle hooks; they call module-owned framework-neutral controllers.
+- Metaframeworks own entrypoints and lifecycle hooks; application-owned capabilities call module-owned framework-neutral controllers. Native authentication/plugin handlers follow the core [provider-managed endpoint boundary](../core/controllers.md#provider-managed-endpoints).
 
 Known runtime specialization (not an allowlist):
 

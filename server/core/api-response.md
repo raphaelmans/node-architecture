@@ -2,6 +2,8 @@
 
 > Standard response contract and pagination patterns across tRPC and OpenAPI adapters.
 
+This envelope governs application-owned APIs. [Provider-managed authentication/plugin endpoints](./controllers.md#provider-managed-endpoints) retain their documented protocol, cookies, and redirects; do not pass them through this envelope middleware. Errors from provider calls consumed by application operations still map to application errors at their integration boundary.
+
 ## Principles
 
 - Envelope pattern for all responses

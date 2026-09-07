@@ -4,7 +4,7 @@ Use this slice for shared Zod wire contracts, validation boundaries, commands an
 
 ## Contract Ownership
 
-Define each public capability once under its owning module:
+Define each application-owned public capability once under its owning module:
 
 ```text
 src/lib/modules/<module>/shared/contracts/   # single-project mapping
@@ -45,6 +45,8 @@ return json(wrapResponse(payload));
 - A tRPC procedure's configured input validator may own wire parsing, but the procedure still calls the same controller and returns the same payload contract. Resolve the exact configuration API from the installed integration.
 
 ## Envelopes and Pagination
+
+These envelopes apply to application-owned APIs. Provider-native authentication/plugin handlers retain their documented bodies, status, cookies, and redirects; do not rewrite them or copy their wire schemas into business contracts. Translate provider results/errors only when crossing an app-facing integration port. See [Better Auth](runtimes/better-auth.md) when selected.
 
 Use one success envelope:
 

@@ -50,6 +50,8 @@ Never mock pure functions, Zod schemas, or standard-library behavior. Do not mak
 
 ## Transactions and Concurrency
 
+For Better Auth integration, load [its verification boundary](runtimes/better-auth.md): real native handler/protocol tests complement application controller tests. Cover cookies, origins, session mapping, direct plugin policy enforcement, migration compatibility, and cross-boundary failure/recovery; native auth responses are not expected to match the business envelope.
+
 Where shared transactions are supported, unit-test ownership with a fake `TransactionManager` that supplies an opaque context. For atomic operation ports, test application outcomes without assuming a callback API. Use a real database for rollback, exact constraint translation, transaction participation, atomic upsert, and concurrent webhook delivery.
 
 For Supabase database functions, test preconditions, grants/RLS, direct API bypass, rollback, replay, and concurrency through the real selected access paths. Compare operation-contract outcomes across implementations actually shipped. Domain tests own policy definitions; persistence integration tests prove their enforcement. Service fixtures use application records, not provider schema types.

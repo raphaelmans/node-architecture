@@ -11,6 +11,8 @@ Apply [permission-aware client UX](../../core/access-control.md) first. This map
 
 Use the repository's established hook naming and state/query integration rather than introducing parallel auth-state infrastructure. Do not install Better Auth or a policy engine merely to render a gate. If Better Auth is present, adapt its supported permission behavior behind the feature boundary and obtain server-backed results for dynamic roles and resource-specific rules.
 
+For actual Better Auth adoption, follow [its integration convention](../../../server/runtime/nodejs/libraries/better-auth/README.md). Compose its native client as the auth transport rather than decoding it with the business API envelope. If using provider-reactive session hooks, project them through focused integration hooks and keep one session-state owner; reconcile application access/data caches when that identity changes.
+
 ## Scope Lifecycle
 
 Keep query keys and invalidation in hooks/sync modules, not TSX. Partition results by identity, organization, and branch/resource scope. Disable cross-scope previous-data placeholders for private access and data; late requests must remain associated with their original scope. Clean up relevant subscriptions on identity/scope change and reconcile after membership changes.
