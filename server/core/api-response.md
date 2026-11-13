@@ -126,7 +126,7 @@ Defined in [Error Handling](./error-handling.md) and typed as `ApiErrorResponse`
 }
 ```
 
-For OpenAPI-style Next.js route handlers (`app/api/**/route.ts`), return `ApiResponse<T>` for 2xx responses and `ApiErrorResponse` for non-2xx. See [`../runtime/nodejs/metaframeworks/nextjs/route-handlers.md`](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md) for a complete template.
+For OpenAPI-style Next.js route handlers (`app/api/**/route.ts`), return `ApiResponse<T>` for 2xx responses and `ApiErrorResponse` for non-2xx. See [`../runtimes/nodejs/frameworks/nextjs/route-handlers.md`](../runtimes/nodejs/frameworks/nextjs/route-handlers.md) for a complete template.
 
 ## Pagination Types & Schemas
 

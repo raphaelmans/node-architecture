@@ -1,6 +1,6 @@
 ---
 name: development
-description: Create a navigation-only ARCHITECTURE.md reference index and minimal agent entry point from installed guidance and repository concerns. Configure, explain, review, and troubleshoot local application startup, stable origins, and concurrent worktrees. Install and configure Portless for Next.js, Express, Hono, and other Node.js HTTP servers, including Turborepo workspaces. Production deployment is outside this skill.
+description: Create a navigation-only ARCHITECTURE.md reference index and minimal agent entrypoint from installed guidance and repository concerns. Configure, explain, review, and troubleshoot local application startup, stable origins, and concurrent worktrees. Install and configure Portless for Next.js, Express, Hono, and other Node.js HTTP servers, including Turborepo workspaces. Production deployment is outside this skill.
 ---
 
 # Development

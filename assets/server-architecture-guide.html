@@ -1162,7 +1162,7 @@
   connectionString: env.DATABASE_URL,
 });</code></pre>
         </div>
-        <div class="callout">Controllers, services, use cases, repositories, entities, and shared contracts never receive <code>process.env</code> or the complete env object. See the <a href="../server/runtime/nodejs/metaframeworks/nextjs/environment-variables.md">canonical Next.js environment guide</a>.</div>
+        <div class="callout">Controllers, services, use cases, repositories, entities, and shared contracts never receive <code>process.env</code> or the complete env object. See the <a href="../server/runtimes/nodejs/frameworks/nextjs/environment-variables.md">canonical Next.js environment guide</a>.</div>
 
         <div class="adapter-grid">
           <article class="adapter-card" style="--tone: var(--cyan)"><div class="adapter-top"><span>Primary transport</span><span>01</span></div><h3>tRPC</h3><p>Procedures validate shared Zod contracts, call one capability controller, and rely on shared middleware/error formatting.</p><code>modules/user/user.router.ts</code></article>
@@ -1570,7 +1570,7 @@ $server scaffold users/create using canonical layout</code></pre>
         <hr class="rule">
         <div class="section-head">
           <div><p class="section-kicker">Progressive disclosure</p><h2>Load the smallest useful slice set.</h2></div>
-          <p>The router composes concerns when a task crosses boundaries. Canonical source guides stay under <code>server/core/</code> and <code>server/runtime/</code>; the installed references are curated, portable derivatives.</p>
+          <p>The router composes concerns when a task crosses boundaries. Canonical source guides stay under <code>server/core/</code> and <code>server/runtimes/</code>; the installed references are curated, portable derivatives.</p>
         </div>
 
         <dl class="skill-slices">
@@ -1605,9 +1605,9 @@ $server scaffold users/create using canonical layout</code></pre>
       <a href="../server/core/conventions.md">Conventions</a>
       <a href="../server/core/observability.md">Observability</a>
       <a href="../server/core/testing-service-layer.md">Testing</a>
-      <a href="../server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md">Next.js routes</a>
-      <a href="../server/runtime/nodejs/metaframeworks/express/README.md">Express</a>
-      <a href="../server/runtime/nodejs/metaframeworks/hono/README.md">Hono</a>
+      <a href="../server/runtimes/nodejs/frameworks/nextjs/route-handlers.md">Next.js routes</a>
+      <a href="../server/runtimes/nodejs/frameworks/express/README.md">Express</a>
+      <a href="../server/runtimes/nodejs/frameworks/hono/README.md">Hono</a>
       <a href="../server/skill/SKILL.md">$server skill</a>
     </div>
   </footer>

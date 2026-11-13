@@ -140,4 +140,4 @@ it.each([
 - [Core Logging](../../../../core/logging.md)
 - [Observability](../../../../core/observability.md)
 - [tRPC Integration](../trpc/integration.md)
-- [Next.js Route Handlers](../../metaframeworks/nextjs/route-handlers.md)
+- [Next.js Route Handlers](../../frameworks/nextjs/route-handlers.md)

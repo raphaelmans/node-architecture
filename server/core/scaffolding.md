@@ -8,7 +8,7 @@ Use this contract when bootstrapping missing server foundations or adding one co
 - [Safety contract](#safety-contract)
 - [Evidence and preflight](#evidence-and-preflight)
 - [Layout selection](#layout-selection)
-- [Capability and dependency policy](#capability-and-dependency-policy)
+- [Infrastructure concern and dependency policy](#infrastructure-concern-and-dependency-policy)
 - [Contract and access discovery](#contract-and-access-discovery)
 - [Foundation roles](#foundation-roles)
 - [Capability roles](#capability-roles)
@@ -24,11 +24,11 @@ Scaffolding remains an action of the `$server` architecture router:
 
 ```text
 $server scaffold foundation
-$server scaffold <feature>/<operation>
-$server scaffold <feature>/<operation> using canonical layout
+$server scaffold <module>/<operation>
+$server scaffold <module>/<operation> using canonical layout
 ```
 
-`foundation` creates only missing cross-capability infrastructure. `<feature>/<operation>` creates one real vertical capability plus only its missing prerequisites. Never create disposable examples.
+`foundation` creates only missing cross-capability infrastructure. `<module>/<operation>` creates one real public capability, the server portion of that operation's vertical slice, plus only its missing prerequisites. Never create disposable examples.
 
 An unlisted language, runtime, or framework is not unsupported. Apply this contract, inspect the repository, and derive the required specialization from current authoritative resources. Do not initialize an application, install a framework without approval, or convert an arbitrary repository merely to fit a documented example.
 
@@ -42,7 +42,7 @@ A foundation scaffold may proceed when its complete runtime-neutral role set is 
 - Reuse structurally compatible abstractions even when names differ.
 - Do not create parallel controllers, error systems, loggers, envelopes, persistence ports, transaction abstractions, or composition roots merely to match canonical names.
 - Do not emit placeholder contracts, unresolved imports, fake persistence, TODO implementations, unknown-access endpoints, generated-file headers, or scaffold manifests.
-- Fail closed before affected writes when a capability, dependency, contract, policy, integration boundary, durable adapter, or authoritative source remains unresolved.
+- Fail closed before affected writes when an infrastructure concern, dependency, contract, policy, integration boundary, durable adapter, or authoritative source remains unresolved.
 
 Patch a dirty target only when integration is narrow and unambiguous. Otherwise stop and ask for direction.
 
@@ -92,11 +92,11 @@ Canonical mode changes placement, never overwrite authority. Architectural roles
 
 When the resolved placement crosses workspace packages, `$monorepo` owns package creation, manifests, exports, dependency edges, and atomic cross-package coordination. Stop before partial server writes, resolve the topology through `monorepo/core/scaffolding.md`, then resume this contract inside the selected server app/package boundaries. A server-only change contained within existing packages remains owned here.
 
-## Capability and Dependency Policy
+## Infrastructure Concern and Dependency Policy
 
-Activate capabilities from requested behavior, not package presence:
+Activate infrastructure concerns from requested behavior, not package presence:
 
-| Capability | Activation rule |
+| Infrastructure concern | Activation rule |
 | --- | --- |
 | Runtime wire validation | Serialized input or output crosses a trust boundary |
 | Test tooling | A created boundary requires executable verification |
@@ -104,14 +104,14 @@ Activate capabilities from requested behavior, not package presence:
 | Request/trace context | Correlation must propagate through one execution |
 | Outbound transport | An external provider call is required |
 | Persistence | The operation promises durable state |
-| Framework adapter | A public transport entry point is requested |
+| Framework adapter | A public transport entrypoint is requested |
 | API description or RPC | The selected transport requires it |
 | Product analytics | The capability owns a meaningful behavioral event |
 | Environment configuration | The deployable declares build- or runtime-consumed external values |
 
-Core does not prescribe packages, runtime primitives, or frameworks. Resolve each activated capability as follows:
+Core does not prescribe packages, runtime primitives, or frameworks. Resolve each activated infrastructure concern as follows:
 
-1. Reuse a compatible capability already present.
+1. Reuse a compatible implementation already present.
 2. Apply a documented specialization for the detected stack when available.
 3. Otherwise retrieve current authoritative ecosystem guidance and derive the integration.
 4. Resolve exact versions compatible with the installed graph.
@@ -181,7 +181,7 @@ framework adapter
         -> infrastructure adapter
 ```
 
-The framework adapter owns framework request/context types, input parsing, transport gates, request observability, response status/envelope, and centralized error integration. It calls a controller factory or equivalent composition-root entry point only.
+The framework adapter owns framework request/context types, input parsing, transport gates, request observability, response status/envelope, and centralized error integration. It calls a controller factory or equivalent composition-root entrypoint only.
 
 The controller accepts the shared input plus narrow plain actor/application values, maps them to an internal command, calls exactly one application boundary, and maps the internal result to the shared response. It imports no framework request/response types and receives no generic request, trace, transaction, or dependency context.
 
@@ -222,7 +222,7 @@ Never perform an unsafe external network effect inside a retryable transaction.
 On every run:
 
 1. Resolve the complete requested boundary set before writing.
-2. Compare required capabilities through public contracts, not filenames.
+2. Compare required infrastructure concerns through public contracts, not filenames.
 3. Reuse structural equivalents and report naming drift.
 4. Create only missing files and patch compatible files narrowly.
 5. Stop on incompatible or ambiguous contracts, errors, envelopes, access policy, persistence, transactions, composition, or framework integration.
@@ -257,6 +257,6 @@ Do not commit a retrieval log or generator manifest.
 
 ## Runtime Specializations
 
-- [Node.js scaffolding](../runtime/nodejs/scaffolding.md)
+- [Node.js scaffolding](../runtimes/nodejs/scaffolding.md)
 
 This is a known implementation, not an allowlist. For any other language/runtime/framework, derive a repository-specific implementation using the evidence policy above.

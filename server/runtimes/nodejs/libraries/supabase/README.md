@@ -96,7 +96,7 @@ const authRouter = router({
 ## Environment Variables
 
 For Next.js, define these values in the validated
-[environment boundary](../../metaframeworks/nextjs/environment-variables.md)
+[environment boundary](../../frameworks/nextjs/environment-variables.md)
 and inject narrow configuration through runtime factories. This block documents
 deployment names only; ordinary application code should not read `process.env`
 directly.

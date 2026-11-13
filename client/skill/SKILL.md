@@ -24,7 +24,7 @@ Route client work through modular architecture slices. Load only the references 
 
 | Slice | Load when the task involves | Reference |
 | --- | --- | --- |
-| `scaffolding` | `$client scaffold`, repository preflight, missing infrastructure, dependency approval, vertical feature generation | [references/scaffolding.md](references/scaffolding.md) |
+| `scaffolding` | `$client scaffold`, repository preflight, missing infrastructure, dependency approval, feature-operation generation | [references/scaffolding.md](references/scaffolding.md) |
 | `foundations` | boundaries, folders, composition roots, configuration surfaces, factories, feature structure, domain placement | [references/foundations.md](references/foundations.md) |
 | `workspace` | single-project/monorepo topology, client app ownership, shared packages, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, validation, DTO mapping, `AppError`, safe error UX | [references/contracts.md](references/contracts.md) |
@@ -48,16 +48,16 @@ Slices may route to a convention leaf for a narrower, opinionated concern. Load 
 
 A convention leaf refines its parent slices; it does not become a top-level routing alias or override their invariants.
 
-For Next.js access-control work, compose the React and Next.js access-control leaves; standalone React needs only its own mapping. Product workspaces are organization/access state, not the monorepo `workspace` slice unless package topology is involved. Client controls are UX only; coordinate authoritative capability changes with installed `$server` when available.
+For Next.js access-control work, compose the React and Next.js access-control leaves; standalone React needs only its own mapping. Product workspaces are organization/access state, not the `workspace` topology slice unless package topology is involved. Client controls are UX only; coordinate authoritative capability changes with installed `$server` when available.
 
 Treat `bootstrap`, `initialize`, and `generate structure` as aliases for `scaffolding`; `core`, `architecture`, `config`, and `environment` as aliases for `foundations`; `workspace`, `package`, and `monorepo` as aliases for `workspace`; `api`, `query`, and `transport` as aliases for `data-flow`; `logging`, `analytics`, and `observability` as aliases for `telemetry`; and `next` as an alias for `nextjs`.
 
 When the user names multiple concerns, load all matching references. Examples:
 
-- `$client scaffold foundation`: `scaffolding` + `foundations` + capability slices discovered during preflight
+- `$client scaffold foundation`: `scaffolding` + `foundations` + the architecture slices discovered during preflight
 - `$client scaffold foundation` in a workspace: add `workspace`; remain inside resolved packages unless cross-package coordination is activated
 - `$client scaffold users/create`: `scaffolding` + `foundations` + `contracts` + `data-flow` + `react` + `testing`; add `nextjs`, `telemetry`, or state slices only when detected/requested capabilities require them
-- `$client scaffold users/create` in Vue or Svelte: `scaffolding` + capability slices; derive framework integration from repository evidence and current official docs
+- `$client scaffold users/create` in Vue or Svelte: `scaffolding` + the architecture slices the operation activates; derive framework integration from repository evidence and current official docs
 - Next.js logging or Sentry: `telemetry` + `nextjs`
 - Next.js route registry or nuqs implementation: `nextjs` + `nextjs/routing`; add `state-realtime` if deciding whether the state belongs in the URL
 - Standalone React configuration: `foundations` + `react`; add `workspace` or `nextjs` only when those boundaries exist
@@ -68,7 +68,7 @@ When the user names multiple concerns, load all matching references. Examples:
 
 When invoked without a task, show the slice menu with two or three context-aware examples. Do not start an audit or implementation automatically.
 
-When invoked as `$client scaffold`, read `scaffolding` first, then every capability slice selected by preflight. Load `workspace` when a package/workspace boundary exists and load `react` or `nextjs` only when detected or requested. For an unlisted framework, retain the generic slice and retrieve the official resources needed to derive its specialization. Complete evidence, atomicity, and dependency approval before writing. If required changes cross packages, stop before partial writes and apply the `$monorepo` coordination contract; otherwise remain within `$client`.
+When invoked as `$client scaffold`, read `scaffolding` first, then every architecture slice selected by preflight. Load `workspace` when a package/workspace boundary exists and load `react` or `nextjs` only when detected or requested. For an unlisted framework, retain the generic slice and retrieve the official resources needed to derive its specialization. Complete evidence, atomicity, and dependency approval before writing. If required changes cross packages, stop before partial writes and apply the `$monorepo` coordination contract; otherwise remain within `$client`.
 
 ## Preserve These Invariants
 

@@ -1,6 +1,6 @@
 # Node.js Web Framework Adapter Documentation
 
-Framework-specific server guidance layered on top of `server/core/` and `server/runtime/nodejs/libraries/`. The directory name is retained for compatibility, but it includes both frameworks and metaframeworks.
+Framework-specific server guidance layered on top of `server/core/` and `server/runtimes/nodejs/libraries/`. It covers plain frameworks such as Express and Hono as well as metaframeworks such as Next.js.
 
 | Framework | Status | Guide | Scaffolding |
 | --- | --- | --- | --- |

@@ -1783,7 +1783,7 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 ## Environment Variables
 
 In a Next.js application, declare and validate these names in the canonical
-[environment boundary](../../metaframeworks/nextjs/environment-variables.md).
+[environment boundary](../../frameworks/nextjs/environment-variables.md).
 The values below document deployment configuration; application code imports
 the validated `env` object instead of reading `process.env` directly.
 

@@ -9,7 +9,7 @@ When Node.js is inside a workspace, apply server roles within the resolved app/c
 In addition to core preflight:
 
 1. Detect the installed Node.js version, JavaScript or TypeScript mode, module format, package manager, workspace package, source root, aliases, and build output.
-2. Detect the web framework/transport, runtime host, validation, error/envelope, logging, observability, authentication, persistence, transaction, API-description/RPC, and test capabilities.
+2. Detect the web framework/transport, runtime host, validation, error/envelope, logging, observability, authentication, persistence, transaction, API-description/RPC, and test infrastructure.
 3. Inspect the lockfile and installed type declarations for exact current state.
 4. Retrieve version-applicable official documentation for Node.js, the selected framework, and every activated package when configuration, lifecycle, module loading, peer compatibility, or deployment behavior affects the scaffold.
 
@@ -36,13 +36,13 @@ src/
 └── __tests__/                  # mirrors generated boundaries
 ```
 
-Framework entry points use the selected adapter specialization. JavaScript repositories adapt extensions and type mechanisms without changing role ownership.
+Framework entrypoints use the selected adapter specialization. JavaScript repositories adapt extensions and type mechanisms without changing role ownership.
 
-## Capability Resolution
+## Infrastructure Concern Resolution
 
 Prefer compatible existing packages and primitives. When absent and required, verify current versions and peers before proposing an exact installation:
 
-| Capability | Node.js specialization |
+| Infrastructure concern | Node.js specialization |
 | --- | --- |
 | Runtime wire validation | Repository standard; Zod is the documented TypeScript default |
 | Test tooling | Existing runner; Vitest is the documented TypeScript fallback |
@@ -96,7 +96,7 @@ modules/<module>/use-cases/<operation>.use-case.ts        # orchestration only
 modules/<module>/repositories/<module>.repository.ts     # persistence only
 modules/<module>/providers/<provider>.ts                 # integration only
 modules/<module>/factories/<operation>.factory.ts
-<selected framework entry point>
+<selected framework entrypoint>
 __tests__/<mirrored boundary>.test.ts
 ```
 
@@ -104,9 +104,9 @@ Controllers are plain TypeScript/JavaScript and import no framework request/resp
 
 ## Adapter Specializations
 
-- [Next.js](./metaframeworks/nextjs/scaffolding.md)
-- [Express](./metaframeworks/express/scaffolding.md)
-- [Hono](./metaframeworks/hono/scaffolding.md)
+- [Next.js](./frameworks/nextjs/scaffolding.md)
+- [Express](./frameworks/express/scaffolding.md)
+- [Hono](./frameworks/hono/scaffolding.md)
 
 These adapters are examples, not an allowlist. For another Node.js framework, inspect its existing integration and retrieve current official documentation before deriving the adapter. A public capability remains atomic: if the adapter cannot be resolved, do not write inward capability files.
 

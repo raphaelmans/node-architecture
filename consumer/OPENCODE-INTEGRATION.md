@@ -21,6 +21,6 @@ Reference the canonical source repository directly from a small project `AGENTS.
 - React additions: `client/frameworks/reactjs/*.md`
 - Next.js additions: `client/frameworks/reactjs/metaframeworks/nextjs/*.md`
 - Framework-agnostic server rules: `server/core/*.md`
-- Runtime and adapter additions: `server/runtime/**/*.md`
+- Runtime and adapter additions: `server/runtimes/**/*.md`
 
 The skills are the preferred portable interfaces. Direct document includes remain a compatibility fallback, not a second generated distribution system.

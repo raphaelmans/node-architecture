@@ -719,7 +719,7 @@ makeRegisterUserController()
 
 **Rule:** Entities may flow internally, but every application-owned public transport maps and validates output through a shared response contract before serialization. Provider-managed auth endpoints retain their native protocol as defined above.
 
-For organization-scoped behavior, compose [tenancy](./tenancy.md), [authorization](./authorization.md), and [RBAC](./rbac.md) as needed. Persistence implementations remain independent: [Drizzle](../runtime/nodejs/libraries/drizzle/README.md), [Supabase directly](../runtime/nodejs/libraries/supabase/data-access.md), or both. Shared callback transaction examples in this guide apply only to participating drivers; data-API atomic operations follow [the transaction contract](./transaction.md#choose-the-atomicity-boundary).
+For organization-scoped behavior, compose [tenancy](./tenancy.md), [authorization](./authorization.md), and [RBAC](./rbac.md) as needed. Persistence implementations remain independent: [Drizzle](../runtimes/nodejs/libraries/drizzle/README.md), [Supabase directly](../runtimes/nodejs/libraries/supabase/data-access.md), or both. Shared callback transaction examples in this guide apply only to participating drivers; data-API atomic operations follow [the transaction contract](./transaction.md#choose-the-atomicity-boundary).
 
 ## Implemented Event-Driven Patterns
 

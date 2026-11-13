@@ -165,7 +165,7 @@ When both transports expose the same business capability:
 - Success envelope/payload shape must remain equivalent by contract
 - Add parity tests to prevent drift
 
-See `server/runtime/nodejs/libraries/openapi/parity-testing.md`.
+See `server/runtimes/nodejs/libraries/openapi/parity-testing.md`.
 
 ## OpenAPI/Swagger Generation
 

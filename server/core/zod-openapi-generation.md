@@ -31,7 +31,7 @@ This document does not force one specific library implementation.
 See:
 
 - `./api-contracts-zod-first.md`
-- `../runtime/nodejs/libraries/openapi/parity-testing.md`
+- `../runtimes/nodejs/libraries/openapi/parity-testing.md`
 
 ## Architecture
 

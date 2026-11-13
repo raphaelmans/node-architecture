@@ -30,7 +30,7 @@ For new collaborative organizations, allow multiple administrative owners and pr
 
 ## Provider Adoption
 
-When Better Auth is selected, apply [its integration convention](../runtime/nodejs/libraries/better-auth/README.md) for native endpoint enforcement, session mapping, and lifecycle/schema ownership.
+When Better Auth is selected, apply [its integration convention](../runtimes/nodejs/libraries/better-auth/README.md) for native endpoint enforcement, session mapping, and lifecycle/schema ownership.
 
 Keep one authoritative owner for memberships, invitations, and organization roles. A selected Better Auth integration delegates its supported lifecycle rather than writing its internal tables through a second implementation. Retain application-specific branch rules outside that provider and verify permission behavior during migration; matching names alone does not prove equivalence.
 

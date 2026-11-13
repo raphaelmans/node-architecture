@@ -56,11 +56,11 @@ The key must be unique for equivalent delivery attempts to prevent duplicates.
 
 - Use case decides **what cross-service event to enqueue**; a single-domain service may write an event owned entirely by that same module
 - Dispatcher decides **how/when to deliver**
-- Transport/metaframework layer decides **how dispatchers are triggered** (cron, worker, queue consumer)
+- Transport/framework layer decides **how dispatchers are triggered** (cron, worker, queue consumer)
 - Product analytics dispatchers depend on `ProductAnalytics`; they do not repurpose `AppLogger`
 
 For Next.js cron-triggered dispatch patterns, see:
 
-- `server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md`
+- `server/runtimes/nodejs/frameworks/nextjs/cron-routes.md`
 
 For correlation semantics across producer/consumer boundaries, see [Observability](./observability.md#async-and-queue-boundaries).

@@ -38,11 +38,11 @@ No Node.js adapter may be imported by client code or by browser-safe shared cont
 
 ## Framework Adapters
 
-- [Framework Adapter Index](./metaframeworks/README.md)
-- [Next.js](./metaframeworks/nextjs/README.md)
-- [Express](./metaframeworks/express/README.md)
-- [Hono](./metaframeworks/hono/README.md)
-- [NestJS](./metaframeworks/nestjs/README.md)
+- [Framework Adapter Index](./frameworks/README.md)
+- [Next.js](./frameworks/nextjs/README.md)
+- [Express](./frameworks/express/README.md)
+- [Hono](./frameworks/hono/README.md)
+- [NestJS](./frameworks/nestjs/README.md)
 
 ## Runtime Checklist
 

@@ -4,6 +4,34 @@ This repository defines portable architecture contracts and stack-specific guida
 
 ## Language
 
+### Business structure
+
+**Module**:
+A cohesive business area that owns a related set of operations and contracts.
+_Avoid_: Package, layer, feature
+
+**Feature**:
+A client-side unit of user-facing behavior that owns its UI, state coordination, and API access. It may consume the contracts of several modules and has no server-side counterpart of the same name.
+_Avoid_: Module, operation, vertical slice
+
+**Operation**:
+A specific business action within a module.
+_Avoid_: Capability as a scaffold target, feature
+
+**Capability**:
+The server-side application behavior that fulfils one operation behind a framework-neutral controller, independent of the transport that exposes it.
+_Avoid_: Endpoint, vertical slice, scaffold target
+
+**Vertical slice**:
+The complete implementation of one operation across every boundary activated by its behavior; it may span several applications or packages but is not itself a package.
+_Avoid_: Capability package, slice package
+
+**Architecture role**:
+A responsibility defined by the architecture contracts, such as contract, domain, capability, adapter, or composition, whose ownership and dependency direction hold wherever it is physically placed.
+_Avoid_: Package, folder
+
+### Scaffolding
+
 **Scaffolding contract**:
 The framework- and runtime-agnostic guarantees that every scaffolding implementation must preserve, including safety, boundary ownership, idempotency, and verification.
 _Avoid_: React scaffolding, Node.js scaffolding
@@ -11,26 +39,6 @@ _Avoid_: React scaffolding, Node.js scaffolding
 **Scaffolding implementation**:
 A realization of the scaffolding contract adapted to the target repository's framework or runtime. It may use a documented specialization or derive one from repository evidence and current authoritative resources.
 _Avoid_: Supported-stack allowlist, core scaffolding policy
-
-**Transport gate**:
-A cross-cutting access check tied to an entry point, such as authentication, request-context enrichment, or rate limiting.
-_Avoid_: Capability authorization
-
-**Capability authorization**:
-An application invariant deciding whether an actor may perform a specific operation on a particular domain resource, including ownership and tenant rules.
-_Avoid_: Transport authorization
-
-**Product workspace**:
-An organization-backed collaboration boundary for a product's members and resources, distinct from a monorepo workspace package. The product may present this boundary as a business, organization, or workspace without changing its access-isolation meaning.
-_Avoid_: Workspace package, team as tenant by default
-
-**Application record**:
-An application-owned representation of domain state exchanged across service and repository boundaries, independent of the selected persistence provider and public wire representation.
-_Avoid_: ORM row as application contract, wire DTO
-
-**Repository implementation**:
-A persistence adapter that fulfills an application-owned repository contract using the selected data-access mechanism. Alternative implementations preserve the contract's observable behavior and required atomicity.
-_Avoid_: Mandatory ORM layer, provider client as application interface
 
 **Monorepo foundation**:
 The repository-wide architectural baseline that establishes workspace and package boundaries without assuming any deployable application or business behavior.
@@ -40,17 +48,7 @@ _Avoid_: Starter application, application foundation
 The non-business architectural baseline owned by one deployable application and adapted to that application's client, server, or worker responsibilities.
 _Avoid_: Monorepo foundation, vertical slice
 
-**Module**:
-A cohesive business area that owns a related set of operations and contracts.
-_Avoid_: Package, layer
-
-**Operation**:
-A specific business action within a module.
-_Avoid_: Capability as a scaffold target, feature
-
-**Vertical slice**:
-The complete implementation of one operation across every boundary activated by its behavior; it may span several applications or packages but is not itself a package.
-_Avoid_: Capability package, slice package
+### Topology and packages
 
 **Repository topology**:
 The physical organization through which the same architecture roles and dependency rules are realized. Scaffolding derives it from repository evidence rather than treating one topology as universally preferred.
@@ -75,6 +73,72 @@ _Avoid_: Package only after a second consumer, automatic partial migration
 **Tooling dependency**:
 A development-only edge from an application or package to shared configuration; it does not participate in or weaken the runtime onion dependency graph.
 _Avoid_: Runtime dependency, architecture-layer dependency
+
+### Access
+
+**Organization**:
+The tenant boundary that owns members and resources and isolates access between them. A user may belong to several organizations.
+_Avoid_: Team as tenant, universal workspace, account
+
+**Product workspace**:
+The user-facing presentation of an organization as the place where its members collaborate. A product may label it a business, organization, or workspace without changing its access-isolation meaning.
+_Avoid_: Workspace package, separate tenant model
+
+**Membership**:
+A user's current relationship to one organization, distinct from the user's identity and from an invitation to join.
+_Avoid_: Invitation, account
+
+**Actor**:
+The verified identity, a person or an explicitly authorized machine, on whose behalf an operation runs, expressed without provider session types.
+_Avoid_: Session, user object, client-supplied identity
+
+**Organization role**:
+A named bundle of permissions within one organization.
+_Avoid_: Global rank, numeric role level
+
+**Permission catalog**:
+The application-owned set of resource and action permissions from which every role's grants are drawn.
+_Avoid_: Role threshold, provider permission list
+
+**Access scope**:
+The organization, or a narrower domain resource within it such as a branch, against which a grant is evaluated.
+_Avoid_: Team, active organization
+
+**Scoped assignment**:
+An application-owned grant of a role to a member within one access scope narrower than the organization.
+_Avoid_: Team role, highest role
+
+**Active organization**:
+The organization a user has currently selected for navigation. It is selection state and never proof of access.
+_Avoid_: Access grant, current tenant
+
+**Access result**:
+The safe, scoped summary of what the current actor may do, exposed to a client for presentation only.
+_Avoid_: Authorization decision, session object
+
+**Transport gate**:
+A cross-cutting access check tied to an entrypoint, such as authentication, request-context enrichment, or rate limiting.
+_Avoid_: Capability authorization
+
+**Capability authorization**:
+An application invariant deciding whether an actor may perform a specific operation on a particular domain resource, including ownership and tenant rules.
+_Avoid_: Transport authorization
+
+**Provider-managed endpoint**:
+An entrypoint whose protocol is owned by an adopted provider and is mounted natively rather than routed through an application controller.
+_Avoid_: Business route, controller bypass
+
+### Persistence
+
+**Application record**:
+An application-owned representation of domain state exchanged across service and repository boundaries, independent of the selected persistence provider and public wire representation.
+_Avoid_: ORM row as application contract, wire DTO
+
+**Repository implementation**:
+A persistence adapter that fulfills an application-owned repository contract using the selected data-access mechanism. Alternative implementations preserve the contract's observable behavior and required atomicity.
+_Avoid_: Mandatory ORM layer, provider client as application interface
+
+### Configuration
 
 **Environment boundary**:
 The deployable-application boundary that reads and validates external configuration, then normalizes it into application configuration. Reusable components declare focused configuration needs but do not own or read a deployable's environment.
@@ -128,9 +192,7 @@ _Avoid_: Environment variable, browser build configuration
 A validated configuration state for an optional capability in which activation explicitly requires every value needed to compose that capability.
 _Avoid_: Missing means disabled, unrelated optional variables
 
-**Framework-native composition**:
-Using a selected framework's dependency injection, lifecycle, module, and testing mechanisms at its outer application boundaries while keeping reusable inward components independent of that framework.
-_Avoid_: Reimplementing the framework, framework-coupled core
+### Conventions and specializations
 
 **Architecture convention**:
 A durable ownership, dependency, safety, or verification rule governed by this repository and intended to remain valid across tool versions.
@@ -140,6 +202,10 @@ _Avoid_: Tool configuration, copied vendor guidance
 A stack-specific mapping from architecture conventions to a detected tool or framework whose version-sensitive behavior is resolved from matching authoritative sources at execution time.
 _Avoid_: Embedded vendor manual, frozen configuration cookbook
 
+**Framework-native composition**:
+Using a selected framework's dependency injection, lifecycle, module, and testing mechanisms at its outer application boundaries while keeping reusable inward components independent of that framework.
+_Avoid_: Reimplementing the framework, framework-coupled core
+
 **Local development contract**:
 The tool-agnostic guarantees for starting and reaching deployable applications during local work, including stable origins, topology awareness, explicit machine prerequisites, and a direct-run escape hatch. It crosses client and server boundaries without owning their application architecture or production delivery.
 _Avoid_: DevOps contract, Portless contract, deployment contract
@@ -147,6 +213,8 @@ _Avoid_: DevOps contract, Portless contract, deployment contract
 **Local development specialization**:
 A thin, version-resolved mapping from the local development contract to a detected framework, runtime, or development tool.
 _Avoid_: Local development contract, embedded Portless manual
+
+### Skills and references
 
 **Skill slice**:
 A top-level progressive-loading unit that routes a broad architecture concern through one curated skill reference.
@@ -160,6 +228,8 @@ _Avoid_: Nested slice, top-level slice
 A navigation document that groups applicable engineering guidance by concern and identifies the authoritative references and prerequisites needed for a task. It owns discoverability, not the conventions themselves.
 _Avoid_: Architecture rulebook, implementation inventory, copied skill manual
 
+### Client UI
+
 **UI foundation**:
 The owned shadcn component tier that defines the application's shared visual vocabulary and component variants, including components that are internally composed.
 _Avoid_: Single-element primitive, unmodified vendor copy
@@ -171,3 +241,11 @@ _Avoid_: Custom UI layer, feature component
 **Feature UI**:
 Components owned by a feature because their presentation or coordination carries that feature's vocabulary and behavior, whether or not they perform data operations.
 _Avoid_: Shared UI merely because reused, business components only
+
+**Business component**:
+A feature UI component that coordinates one workflow, including data, forms, and loading and error states, through feature hooks.
+_Avoid_: Container, smart component
+
+**Presentation component**:
+A render-only component that receives data and callbacks through its inputs and owns no data access.
+_Avoid_: Dumb component, primitive

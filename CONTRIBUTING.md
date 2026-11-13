@@ -9,7 +9,7 @@ When contributing, treat these docs as a system of contracts, not isolated notes
 - Client framework layer: `client/frameworks/*`
 - Client agent skill: curated derivatives under `client/skill/references/*`
 - Server canonical base: `server/core/*`
-- Server runtime layer: `server/runtime/*`
+- Server runtime layer: `server/runtimes/*`
 - Server agent skill: curated derivatives under `server/skill/references/*`
 - Monorepo canonical base: `monorepo/core/*`
 - Monorepo build-system layer: `monorepo/build-systems/*`
@@ -26,6 +26,12 @@ Rule:
 - Keep `development/core/*` framework/tool-agnostic; application-origin and workspace ownership remain with their existing boundaries.
 - Keep build-system specializations thin and resolve version-sensitive behavior from matching authoritative sources.
 - Curate portable skills down to durable concepts, rationale, outcomes, and decision criteria. Retain named libraries and official links when they clarify a supported specialization or selection choice. Do not copy vendor-owned API symbols, framework filenames, configuration keys, flags, version matrices, deprecations, or migration recipes from canonical examples into a skill; the executing agent detects installed versions, retrieves current primary documentation, and verifies the derived implementation.
+
+## Domain Language and Decisions
+
+- [CONTEXT.md](./CONTEXT.md) is the glossary. Use its terms as defined and do not use a term listed under _Avoid_ for that concept.
+- When guidance introduces or redefines a term, update the glossary in the same change. Keep it free of implementation detail.
+- Record a decision under [docs/adr/](./docs/adr/README.md) only when it is hard to reverse, surprising without context, and the result of a real trade-off. Add it to the ADR index.
 
 ## Contribution Types
 
@@ -66,8 +72,8 @@ Do not:
 
 Create:
 
-- `server/runtime/<runtime>/README.md` (for Go, use `server/runtime/go/README.md`)
-- Runtime-specific subfolders as needed (libraries, metaframeworks, adapters)
+- `server/runtimes/<runtime>/README.md` (for Go, use `server/runtimes/go/README.md`)
+- Runtime-specific subfolders as needed (libraries, frameworks, adapters)
 
 Must align with existing server contracts:
 
@@ -77,7 +83,7 @@ Must align with existing server contracts:
 
 Also update:
 
-- `server/runtime/README.md`
+- `server/runtimes/README.md`
 - `server/README.md`
 - `README.md` (top-level structure/index)
 
@@ -128,6 +134,7 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 - [ ] Updated indices/README links for new folders
 - [ ] Added/updated changelog for non-trivial changes
 - [ ] Verified no contradictory guidance across related docs
+- [ ] Used glossary terms as defined; updated `CONTEXT.md` and the ADR index when the change adds a term or decision
 - [ ] Portable skills retain library roles, rationale, and official links without freezing vendor syntax or version-specific recipes
 
 ## If You Are Unsure Where A Rule Belongs
@@ -148,23 +155,23 @@ When changing a mapped client source document:
 
 1. Run `python3 client/skill-maintenance/check-source-drift.py`.
 2. Review every slice or convention leaf reported as stale and update its reference when the source change affects the derived guidance.
-3. Refresh only reviewed references with `python3 client/skill-maintenance/check-source-drift.py --refresh <slice-or-leaf>`.
+3. Refresh only reviewed references with `python3 client/skill-maintenance/check-source-drift.py refresh <slice-or-leaf> [<slice-or-leaf> ...]`.
 4. Run the drift check again and validate `client/skill/` with the official skill validator.
 
 Do not refresh a fingerprint without reviewing the associated reference. Update `client/skill-maintenance/source-map.json` when a source document starts or stops informing a slice or convention leaf. Maintenance tooling stays outside `client/skill/` so it is not copied into consumer installations.
 
 ## Maintaining the Server Skill
 
-The server docs remain canonical. The `$server` skill reorganizes their guidance into concern-based references for portable, progressive loading.
+The server docs remain canonical. The `$server` skill reorganizes their guidance into concern-based skill slices and conditionally loaded convention leaves for portable, progressive loading.
 
 When changing a mapped server source document:
 
 1. Run `python3 server/skill-maintenance/check-source-drift.py`.
-2. Review every slice reported as stale and update its reference when the source change affects the derived guidance.
-3. Refresh one reviewed slice with `python3 server/skill-maintenance/check-source-drift.py refresh <slice>`.
+2. Review every slice or convention leaf reported as stale and update its reference when the source change affects the derived guidance.
+3. Refresh reviewed references with `python3 server/skill-maintenance/check-source-drift.py refresh <slice-or-leaf> [<slice-or-leaf> ...]`.
 4. Run the drift check again and validate `server/skill/` with the official skill validator.
 
-Do not refresh a fingerprint without reviewing the associated reference. Update `server/skill-maintenance/source-map.json` when a source document starts or stops informing a slice. Every canonical `server/**/*.md` guide outside `server/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside `server/skill/` so it is not copied into consumer installations.
+Do not refresh a fingerprint without reviewing the associated reference. Update `server/skill-maintenance/source-map.json` when a source document starts or stops informing a slice or convention leaf. Every canonical `server/**/*.md` guide outside `server/skill/` must remain mapped to at least one slice or convention leaf. When changing the checker itself, run `python3 -m unittest server/skill-maintenance/test_source_drift.py`. Maintenance tooling stays outside `server/skill/` so it is not copied into consumer installations.
 
 ## Maintaining the Monorepo Skill
 

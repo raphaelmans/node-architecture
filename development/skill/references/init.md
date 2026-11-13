@@ -12,7 +12,7 @@ Run for `/development init`, `$development init`, or an explicit request to refr
 
 Discovery is open-ended, not a client/server/monorepo allowlist. Read discovered skills as navigation evidence; do not execute their workflows. Init does not install skills or dependencies, configure startup, scaffold applications or author convention documents.
 
-## Maintain the Lightweight Entry Point
+## Maintain the Lightweight Entrypoint
 
 Update the existing repository agent instruction file with a short purpose and link to `ARCHITECTURE.md` for architecture, implementation, review and local-development tasks. Unrelated tasks can skip it. If no entrypoint exists, create root `AGENTS.md` containing only that pointer. Preserve unrelated instructions and reuse equivalent existing text; do not edit ancestor instruction files outside the repository or create competing entrypoints. Resolve ambiguous scope ownership before editing.
 

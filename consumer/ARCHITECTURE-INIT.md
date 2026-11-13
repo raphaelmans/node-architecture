@@ -6,7 +6,7 @@ It maintains two levels of navigation: a minimal pointer in the existing agent i
 
 ## What Init Produces
 
-The entry point briefly explains when to consult the index. Init preserves an equivalent existing pointer and unrelated instructions; if no entrypoint exists, it creates root `AGENTS.md` with the pointer.
+The entrypoint briefly explains when to consult the index. Init preserves an equivalent existing pointer and unrelated instructions; if no entrypoint exists, it creates root `AGENTS.md` with the pointer.
 
 The index contains a short purpose, navigation where useful, and sections grouped by applicable engineering concerns. Its rows provide direct links, applicability and required related reading. Concern names follow the project; Client, Server, Monorepo and Development are examples, not a fixed template.
 

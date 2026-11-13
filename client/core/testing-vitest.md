@@ -99,7 +99,7 @@ Framework-specific plugins (React, jsdom environment, alias overrides) are added
 
 ## Setup File
 
-`src/test/vitest.setup.ts` is the cross-suite entry point:
+`src/test/vitest.setup.ts` is the cross-suite entrypoint:
 
 ```typescript
 import { afterEach } from "vitest";

@@ -1,6 +1,6 @@
 ---
 name: server
-description: Apply this repository's server architecture when designing, explaining, reviewing, testing, scaffolding, implementing, or refactoring backend features. Use for any server runtime or language when work involves repository-aware foundation or capability scaffolding, framework-neutral controllers, application services/use cases, repositories, transactions, contracts, configuration, errors, telemetry, authentication, authorization, webhooks, jobs, or adapters. Known Node.js slices are specializations, not an allowlist. Route each request through the smallest relevant architecture slices and do not use for client-only work.
+description: Apply this repository's server architecture when designing, explaining, reviewing, testing, scaffolding, implementing, or refactoring backend features. Use for any server runtime or language when work involves repository-aware foundation or public-capability scaffolding, framework-neutral controllers, application services/use cases, repositories, transactions, contracts, configuration, errors, telemetry, authentication, authorization, webhooks, jobs, or adapters. Known Node.js slices are specializations, not an allowlist. Route each request through the smallest relevant architecture slices and do not use for client-only work.
 ---
 
 # Server Architecture
@@ -24,7 +24,7 @@ Route server work through modular architecture slices. Load only the references 
 
 | Slice | Load when the task involves | Reference |
 | --- | --- | --- |
-| `scaffolding` | `$server scaffold`, foundation bootstrap, repository-aware vertical capability generation, dependency preflight, layout adaptation | [references/scaffolding.md](references/scaffolding.md) |
+| `scaffolding` | `$server scaffold`, foundation bootstrap, repository-aware public capability generation, dependency preflight, layout adaptation | [references/scaffolding.md](references/scaffolding.md) |
 | `foundations` | kernel boundaries, modules, controllers, services/use cases, repositories, configuration, factories, DI, folder structure | [references/foundations.md](references/foundations.md) |
 | `workspace` | single-project/monorepo topology, capability/adapter packages, app composition, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, commands/view models, envelopes, pagination, public errors, endpoint naming, OpenAPI generation | [references/contracts.md](references/contracts.md) |
@@ -62,7 +62,7 @@ When the user explicitly names slices, load those slices. Add another slice only
 - Bootstrap missing server foundations: `scaffolding` + `foundations` + `contracts` + `telemetry` + `testing`
 - Bootstrap or scaffold inside a workspace: add `workspace`; cross-package changes use the monorepo coordination contract
 - Scaffold `users/create`: `scaffolding` first, then `foundations` + `contracts` + `data-flow` + `telemetry` + `testing` + the selected runtime; add `security` or `operations` only when the capability activates them
-- Scaffold `users/create` in Go, Deno, or another unlisted stack: `scaffolding` + capability slices; derive runtime/framework integration from repository evidence and current official docs
+- Scaffold `users/create` in Go, Deno, or another unlisted stack: `scaffolding` + the architecture slices the operation activates; derive runtime/framework integration from repository evidence and current official docs
 - Migrate a tRPC capability to Express: `foundations` + `contracts` + `runtimes` + `testing`
 - Implement a Stripe webhook: `contracts` + `operations` + `security` + `telemetry` + `testing` + `runtimes`
 - Add Supabase authentication: `security` + `runtimes` + `testing`; add `data-flow` when application roles or user provisioning use the database

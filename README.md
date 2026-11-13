@@ -18,6 +18,9 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | [monorepo/skill/SKILL.md](./monorepo/skill/SKILL.md) | Installable `$monorepo` router derived from the monorepo docs |
 | [legacy/README.md](./legacy/README.md) | Historical, non-canonical reference material |
 | [consumer/INSTALL-SKILLS.md](./consumer/INSTALL-SKILLS.md) | Install and update the architecture skills in another repository |
+| [consumer/README.md](./consumer/README.md) | Consumer source model and which references to compose for access and persistence work |
+| [CONTEXT.md](./CONTEXT.md) | Glossary of the canonical terms every doc and skill uses |
+| [docs/adr/README.md](./docs/adr/README.md) | Architecture decision records |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Source-doc and derived-skill maintenance rules |
 | [copy-guides.sh](./copy-guides.sh) | Disabled legacy entrypoint with migration guidance |
 | [assets/server-architecture-guide.html](./assets/server-architecture-guide.html) | Standalone interactive server architecture guide |
@@ -31,7 +34,7 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | Client | Next.js/React, TanStack Query, Zod, adapter-based API/telemetry ports, `debug`, optional Sentry |
 | Monorepo | Tool-agnostic workspace conventions with a thin, version-resolved Turborepo specialization |
 | Testing | Vitest (unit), Playwright (E2E) |
-| Auth | Supabase Auth or custom auth |
+| Auth | Better Auth, Supabase Auth, or custom auth behind application-owned session and access boundaries |
 | Storage | Supabase Storage or custom storage |
 
 ## Source Tree
@@ -44,6 +47,7 @@ node-architecture/
   development/  architecture initialization + local startup contracts + framework mappings + skill
   legacy/       historical references, not source of truth
   consumer/     skill installation and migration guidance
+  docs/adr/     architecture decision records
   assets/       supplemental artifacts
   change-logs/  documentation change history
 ```
@@ -54,9 +58,10 @@ node-architecture/
 
 1. Read [CONTRIBUTING.md](./CONTRIBUTING.md).
 2. Start with the relevant canonical index:
-   [client/core/README.md](./client/core/README.md), [server/core/README.md](./server/core/README.md), or [monorepo/core/README.md](./monorepo/core/README.md).
-3. Keep framework/runtime details inside framework/runtime folders; keep core docs agnostic.
-4. Treat [legacy/](./legacy/README.md) as reference-only material.
+   [client/core/README.md](./client/core/README.md), [server/core/README.md](./server/core/README.md), [monorepo/core/README.md](./monorepo/core/README.md), or [development/README.md](./development/README.md).
+3. Use the terms defined in [CONTEXT.md](./CONTEXT.md).
+4. Keep framework/runtime details inside framework/runtime folders; keep core docs agnostic.
+5. Treat [legacy/](./legacy/README.md) as reference-only material.
 
 ### Installing the Architecture Skills
 

@@ -12,8 +12,8 @@
 Use these docs together:
 
 - `server/core/api-contracts-zod-first.md` (canonical contracts)
-- `server/runtime/nodejs/libraries/openapi/README.md` (OpenAPI adapter flow)
-- `server/runtime/nodejs/libraries/openapi/parity-testing.md` (coexistence quality gate)
+- `server/runtimes/nodejs/libraries/openapi/README.md` (OpenAPI adapter flow)
+- `server/runtimes/nodejs/libraries/openapi/parity-testing.md` (coexistence quality gate)
 
 ## Runtime Considerations
 
@@ -411,7 +411,7 @@ tRPC v11 supports non-JSON content types natively. Use link splitting so non-JSO
 
 In Next.js implementations, canonical transport guidance lives at:
 
-- [Next.js FormData Transport](../../metaframeworks/nextjs/formdata-transport.md)
+- [Next.js FormData Transport](../../frameworks/nextjs/formdata-transport.md)
 
 ## Router Structure
 

@@ -145,7 +145,7 @@ When a capability is exposed in both transports during migration, parity tests a
 - Same error category/code semantics
 - Same auth/rate-limit boundary semantics
 
-See `../runtime/nodejs/libraries/openapi/parity-testing.md`.
+See `../runtimes/nodejs/libraries/openapi/parity-testing.md`.
 
 ## Profile Endpoint Test Visualization
 

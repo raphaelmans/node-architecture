@@ -71,22 +71,22 @@ This documentation emphasizes:
 
 | Document | Description |
 | -------- | ----------- |
-| [Runtime Index](./runtime/README.md) | Runtime hierarchy |
-| [Node.js Runtime](./runtime/nodejs/README.md) | Node.js libraries and metaframework docs |
-| [Node.js Scaffolding](./runtime/nodejs/scaffolding.md) | Node.js implementation of the portable scaffolding contract |
-| [tRPC Integration](./runtime/nodejs/libraries/trpc/integration.md) | Routers, context, formatter, Drizzle setup |
-| [OpenAPI Integration](./runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter model over shared layers |
-| [OpenAPI Parity Testing](./runtime/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
-| [Pino Logger Adapter](./runtime/nodejs/libraries/pino/README.md) | Node.js implementation of the core `AppLogger` port |
-| [tRPC Rate Limiting](./runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tiers and enforcement patterns |
-| [Authentication](./runtime/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
-| [Supabase](./runtime/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
-| [Drizzle](./runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
-| [Better Auth](./runtime/nodejs/libraries/better-auth/README.md) | Native auth routes, session/actor mapping, organization policy, and independent database-adapter selection |
-| [Next.js](./runtime/nodejs/metaframeworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
-| [Express](./runtime/nodejs/metaframeworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
-| [Hono](./runtime/nodejs/metaframeworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |
-| [NestJS](./runtime/nodejs/metaframeworks/nestjs/README.md) | Nest adapters and framework-native configuration/DI integration |
+| [Runtime Index](./runtimes/README.md) | Runtime hierarchy |
+| [Node.js Runtime](./runtimes/nodejs/README.md) | Node.js libraries and framework docs |
+| [Node.js Scaffolding](./runtimes/nodejs/scaffolding.md) | Node.js implementation of the portable scaffolding contract |
+| [tRPC Integration](./runtimes/nodejs/libraries/trpc/integration.md) | Routers, context, formatter, Drizzle setup |
+| [OpenAPI Integration](./runtimes/nodejs/libraries/openapi/README.md) | OpenAPI adapter model over shared layers |
+| [OpenAPI Parity Testing](./runtimes/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
+| [Pino Logger Adapter](./runtimes/nodejs/libraries/pino/README.md) | Node.js implementation of the core `AppLogger` port |
+| [tRPC Rate Limiting](./runtimes/nodejs/libraries/trpc/rate-limiting.md) | Middleware tiers and enforcement patterns |
+| [Authentication](./runtimes/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
+| [Supabase](./runtimes/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
+| [Drizzle](./runtimes/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [Better Auth](./runtimes/nodejs/libraries/better-auth/README.md) | Native auth routes, session/actor mapping, organization policy, and independent database-adapter selection |
+| [Next.js](./runtimes/nodejs/frameworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
+| [Express](./runtimes/nodejs/frameworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |
+| [Hono](./runtimes/nodejs/frameworks/hono/README.md) | Thin Hono handlers, validation, and error mapping over shared controllers |
+| [NestJS](./runtimes/nodejs/frameworks/nestjs/README.md) | Nest adapters and framework-native configuration/DI integration |
 
 ## Quick Start
 

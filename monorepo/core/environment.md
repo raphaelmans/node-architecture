@@ -24,7 +24,7 @@ apps/worker-a/    owns its private build/worker runtime boundaries
 packages/*/       declare focused configuration needs only
 ```
 
-Do not create a root environment file or a shared environment package. Reusable packages receive normalized values, options, or ports from each consuming application. Even when two applications use the same external variable name, each application independently owns its deployment contract.
+Do not create a root environment file or a shared environment package. Reusable packages receive normalized values, options, or ports from each consuming application. Even when two applications use the same external variable name, each application independently owns its external environment contract. [ADR 0006](../../docs/adr/0006-keep-environment-ownership-with-each-deployable.md) records this decision.
 
 A deployable may reuse field declarations across its own lifecycle schemas when the same variable is genuinely consumed in more than one lifecycle. This is schema composition inside one environment boundary, not cross-application environment ownership.
 

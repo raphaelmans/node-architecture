@@ -156,7 +156,7 @@ add a local shim:
 export {};
 ```
 
-This is a runner compatibility detail, not a signal that server-only code is safe to execute in the browser. Keep an independent Next.js build or import-boundary check in CI so the shim cannot conceal a server-only import that leaked into a client entry point.
+This is a runner compatibility detail, not a signal that server-only code is safe to execute in the browser. Keep an independent Next.js build or import-boundary check in CI so the shim cannot conceal a server-only import that leaked into a client entrypoint.
 
 ## First Verification Step
 

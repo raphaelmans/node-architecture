@@ -9,7 +9,7 @@
         "development/README.md",
         "development/core/local-development.md"
       ],
-      "fingerprint": "9e7b64fa85237c46b432ed64536d26e127591f46febe827af7d30592a86de7e3"
+      "fingerprint": "931fc6dc1bb8573bb1b56c99b13177cf19d0d1aa516da68b602abc014d045899"
     },
     "nextjs": {
       "reference": "development/skill/references/nextjs.md",
@@ -40,7 +40,7 @@
       "sources": [
         "development/core/initialization.md"
       ],
-      "fingerprint": "7686eb45932b67e9154ded5129575dd5118ea128af31577ac3c3cfefe0b502d1"
+      "fingerprint": "66ffe16b0fa6385d83f6b9f5ccba7cd10c01989f42a64b0e6d5f6f184ba0b621"
     }
   }
 }

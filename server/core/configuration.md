@@ -96,7 +96,7 @@ Verify:
 
 - [Server Conventions](./conventions.md)
 - [Server Scaffolding Contract](./scaffolding.md)
-- [Next.js Environment Configuration](../runtime/nodejs/metaframeworks/nextjs/environment-variables.md)
-- [NestJS Configuration](../runtime/nodejs/metaframeworks/nestjs/configuration.md)
+- [Next.js Environment Configuration](../runtimes/nodejs/frameworks/nextjs/environment-variables.md)
+- [NestJS Configuration](../runtimes/nodejs/frameworks/nestjs/configuration.md)
 - [Client Configuration Boundaries](../../client/core/configuration.md)
 - [Monorepo Environment Ownership](../../monorepo/core/environment.md)

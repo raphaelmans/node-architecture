@@ -35,11 +35,11 @@ src/
 
 This mapping is React-specific. It does not redefine the abstract roles in client core.
 
-## Capability Resolution
+## Infrastructure Concern Resolution
 
-Prefer compatible existing packages. When a capability is absent and required, verify current versions and peers before proposing an exact installation:
+Prefer compatible existing packages. When an infrastructure concern is absent and required, verify current versions and peers before proposing an exact installation:
 
-| Capability | React specialization |
+| Infrastructure concern | React specialization |
 | --- | --- |
 | Runtime wire validation | Repository standard; Zod is the documented TypeScript default |
 | Server-state synchronization | TanStack Query |
@@ -60,7 +60,7 @@ Safe optional fallbacks are narrow:
 - declined optional analytics may reuse a typed no-op adapter;
 - declined remote reporting leaves local operational logging only.
 
-A serialized-contract feature, server-state feature, complete UI slice, or required test boundary remains blocked if its required validated contract, state adapter, or test capability cannot be resolved.
+A serialized-contract feature, server-state feature, complete UI slice, or required test boundary remains blocked if its required validated contract, state adapter, or test infrastructure cannot be resolved.
 
 ## Foundation Mapping
 

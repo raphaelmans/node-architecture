@@ -12,7 +12,7 @@
 - Application code depends on `AppLogger`, not a concrete logging SDK
 - Product analytics uses a separate `ProductAnalytics` interface
 
-The Node.js reference adapter uses [Pino](../runtime/nodejs/libraries/pino/README.md), but Pino is not part of the core contract.
+The Node.js reference adapter uses [Pino](../runtimes/nodejs/libraries/pino/README.md), but Pino is not part of the core contract.
 
 ## Boundary
 
@@ -64,7 +64,7 @@ Every runtime logger adapter must:
 - expose stable resource identity such as service and deployment environment;
 - never let logging failure change business behavior.
 
-Concrete configuration belongs to the runtime/library layer. See the [Node.js Pino Adapter](../runtime/nodejs/libraries/pino/README.md).
+Concrete configuration belongs to the runtime/library layer. See the [Node.js Pino Adapter](../runtimes/nodejs/libraries/pino/README.md).
 
 ## Request Context Enrichment
 
@@ -117,7 +117,7 @@ log.debug({ input }, "Request input");
 
 ### Reference Transport Lifecycle
 
-Every transport must implement this start/completion/failure lifecycle once. The tRPC-shaped excerpt below illustrates the core contract; the canonical implementation details live in [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md).
+Every transport must implement this start/completion/failure lifecycle once. The tRPC-shaped excerpt below illustrates the core contract; the canonical implementation details live in [tRPC Integration](../runtimes/nodejs/libraries/trpc/integration.md).
 
 ```typescript
 // shared/infra/trpc/trpc.ts
@@ -455,13 +455,13 @@ export async function createContext({ req }: { req: Request }) {
 export type Context = Awaited<ReturnType<typeof createContext>>;
 ```
 
-The tRPC context may expose the contextual `AppLogger` for transport middleware. Application services still receive the `AppLogger` port from their factories. Next.js, Express, and Hono establish the equivalent request scope in framework middleware or wrappers before invoking a controller. See [Next.js](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md), [Express](../runtime/nodejs/metaframeworks/express/README.md), and [Hono](../runtime/nodejs/metaframeworks/hono/README.md).
+The tRPC context may expose the contextual `AppLogger` for transport middleware. Application services still receive the `AppLogger` port from their factories. Next.js, Express, and Hono establish the equivalent request scope in framework middleware or wrappers before invoking a controller. See [Next.js](../runtimes/nodejs/frameworks/nextjs/route-handlers.md), [Express](../runtimes/nodejs/frameworks/express/README.md), and [Hono](../runtimes/nodejs/frameworks/hono/README.md).
 
 ## Sensitive Data Handling
 
 ### Automatic Redaction
 
-The concrete logger adapter must redact common sensitive fields automatically. The Node.js Pino implementation is documented in [Pino Logger Adapter](../runtime/nodejs/libraries/pino/README.md).
+The concrete logger adapter must redact common sensitive fields automatically. The Node.js Pino implementation is documented in [Pino Logger Adapter](../runtimes/nodejs/libraries/pino/README.md).
 
 ### Manual Sanitization
 

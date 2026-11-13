@@ -224,7 +224,7 @@ export interface AppLogger {
 }
 ```
 
-The runtime logger adapter reads the active observability context and merges correlation fields into every record. Factories inject the stable `AppLogger`; they do not construct a logger per business method. The reference Node.js implementation is the [Pino Logger Adapter](../runtime/nodejs/libraries/pino/README.md).
+The runtime logger adapter reads the active observability context and merges correlation fields into every record. Factories inject the stable `AppLogger`; they do not construct a logger per business method. The reference Node.js implementation is the [Pino Logger Adapter](../runtimes/nodejs/libraries/pino/README.md).
 
 ```typescript
 export class PinoAppLogger implements AppLogger {

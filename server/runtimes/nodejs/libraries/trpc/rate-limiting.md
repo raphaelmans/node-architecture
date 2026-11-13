@@ -84,5 +84,5 @@ export const protectedRateLimitedProcedure = (tier: RateLimitTier) =>
 ## Related Docs
 
 - `./integration.md`
-- `../../metaframeworks/nextjs/formdata-transport.md`
-- `../../metaframeworks/nextjs/cron-routes.md`
+- `../../frameworks/nextjs/formdata-transport.md`
+- `../../frameworks/nextjs/cron-routes.md`

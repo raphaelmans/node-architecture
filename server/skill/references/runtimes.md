@@ -135,4 +135,4 @@ These libraries are reference specializations at the outer adapter and runtime b
 
 ## Derivation Sources
 
-Derived from all documents under `server/runtime/`, plus the core controller, contract, error, transaction, security, and telemetry rules those adapters extend. Exact paths and fingerprints are maintained outside the portable skill package.
+Derived from all documents under `server/runtimes/`, plus the core controller, contract, error, transaction, security, and telemetry rules those adapters extend. Exact paths and fingerprints are maintained outside the portable skill package.

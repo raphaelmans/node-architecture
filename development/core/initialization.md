@@ -1,6 +1,6 @@
 # Architecture Reference Index Initialization
 
-`/development init` (also `$development init`) creates or refreshes root `ARCHITECTURE.md` as a sectioned reference index and maintains a lightweight agent entry point. Its purpose is to make applicable engineering conventions discoverable without loading unrelated guidance or copying authoritative rules.
+`/development init` (also `$development init`) creates or refreshes root `ARCHITECTURE.md` as a sectioned reference index and maintains a lightweight agent entrypoint. Its purpose is to make applicable engineering conventions discoverable without loading unrelated guidance or copying authoritative rules.
 
 ## Scope and Authority
 
@@ -20,9 +20,9 @@ Read names and descriptions first, then relevant routers. Follow their routing t
 
 Prefer explicit selection, then the configured/local installation, then available global guidance. Deduplicate the same installed skill reached through symlinks. Report unresolved duplicate-name or authority conflicts without choosing a new convention. Irrelevant installed skills and inactive specializations remain unindexed. Relevant future operations such as scaffolding can still have conditional entries; a missing implementation does not make its established guidance irrelevant.
 
-## Lightweight Entry Point
+## Lightweight Entrypoint
 
-Find the repository's existing agent instruction entry point. Create or update only a short architecture-navigation pointer there, preserving unrelated instructions. If none exists, create root `AGENTS.md` with the pointer. Do not edit an ancestor instruction file outside the target repository or create competing entry points when an established one already serves the repository.
+Find the repository's existing agent instruction entrypoint. Create or update only a short architecture-navigation pointer there, preserving unrelated instructions. If none exists, create root `AGENTS.md` with the pointer. Do not edit an ancestor instruction file outside the target repository or create competing entrypoints when an established one already serves the repository.
 
 The pointer states the purpose, directs architecture-sensitive work to `ARCHITECTURE.md`, and permits unrelated tasks to skip it. For example:
 
@@ -58,7 +58,7 @@ If an existing index contains unique rules or decisions, preserve them until the
 
 Preserve human-authored navigation and unselected scopes. Reconcile equivalent headings, update confirmed stale targets and triggers, remove duplicates, and remove entries only when the inspected scope proves them obsolete. A partial scan does not prove absence. Identical evidence should produce no semantic change or timestamp-only churn. Reread before merging edits and keep artifact writes serialized.
 
-Validate both link integrity and usefulness. Select representative tasks from the detected concerns, including a narrow task, a task crossing concerns, and a task with conditional prerequisites where available. Trace each task from the entry point through the index to the relevant router, references and all applicable prerequisites. Check that the selected guidance is complete and unrelated material is excluded; do not execute the sample tasks.
+Validate both link integrity and usefulness. Select representative tasks from the detected concerns, including a narrow task, a task crossing concerns, and a task with conditional prerequisites where available. Trace each task from the entrypoint through the index to the relevant router, references and all applicable prerequisites. Check that the selected guidance is complete and unrelated material is excluded; do not execute the sample tasks.
 
 For a Next.js/Turborepo repository, useful cases include UI variants, URL-state ownership and caching/CI changes. Derive expected routing from the installed sources: do not freeze these example tools or slice names as universal prerequisites. Check both sides of conditional triggers so prerequisites are neither missed nor always loaded unnecessarily.
 

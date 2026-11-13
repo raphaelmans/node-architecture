@@ -11,10 +11,10 @@
         "server/core/endpoint-naming.md",
         "server/core/error-handling.md",
         "server/core/zod-openapi-generation.md",
-        "server/runtime/nodejs/libraries/openapi/README.md",
+        "server/runtimes/nodejs/libraries/openapi/README.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "b6abf3576237b2206e6d772c439daa801520270b047702abdf9e1314f2839ba8"
+      "fingerprint": "b71cf97834f382610818c66195c73bc1d32be4563281cbaaa0687852b6dcfad3"
     },
     "data-flow": {
       "reference": "server/skill/references/data-flow.md",
@@ -25,10 +25,10 @@
         "server/core/conventions.md",
         "server/core/id-generation.md",
         "server/core/transaction.md",
-        "server/runtime/nodejs/libraries/supabase/integration.md",
-        "server/runtime/nodejs/libraries/trpc/integration.md"
+        "server/runtimes/nodejs/libraries/supabase/integration.md",
+        "server/runtimes/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "e71417c243c928b7937a6e5cc07a221a95fd01301941e39f7af85d16c700a96a"
+      "fingerprint": "b022a21a569ab3b0bc5d74b201637982a912cd7c23648f382b9e00d69954ee50"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
@@ -39,10 +39,10 @@
         "server/core/controllers.md",
         "server/core/conventions.md",
         "server/core/transaction.md",
-        "server/runtime/README.md",
-        "server/runtime/nodejs/README.md"
+        "server/runtimes/README.md",
+        "server/runtimes/nodejs/README.md"
       ],
-      "fingerprint": "0045573f112f04659c337b7f27c91eb9a1075cf199fea949a6c5ea7fb650e336"
+      "fingerprint": "2ad3250aa928be3f5471bd41c263719a1092322e5cc5263f4faacb9e237cbf26"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -56,7 +56,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "8c52ca05c239f3b1959e962f0da0cf9bf4c0fed190005bdcbda795600cdaeda5"
+      "fingerprint": "c135cd221faedd5f3203b4d3932e21786b65174c6f95ecf775c3e8bbe3c21d00"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -65,48 +65,48 @@
         "server/core/event-patterns.md",
         "server/core/rate-limiting.md",
         "server/core/webhook/README.md",
-        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md"
+        "server/runtimes/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtimes/nodejs/frameworks/nextjs/cron-routes.md"
       ],
-      "fingerprint": "2bd8362008c1e1954f1d8aec16f7cefa7f78e7eace07b9e10e296acc9bb56558"
+      "fingerprint": "b6b662b2942aa7565768d38eef9cd7d5300267f102ef6a05115a1353c1e32b52"
     },
     "runtimes": {
       "reference": "server/skill/references/runtimes.md",
       "sources": [
         "server/core/configuration.md",
         "server/core/controllers.md",
-        "server/runtime/README.md",
-        "server/runtime/nodejs/README.md",
-        "server/runtime/nodejs/libraries/README.md",
-        "server/runtime/nodejs/libraries/better-auth/README.md",
-        "server/runtime/nodejs/libraries/openapi/README.md",
-        "server/runtime/nodejs/libraries/openapi/parity-testing.md",
-        "server/runtime/nodejs/libraries/pino/README.md",
-        "server/runtime/nodejs/libraries/supabase/README.md",
-        "server/runtime/nodejs/libraries/supabase/auth.md",
-        "server/runtime/nodejs/libraries/supabase/integration.md",
-        "server/runtime/nodejs/libraries/trpc/authentication.md",
-        "server/runtime/nodejs/libraries/trpc/integration.md",
-        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
-        "server/runtime/nodejs/metaframeworks/README.md",
-        "server/runtime/nodejs/metaframeworks/express/README.md",
-        "server/runtime/nodejs/metaframeworks/express/scaffolding.md",
-        "server/runtime/nodejs/metaframeworks/hono/README.md",
-        "server/runtime/nodejs/metaframeworks/hono/scaffolding.md",
-        "server/runtime/nodejs/metaframeworks/nestjs/README.md",
-        "server/runtime/nodejs/metaframeworks/nestjs/configuration.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/README.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/caching-revalidation.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/environment-variables.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/metadata-seo.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/route-handlers.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/scaffolding.md",
-        "server/runtime/nodejs/scaffolding.md"
+        "server/runtimes/README.md",
+        "server/runtimes/nodejs/README.md",
+        "server/runtimes/nodejs/libraries/README.md",
+        "server/runtimes/nodejs/libraries/better-auth/README.md",
+        "server/runtimes/nodejs/libraries/openapi/README.md",
+        "server/runtimes/nodejs/libraries/openapi/parity-testing.md",
+        "server/runtimes/nodejs/libraries/pino/README.md",
+        "server/runtimes/nodejs/libraries/supabase/README.md",
+        "server/runtimes/nodejs/libraries/supabase/auth.md",
+        "server/runtimes/nodejs/libraries/supabase/integration.md",
+        "server/runtimes/nodejs/libraries/trpc/authentication.md",
+        "server/runtimes/nodejs/libraries/trpc/integration.md",
+        "server/runtimes/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtimes/nodejs/frameworks/README.md",
+        "server/runtimes/nodejs/frameworks/express/README.md",
+        "server/runtimes/nodejs/frameworks/express/scaffolding.md",
+        "server/runtimes/nodejs/frameworks/hono/README.md",
+        "server/runtimes/nodejs/frameworks/hono/scaffolding.md",
+        "server/runtimes/nodejs/frameworks/nestjs/README.md",
+        "server/runtimes/nodejs/frameworks/nestjs/configuration.md",
+        "server/runtimes/nodejs/frameworks/nextjs/README.md",
+        "server/runtimes/nodejs/frameworks/nextjs/caching-revalidation.md",
+        "server/runtimes/nodejs/frameworks/nextjs/cron-routes.md",
+        "server/runtimes/nodejs/frameworks/nextjs/environment-variables.md",
+        "server/runtimes/nodejs/frameworks/nextjs/formdata-transport.md",
+        "server/runtimes/nodejs/frameworks/nextjs/metadata-seo.md",
+        "server/runtimes/nodejs/frameworks/nextjs/next-config-security.md",
+        "server/runtimes/nodejs/frameworks/nextjs/route-handlers.md",
+        "server/runtimes/nodejs/frameworks/nextjs/scaffolding.md",
+        "server/runtimes/nodejs/scaffolding.md"
       ],
-      "fingerprint": "e038daa59910f69a25d9557b9adba093fec70276f0d860699f903c000bcf056e"
+      "fingerprint": "91fed728b82d7d7b74dd5ee972ce004de9bfa072795ddf66d0cb580e81367d3e"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -124,23 +124,23 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "f0b61f684f972d0ffaa3a34890055d504b6abed789072333846f936b97b42441"
+      "fingerprint": "b37fa05697544af9ed0dc807ae9a8c652f79dd62cc863ca428f7b4d810055ce2"
     },
     "security": {
       "reference": "server/skill/references/security.md",
       "sources": [
         "server/core/error-handling.md",
         "server/core/rate-limiting.md",
-        "server/runtime/nodejs/libraries/better-auth/README.md",
-        "server/runtime/nodejs/libraries/supabase/README.md",
-        "server/runtime/nodejs/libraries/supabase/auth.md",
-        "server/runtime/nodejs/libraries/supabase/integration.md",
-        "server/runtime/nodejs/libraries/trpc/authentication.md",
-        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/formdata-transport.md",
-        "server/runtime/nodejs/metaframeworks/nextjs/next-config-security.md"
+        "server/runtimes/nodejs/libraries/better-auth/README.md",
+        "server/runtimes/nodejs/libraries/supabase/README.md",
+        "server/runtimes/nodejs/libraries/supabase/auth.md",
+        "server/runtimes/nodejs/libraries/supabase/integration.md",
+        "server/runtimes/nodejs/libraries/trpc/authentication.md",
+        "server/runtimes/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtimes/nodejs/frameworks/nextjs/formdata-transport.md",
+        "server/runtimes/nodejs/frameworks/nextjs/next-config-security.md"
       ],
-      "fingerprint": "0a81fa0a27306d51955c17d1e7f459a75d78181270b9e5ae732688431826d0d0"
+      "fingerprint": "322ab6f9c5b509f94181030f7c69f1d71894e0f666d5c6895f30d485ca795537"
     },
     "telemetry": {
       "reference": "server/skill/references/telemetry.md",
@@ -149,16 +149,16 @@
         "server/core/logging.md",
         "server/core/observability.md",
         "server/core/product-analytics.md",
-        "server/runtime/nodejs/libraries/pino/README.md"
+        "server/runtimes/nodejs/libraries/pino/README.md"
       ],
-      "fingerprint": "390e7b5b3477b083baa8930d13de46a02d567ff8800113e7252ff16137d030e3"
+      "fingerprint": "f39da62a8b2656811b2765b43d2a7067719847582924145ff66d8c18c826fc16"
     },
     "testing": {
       "reference": "server/skill/references/testing.md",
       "sources": [
         "server/core/testing-service-layer.md",
         "server/core/transaction.md",
-        "server/runtime/nodejs/libraries/better-auth/README.md",
+        "server/runtimes/nodejs/libraries/better-auth/README.md",
         "server/core/webhook/testing/README.md",
         "server/core/webhook/testing/testing-checklist.md",
         "server/core/webhook/testing/testing-contract-and-regression.md",
@@ -166,14 +166,14 @@
         "server/core/webhook/testing/testing-schema-validation.md",
         "server/core/webhook/testing/testing-test-doubles.md",
         "server/core/webhook/testing/testing-vendor-simulator.md",
-        "server/runtime/nodejs/libraries/openapi/README.md",
-        "server/runtime/nodejs/libraries/openapi/parity-testing.md",
-        "server/runtime/nodejs/libraries/trpc/integration.md",
-        "server/runtime/nodejs/libraries/trpc/rate-limiting.md",
-        "server/runtime/nodejs/metaframeworks/express/README.md",
-        "server/runtime/nodejs/metaframeworks/hono/README.md"
+        "server/runtimes/nodejs/libraries/openapi/README.md",
+        "server/runtimes/nodejs/libraries/openapi/parity-testing.md",
+        "server/runtimes/nodejs/libraries/trpc/integration.md",
+        "server/runtimes/nodejs/libraries/trpc/rate-limiting.md",
+        "server/runtimes/nodejs/frameworks/express/README.md",
+        "server/runtimes/nodejs/frameworks/hono/README.md"
       ],
-      "fingerprint": "88c03775ad7ce9d57ffa76e22673859390977491d008d845657d0b5d62bbfa4a"
+      "fingerprint": "f80eabafb5578a72e7f5ca478aefe13c53795d3d2c9f76a9d23dfa4071b2765a"
     }
   },
   "leaves": {
@@ -184,10 +184,10 @@
       ],
       "reference": "server/skill/references/runtimes/better-auth.md",
       "sources": [
-        "server/runtime/nodejs/libraries/better-auth/README.md",
+        "server/runtimes/nodejs/libraries/better-auth/README.md",
         "server/core/controllers.md"
       ],
-      "fingerprint": "aada3468f5e68f1e8a7bc7856dd6713b69ac1bf8360eeab58b85e2ac938cdbde"
+      "fingerprint": "d8c9d5f914d141e1297597ae62049ee308058871c79e2e4e79dfccc451579bb8"
     },
     "foundations/tenancy": {
       "parents": [
@@ -197,7 +197,7 @@
       "sources": [
         "server/core/tenancy.md"
       ],
-      "fingerprint": "ac5dd94ea554a32345aa6dd2337aeedaf742c5895efe7f1e1b9952636559512e"
+      "fingerprint": "30c38c2885942568278f6f831f052d08ad7ba081705e642411117bcd00a06211"
     },
     "security/authorization": {
       "parents": [
@@ -217,7 +217,7 @@
       "sources": [
         "server/core/rbac.md"
       ],
-      "fingerprint": "5a6c57993d7993f40ade059a178920a4dec165334616c563d93ad748c2ea4d93"
+      "fingerprint": "f64cb4be8b8537828e5cbd940f84af9205dfcbac98c2dc41bb85a75477ec7ece"
     },
     "runtimes/drizzle": {
       "parents": [
@@ -226,10 +226,10 @@
       ],
       "reference": "server/skill/references/runtimes/drizzle.md",
       "sources": [
-        "server/runtime/nodejs/libraries/drizzle/README.md",
+        "server/runtimes/nodejs/libraries/drizzle/README.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "df90f29c6ba106262b55fca41ffa7765945d56b2f2deca5ca7355d56af98e49c"
+      "fingerprint": "cea964cfbf5e1570e31813ad31465f82e6b2c6438418c258b81d33db4e4cb5e6"
     },
     "runtimes/supabase": {
       "parents": [
@@ -239,10 +239,10 @@
       ],
       "reference": "server/skill/references/runtimes/supabase.md",
       "sources": [
-        "server/runtime/nodejs/libraries/supabase/data-access.md",
-        "server/runtime/nodejs/libraries/supabase/README.md"
+        "server/runtimes/nodejs/libraries/supabase/data-access.md",
+        "server/runtimes/nodejs/libraries/supabase/README.md"
       ],
-      "fingerprint": "b81293483a12dc002ef036a923072e282f8f700dfd5865ea59981fb69f2220a5"
+      "fingerprint": "4f470b954850d7317ef0c1e95043e23989094699d4bfc4c15f57de5b49ce72cf"
     }
   }
 }

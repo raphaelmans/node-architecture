@@ -1,6 +1,6 @@
 # Tenancy Convention
 
-Load for product workspaces, organizations, membership, invitations, or tenant-scoped resources. Read the parent [foundations](../foundations.md); add [authorization](../security/authorization.md) for access decisions and [RBAC](../security/rbac.md) when roles grant permissions. Product workspace work does not select the monorepo `workspace` slice unless package topology is also involved.
+Load for product workspaces, organizations, membership, invitations, or tenant-scoped resources. Read the parent [foundations](../foundations.md); add [authorization](../security/authorization.md) for access decisions and [RBAC](../security/rbac.md) when roles grant permissions. Product workspace work does not select the `workspace` topology slice unless package topology is also involved.
 
 ## Apply
 

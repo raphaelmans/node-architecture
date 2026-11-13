@@ -275,17 +275,17 @@ src/
 | [Async Jobs + Outbox](./async-jobs-outbox.md) | Transactional enqueue + retry model       |
 | [Webhooks](./webhook/README.md)             | Inbound webhook handling                    |
 | [Webhook Testing](./webhook/testing/README.md) | Testing strategy + Vendor Simulator     |
-| [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md)  | Serverless, routers, procedures   |
-| [OpenAPI Integration](../runtime/nodejs/libraries/openapi/README.md) | OpenAPI adapter over shared domain layers |
-| [OpenAPI Parity Testing](../runtime/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
-| [tRPC Rate Limiting](../runtime/nodejs/libraries/trpc/rate-limiting.md) | Middleware tier patterns        |
-| [Authentication](../runtime/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
-| [Supabase](../runtime/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
-| [Drizzle](../runtime/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
-| [Better Auth](../runtime/nodejs/libraries/better-auth/README.md) | Native auth integration and session/access boundaries; Supabase is optional |
-| [Next.js](../runtime/nodejs/metaframeworks/nextjs/README.md)         | Metaframework route handling      |
-| [Express](../runtime/nodejs/metaframeworks/express/README.md)       | Express adapter boundary          |
-| [Hono](../runtime/nodejs/metaframeworks/hono/README.md)             | Hono adapter boundary             |
+| [tRPC Integration](../runtimes/nodejs/libraries/trpc/integration.md)  | Serverless, routers, procedures   |
+| [OpenAPI Integration](../runtimes/nodejs/libraries/openapi/README.md) | OpenAPI adapter over shared domain layers |
+| [OpenAPI Parity Testing](../runtimes/nodejs/libraries/openapi/parity-testing.md) | Dual-transport parity rules |
+| [tRPC Rate Limiting](../runtimes/nodejs/libraries/trpc/rate-limiting.md) | Middleware tier patterns        |
+| [Authentication](../runtimes/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
+| [Supabase](../runtimes/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
+| [Drizzle](../runtimes/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [Better Auth](../runtimes/nodejs/libraries/better-auth/README.md) | Native auth integration and session/access boundaries; Supabase is optional |
+| [Next.js](../runtimes/nodejs/frameworks/nextjs/README.md)         | Framework route handling          |
+| [Express](../runtimes/nodejs/frameworks/express/README.md)       | Express adapter boundary          |
+| [Hono](../runtimes/nodejs/frameworks/hono/README.md)             | Hono adapter boundary             |
 
 ## Quick Reference
 
@@ -357,7 +357,7 @@ These remain out of scope:
 
 ## Checklist for New Modules
 
-Use `$server scaffold <feature>/<operation>` to apply this checklist through repository-aware preflight, or follow it manually.
+Use `$server scaffold <module>/<operation>` to apply this checklist through repository-aware preflight, or follow it manually.
 
 - [ ] Create module folder under `src/lib/modules/<module>/`
 - [ ] Define application records in the owning module; keep persistence schemas/generated row types inside the selected adapter boundary

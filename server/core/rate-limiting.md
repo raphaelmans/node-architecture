@@ -72,5 +72,5 @@ Choose once per system and apply consistently.
 
 ## Runtime Implementations
 
-- tRPC middleware pattern: `server/runtime/nodejs/libraries/trpc/rate-limiting.md`
-- Next.js route enforcement for cron/public routes: `server/runtime/nodejs/metaframeworks/nextjs/cron-routes.md`
+- tRPC middleware pattern: `server/runtimes/nodejs/libraries/trpc/rate-limiting.md`
+- Next.js route enforcement for cron/public routes: `server/runtimes/nodejs/frameworks/nextjs/cron-routes.md`

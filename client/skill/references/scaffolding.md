@@ -1,6 +1,6 @@
 # Client Scaffolding Slice
 
-Use this slice when the user invokes `$client scaffold`, asks to bootstrap missing client foundations, or requests one repository-aware vertical feature. It applies to listed and unlisted client frameworks. Load the relevant architecture slices and derive stack-specific execution from repository evidence and current primary sources.
+Use this slice when the user invokes `$client scaffold`, asks to bootstrap missing client foundations, or requests one repository-aware feature operation. It applies to listed and unlisted client frameworks. Load the relevant architecture slices and derive stack-specific execution from repository evidence and current primary sources.
 
 ## Commands and Scope
 
@@ -10,14 +10,14 @@ $client scaffold <feature>/<operation>
 $client scaffold <feature>/<operation> using canonical layout
 ```
 
-`foundation` creates only missing cross-feature infrastructure. A vertical feature creates one real view-to-network capability plus only its missing prerequisites. Never generate example features or install a new application framework merely to match a known specialization.
+`foundation` creates only missing cross-feature infrastructure. A feature operation is the client portion of one operation's vertical slice: one real view-to-network flow plus only its missing prerequisites. Never generate example features or install a new application framework merely to match a known specialization.
 
-An unlisted framework is not unsupported. Use the generic contract, inspect its repository conventions, retrieve current official framework/runtime resources, and derive the specialization. A framework-neutral foundation may proceed when its complete role set is resolved. A vertical feature must resolve its complete UI/framework integration before any writes.
+An unlisted framework is not unsupported. Use the generic contract, inspect its repository conventions, retrieve current official framework/runtime resources, and derive the specialization. A framework-neutral foundation may proceed when its complete role set is resolved. A feature operation must resolve its complete UI/framework integration before any writes.
 
 ## Preflight Before Writes
 
 1. Detect language, framework, runtime/metaframework, package/build manager, installed versions, module format, workspace, source root, routes/views, aliases, composition roots, and tests.
-2. Inspect existing contract, validation, configuration, error, transport, server-state, form, telemetry, runtime, and test capabilities through public behavior.
+2. Inspect existing contract, validation, configuration, error, transport, server-state, form, telemetry, runtime, and test infrastructure through public behavior.
 3. Discover the actual operation, trustworthy request/response contract, cache/synchronization identity, UI intent, and success/failure behavior.
 4. Classify every required boundary as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 5. Retrieve current primary sources for version-sensitive dependency, configuration, lifecycle, module-format, build, and deployment decisions.
@@ -46,7 +46,7 @@ Fail closed on missing or contradictory evidence before affected writes. Do not 
 - Patch dirty files only when narrow and unambiguous.
 - Treat prior scaffolded files as ordinary maintained code.
 
-Foundation scaffolding is atomic within its resolved role set. A vertical feature is atomic across its complete framework/view-to-network flow; do not write inner layers while a required UI/framework adapter remains unresolved.
+Foundation scaffolding is atomic within its resolved role set. A feature operation is atomic across its complete framework/view-to-network flow; do not write inner layers while a required UI/framework adapter remains unresolved.
 
 ## Layout Mode
 
@@ -68,11 +68,11 @@ Canonical mode changes placement, never overwrite authority.
 
 In a workspace, load `workspace`. `$client` owns work inside resolved client app/package boundaries; `$monorepo` owns package creation, manifests, exports, dependency edges, and atomic cross-package changes. Stop before partial client writes when that coordination is required.
 
-## Capability Resolution
+## Infrastructure Concern Resolution
 
 Activate only behavior the requested scaffold needs:
 
-| Capability | Activation rule |
+| Infrastructure concern | Activation rule |
 | --- | --- |
 | Runtime validation | Serialized data crosses a trust boundary |
 | Server state | Remote query, mutation, cache, or subscription exists |
@@ -85,7 +85,7 @@ Activate only behavior the requested scaffold needs:
 | Browser runtime configuration | Public browser values must be delivered independently of the build |
 | Tests | A created public boundary needs executable verification |
 
-Do not choose packages in the generic slice. Reuse compatible repository capabilities first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Package-specific fallbacks belong to the selected specialization; never replace required validation, remote-state ownership, or tests with ad hoc code.
+Do not choose packages in the generic slice. Reuse compatible repository implementations first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Package-specific fallbacks belong to the selected specialization; never replace required validation, remote-state ownership, or tests with ad hoc code.
 
 ## Contract Discovery
 
@@ -133,7 +133,7 @@ Parse untrusted responses at the feature API, normalize failures once, and keep 
 
 - For React, load `scaffolding` + `react` and apply the canonical React scaffolding guide.
 - For Next.js, load `scaffolding` + `react` + `nextjs` and verify router, Server/Client boundaries, config format, environment behavior, and the production build against installed versions.
-- For any other framework, keep `scaffolding` loaded, add capability slices, inspect repository conventions, retrieve official sources, and derive the integration. Never stop merely because the stack lacks a named slice.
+- For any other framework, keep `scaffolding` loaded, add the architecture slices the operation activates, inspect repository conventions, retrieve official sources, and derive the integration. Never stop merely because the stack lacks a named slice.
 
 ## Verification and Handoff
 

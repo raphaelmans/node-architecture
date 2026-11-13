@@ -88,7 +88,7 @@ Supabase storage integrations commonly receive files from FormData flows (for ex
 
 For transport-layer conventions (`FormData` routing, batching split, `zod-form-data` parsing), use:
 
-- [Next.js FormData Transport](../../metaframeworks/nextjs/formdata-transport.md)
+- [Next.js FormData Transport](../../frameworks/nextjs/formdata-transport.md)
 
 This Supabase document remains focused on storage adapter and bucket/policy integration concerns.
 

@@ -65,7 +65,7 @@ AxiosError / TRPCClientError / Unknown
          UI uses AppError only
 ```
 
-Facade (preferred entry point):
+Facade (preferred entrypoint):
 
 ```text
 UI / Hooks / Forms

@@ -370,7 +370,7 @@ export interface ApiErrorResponse {
 
 ## Error Handler (Generic HTTP)
 
-For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../runtime/nodejs/metaframeworks/nextjs/route-handlers.md`](../runtime/nodejs/metaframeworks/nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
+For Next.js `route.ts` handlers (non-tRPC), use this helper and return its `{ status, body }` as an `ApiErrorResponse`. See [`../runtimes/nodejs/frameworks/nextjs/route-handlers.md`](../runtimes/nodejs/frameworks/nextjs/route-handlers.md) for a complete `app/api/**/route.ts` example.
 
 HTTP status is transport mapping, not a property of the kernel error:
 
@@ -470,7 +470,7 @@ adapter still overwrites trusted correlation fields from the active context.
 
 ## tRPC Error Formatter
 
-For tRPC integration, see [tRPC Integration](../runtime/nodejs/libraries/trpc/integration.md).
+For tRPC integration, see [tRPC Integration](../runtimes/nodejs/libraries/trpc/integration.md).
 
 The formatter has two critical security responsibilities:
 

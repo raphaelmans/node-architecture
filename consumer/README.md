@@ -4,19 +4,19 @@ The generated `guides/` bundle is deprecated and `copy-guides.sh` is disabled.
 
 Use [INSTALL-SKILLS.md](./INSTALL-SKILLS.md) to install `$client`, `$server`, `$monorepo`, and `$development`.
 
-Then use [Architecture Initialization](./ARCHITECTURE-INIT.md) with `/development init` to create a sectioned reference index and lightweight entry point. Detailed conventions remain in their authoritative references and load only when relevant.
+Then use [Architecture Initialization](./ARCHITECTURE-INIT.md) with `/development init` to create a sectioned reference index and lightweight entrypoint. Detailed conventions remain in their authoritative references and load only when relevant.
 
 ## Source Model
 
 - `development/core/`, `development/tools/`, `development/frameworks/`, and `development/runtimes/` own local development guidance; `development/skill/` packages it and `development/skill-maintenance/` checks source drift.
 
 - `client/core/` and `client/frameworks/` remain the canonical authoring documents.
-- `server/core/` and `server/runtime/` remain the canonical server authoring documents.
+- `server/core/` and `server/runtimes/` remain the canonical server authoring documents.
 - `client/skill/references/` contains portable, concern-based derivatives for agents.
 - `server/skill/references/` contains the matching server derivatives.
 - The sibling `client/skill-maintenance/` and `server/skill-maintenance/` directories flag references that require review after source-doc changes; they are not installed with the skills.
 
-Legacy integration files in this directory now provide migration pointers only; they are no longer copied into consumer repositories.
+Maintainers follow [Updating Architecture Guidance](./UPDATE-ARCHITECTURE.md) when sources change. The legacy integration files in this directory, [AGENTS.md alignment](./AGENTS-MD-ALIGNMENT.md) and [OpenCode integration](./OPENCODE-INTEGRATION.md), now provide migration pointers only; they are no longer copied into consumer repositories.
 
 ## Access and Persistence Leaves
 
@@ -33,4 +33,4 @@ These are references inside the existing skills, not separately installed plugin
 | Better Auth integration | `$server` runtimes + security + [Better Auth](../server/skill/references/runtimes/better-auth.md); add the chosen database adapter and organization leaves only when needed |
 | Supabase integration/direct persistence | `$server` runtimes + [Supabase](../server/skill/references/runtimes/supabase.md); add data-flow/security as needed |
 
-Better Auth, Drizzle, and Supabase are independent siblings: load only the selected integrations. Better Auth + Drizzle requires no Supabase leaf. The access model follows Better Auth conventions without automatically installing it or assuming its teams provide branch-level roles. There is no PostgreSQL leaf; vendor docs own database mechanics. Product workspaces do not activate the monorepo `workspace` slice unless package topology is involved.
+Better Auth, Drizzle, and Supabase are independent siblings: load only the selected integrations. Better Auth + Drizzle requires no Supabase leaf. The access model follows Better Auth conventions without automatically installing it or assuming its teams provide branch-level roles. There is no PostgreSQL leaf; vendor docs own database mechanics. Product workspaces do not activate the `$client`/`$server` `workspace` topology slice unless package topology is involved.

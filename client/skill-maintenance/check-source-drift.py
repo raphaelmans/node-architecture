@@ -106,17 +106,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check or refresh client skill source fingerprints."
     )
-    refresh = parser.add_mutually_exclusive_group()
-    refresh.add_argument(
-        "--refresh",
-        action="append",
-        metavar="REFERENCE",
-        help="Refresh one reviewed slice or convention leaf; repeat as needed.",
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("check", help="Check mappings and fingerprints (default).")
+    refresh = subparsers.add_parser(
+        "refresh", help="Refresh reviewed slice or convention-leaf fingerprints."
     )
     refresh.add_argument(
-        "--refresh-all",
-        action="store_true",
-        help="Refresh every reviewed slice and convention leaf.",
+        "references", nargs="+", help="Reviewed slice or convention-leaf names."
     )
     return parser.parse_args(argv)
 
@@ -159,7 +155,7 @@ def main(argv: list[str]) -> int:
 
         references = {**slices, **leaves}
 
-        requested = set(references) if args.refresh_all else set(args.refresh or [])
+        requested = set(getattr(args, "references", None) or [])
         unknown = requested - set(references)
         if unknown:
             raise DriftError(f"Unknown reference(s): {', '.join(sorted(unknown))}")
@@ -185,7 +181,7 @@ def main(argv: list[str]) -> int:
             for name, actual in drifted:
                 print(f"  {name}: expected current fingerprint {actual}", file=sys.stderr)
             print(
-                "Review each affected reference, then run --refresh REFERENCE.",
+                "Review each affected reference, then run refresh REFERENCE [REFERENCE ...].",
                 file=sys.stderr,
             )
             return 1

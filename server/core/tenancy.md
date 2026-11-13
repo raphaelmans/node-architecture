@@ -1,6 +1,6 @@
 # Tenancy and Product Workspaces
 
-Use this convention when a capability has organization membership, invitations, workspace switching, or organization/branch-scoped resources. It is independent of authentication, persistence, transport, and repository topology. A product workspace is not the monorepo `workspace` slice.
+Use this convention when a capability has organization membership, invitations, workspace switching, or organization/branch-scoped resources. It is independent of authentication, persistence, transport, and repository topology. A product workspace is not a monorepo workspace package and does not select the `workspace` topology slice.
 
 ## Model and Ownership
 

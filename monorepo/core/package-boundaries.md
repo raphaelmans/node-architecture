@@ -43,7 +43,7 @@ Configuration edges are development-only and orthogonal to the runtime onion. Ev
 
 - Give every package a unique namespaced identity appropriate to the target workspace.
 - Declare every workspace dependency in the consuming package's manifest.
-- Export intentional entry points; do not import another package through filesystem traversal or private source paths.
+- Export intentional entrypoints; do not import another package through filesystem traversal or private source paths.
 - Keep application dependencies in the package that uses them; reserve workspace-root dependencies for repository tooling.
 - Preserve the detected package manager and lockfile. When none exists, propose a package manager and obtain approval before initialization or installation.
 - Choose compilation from consumer evidence. Prefer portable compiled libraries when consumers cannot all compile source; use direct source exports only when every consumer supports them.

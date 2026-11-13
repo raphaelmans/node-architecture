@@ -25,7 +25,7 @@ Every externally exposed application-owned HTTP/RPC capability MUST enter applic
 
 ## Provider-Managed Endpoints
 
-A selected authentication provider's native protocol and enabled plugin endpoints may be mounted through its documented handler. The provider owns their wire format, cookies, redirects, and lifecycle; do not recreate these endpoints as application controllers or rewrite them into the business API envelope. [Better Auth](../runtime/nodejs/libraries/better-auth/README.md) is a concrete mapping of this boundary.
+A selected authentication provider's native protocol and enabled plugin endpoints may be mounted through its documented handler. The provider owns their wire format, cookies, redirects, and lifecycle; do not recreate these endpoints as application controllers or rewrite them into the business API envelope. [Better Auth](../runtimes/nodejs/libraries/better-auth/README.md) is a concrete mapping of this boundary, and [ADR 0005](../../docs/adr/0005-mount-provider-managed-endpoints-natively.md) records why it exists.
 
 This exception is limited to provider-managed behavior. Custom business operations, including those that call an auth provider, still use application controllers and protected services/use cases. Required application restrictions must also hold on directly reachable provider endpoints through supported configuration/hooks or an explicitly restricted exposure design; a stricter application wrapper does not secure an unrestricted native route. Provider hooks adapt to focused application operations without leaking provider types inward, and their transaction guarantees must be verified separately.
 

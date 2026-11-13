@@ -1,16 +1,16 @@
 # Server Scaffolding Slice
 
-Use this slice when the user invokes `$server scaffold`, asks to bootstrap missing server foundations, or requests one repository-aware vertical capability. It applies to listed and unlisted languages, runtimes, and frameworks. Load the relevant architecture slices and derive stack-specific execution from repository evidence and current primary sources.
+Use this slice when the user invokes `$server scaffold`, asks to bootstrap missing server foundations, or requests one repository-aware public capability for a `<module>/<operation>`. It applies to listed and unlisted languages, runtimes, and frameworks. Load the relevant architecture slices and derive stack-specific execution from repository evidence and current primary sources.
 
 ## Commands and Scope
 
 ```text
 $server scaffold foundation
-$server scaffold <feature>/<operation>
-$server scaffold <feature>/<operation> using canonical layout
+$server scaffold <module>/<operation>
+$server scaffold <module>/<operation> using canonical layout
 ```
 
-`foundation` creates only missing cross-capability infrastructure. A vertical capability creates one real adapter-to-infrastructure flow plus only its missing prerequisites. Never generate examples, initialize an arbitrary application, or install a framework merely to match a known specialization.
+`foundation` creates only missing cross-capability infrastructure. A public capability is the server portion of one operation's vertical slice: one real adapter-to-infrastructure flow plus only its missing prerequisites. Never generate examples, initialize an arbitrary application, or install a framework merely to match a known specialization.
 
 An unlisted language/runtime/framework is not unsupported. Use the generic contract, inspect repository conventions, retrieve current official resources, and derive the specialization. A runtime-neutral foundation may proceed when its complete role set is resolved. A public capability must resolve its complete transport and durable behavior before any writes.
 
@@ -70,11 +70,11 @@ Canonical mode changes placement, never overwrite authority.
 
 In a workspace, load `workspace`. `$server` owns work inside resolved server app/package boundaries; `$monorepo` owns placement, package creation, manifests, exports, dependency edges, and atomic cross-package changes. Placement resolves explicit scope first, then cohesive existing module ownership, then package defaults for a new monorepo module. Stop before partial server writes when that coordination is required.
 
-## Capability Resolution
+## Infrastructure Concern Resolution
 
 Activate only behavior the requested scaffold needs:
 
-| Capability | Activation rule |
+| Infrastructure concern | Activation rule |
 | --- | --- |
 | Runtime validation | Serialized data crosses a trust boundary |
 | Test tooling | A created public boundary needs executable verification |
@@ -82,12 +82,12 @@ Activate only behavior the requested scaffold needs:
 | Request/trace context | Correlation must propagate through an execution |
 | Outbound transport | An external provider call exists |
 | Persistence | The operation promises durable state |
-| Framework adapter | A public entry point is requested |
+| Framework adapter | A public entrypoint is requested |
 | API description/RPC | The selected transport requires it |
 | Product analytics | A meaningful capability-owned behavioral event exists |
 | Environment configuration | The deployable declares build- or runtime-consumed external values |
 
-Do not choose packages or primitives in the generic slice. Reuse compatible repository capabilities first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Never replace required validation with unchecked data, durable persistence with production memory, or tests with placeholders.
+Do not choose packages or primitives in the generic slice. Reuse compatible repository implementations first, then a documented stack specialization, then current official ecosystem guidance. Resolve exact versions and obtain dependency approval. Never replace required validation with unchecked data, durable persistence with production memory, or tests with placeholders.
 
 ## Contract and Access Discovery
 
@@ -169,7 +169,7 @@ Never perform unsafe external network effects inside a retryable transaction.
 
 - For Node.js, load `scaffolding` + `runtimes` and apply the canonical Node.js scaffolding guide plus the detected adapter guide.
 - For Next.js, Express, or Hono, verify the actual installed versions and load their documented adapter specialization.
-- For any other runtime/framework, keep `scaffolding` loaded, add capability slices, inspect repository conventions, retrieve official sources, and derive the integration. Never stop merely because the stack lacks a named slice.
+- For any other runtime/framework, keep `scaffolding` loaded, add the architecture slices the operation activates, inspect repository conventions, retrieve official sources, and derive the integration. Never stop merely because the stack lacks a named slice.
 
 ## Verification and Handoff
 

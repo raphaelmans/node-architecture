@@ -1,6 +1,6 @@
 # Client Scaffolding Contract
 
-Use this contract when bootstrapping missing client foundations or adding one complete feature capability to an existing client repository. It applies across frameworks and runtimes; stack-specific guides implement it without replacing its guarantees.
+Use this contract when bootstrapping missing client foundations or adding one complete feature operation to an existing client repository. It applies across frameworks and runtimes; stack-specific guides implement it without replacing its guarantees.
 
 ## Contents
 
@@ -8,7 +8,7 @@ Use this contract when bootstrapping missing client foundations or adding one co
 - [Safety contract](#safety-contract)
 - [Evidence and preflight](#evidence-and-preflight)
 - [Layout selection](#layout-selection)
-- [Capability and dependency policy](#capability-and-dependency-policy)
+- [Infrastructure concern and dependency policy](#infrastructure-concern-and-dependency-policy)
 - [Contract discovery](#contract-discovery)
 - [Foundation roles](#foundation-roles)
 - [Feature roles](#feature-roles)
@@ -26,11 +26,11 @@ $client scaffold <feature>/<operation>
 $client scaffold <feature>/<operation> using canonical layout
 ```
 
-`foundation` creates only missing cross-feature infrastructure. `<feature>/<operation>` creates one real vertical capability plus only its missing prerequisites. Never create disposable examples.
+`foundation` creates only missing cross-feature infrastructure. `<feature>/<operation>` creates one real feature operation, the client portion of that operation's vertical slice, plus only its missing prerequisites. Never create disposable examples.
 
 An unlisted framework is not unsupported. Apply this contract, inspect the repository, and derive the required stack specialization from current authoritative resources. Do not install a new application framework or convert an arbitrary repository merely to make scaffolding possible.
 
-A foundation scaffold may proceed when its complete framework-neutral boundary set is resolved. A vertical feature scaffold must resolve its complete UI/framework integration before any files are written; never leave inner layers waiting for a future adapter.
+A foundation scaffold may proceed when its complete framework-neutral boundary set is resolved. A feature-operation scaffold must resolve its complete UI/framework integration before any files are written; never leave inner layers waiting for a future adapter.
 
 ## Safety Contract
 
@@ -40,7 +40,7 @@ A foundation scaffold may proceed when its complete framework-neutral boundary s
 - Reuse structurally compatible abstractions even when names differ.
 - Do not create parallel transport, error, telemetry, runtime, feature API, or state-synchronization layers merely to match canonical names.
 - Do not emit placeholder contracts, unresolved imports, fake endpoints, TODO implementations, generated-file headers, or scaffold manifests.
-- Fail closed before affected writes when a required capability, dependency, contract, integration boundary, or authoritative source remains unresolved.
+- Fail closed before affected writes when a required infrastructure concern, dependency, contract, integration boundary, or authoritative source remains unresolved.
 
 Patch a dirty target only when integration is narrow and unambiguous. Otherwise stop and ask for direction.
 
@@ -49,8 +49,8 @@ Patch a dirty target only when integration is narrow and unambiguous. Otherwise 
 Inspect before proposing installations or edits:
 
 1. Detect the client language, framework, runtime/metaframework, package or build manager, installed versions, module format, and workspace boundary.
-2. Locate source roots, aliases, feature folders, shared contracts, composition roots, route/view entry points, tests, and generated artifacts.
-3. Inspect existing transport, server-state, form, validation, configuration, telemetry, error, and testing capabilities through their public behavior.
+2. Locate source roots, aliases, feature folders, shared contracts, composition roots, route/view entrypoints, tests, and generated artifacts.
+3. Inspect existing transport, server-state, form, validation, configuration, telemetry, error, and testing infrastructure through their public behavior.
 4. Discover the requested feature's real operation, authoritative request/response contract, cache or synchronization identity, UI intent, and success/failure behavior.
 5. Classify every planned boundary as `reuse`, `create`, `patch`, `blocked`, or `not-needed`.
 6. Resolve the narrowest relevant tests, type or compile checks, lint checks, and production build.
@@ -86,11 +86,11 @@ Canonical mode changes placement, never overwrite authority. Architectural roles
 
 When the resolved placement crosses workspace packages, `$monorepo` owns package creation, manifests, exports, dependency edges, and atomic cross-package coordination. Stop before partial client writes, resolve the topology through `monorepo/core/scaffolding.md`, then resume this contract inside the selected client app/package boundaries. A client-only change contained within existing packages remains owned here.
 
-## Capability and Dependency Policy
+## Infrastructure Concern and Dependency Policy
 
-Activate capabilities from requested behavior, not from package presence:
+Activate infrastructure concerns from requested behavior, not from package presence:
 
-| Capability | Activation rule |
+| Infrastructure concern | Activation rule |
 | --- | --- |
 | Runtime wire validation | Serialized request or response crosses a trust boundary |
 | Server-state synchronization | Remote query, mutation, cache, or subscription state exists |
@@ -103,16 +103,16 @@ Activate capabilities from requested behavior, not from package presence:
 | Browser runtime configuration | Public browser values must be delivered independently of the build |
 | Test tooling | A created boundary requires executable verification |
 
-Core does not prescribe packages. Resolve each activated capability as follows:
+Core does not prescribe packages. Resolve each activated infrastructure concern as follows:
 
-1. Reuse a compatible capability already present.
+1. Reuse a compatible implementation already present.
 2. Apply a documented specialization for the detected stack when available.
 3. Otherwise retrieve current authoritative ecosystem guidance and derive the integration.
 4. Resolve exact versions compatible with the installed graph.
 5. Show the smallest exact install command, explain each dependency, and request approval.
 6. Install only after approval and verify the resulting graph.
 
-Package names, native primitives, and fallbacks belong in stack specializations. Never substitute unchecked data, component-owned remote state, unresolved tests, or another ad hoc implementation for a declined required capability.
+Package names, native primitives, and fallbacks belong in stack specializations. Never substitute unchecked data, component-owned remote state, unresolved tests, or another ad hoc implementation for a declined required infrastructure concern.
 
 ## Contract Discovery
 
@@ -136,7 +136,7 @@ operational logging      stable application-facing port
 client transport         application-facing request/response port
 composition root         construct and own application-scoped dependencies
 configuration boundary   only for declared build/runtime configuration surfaces
-product analytics        only when an activated capability requires it
+product analytics        only when an activated concern requires it
 tests                    verify every created public boundary
 ```
 
@@ -171,13 +171,13 @@ Do not add orchestration solely for telemetry. If several remote mutations must 
 On every run:
 
 1. Resolve the complete requested boundary set before writing.
-2. Compare required capabilities through public contracts, not filenames.
+2. Compare required infrastructure concerns through public contracts, not filenames.
 3. Reuse structural equivalents and report naming drift.
 4. Create only missing files and patch compatible files narrowly.
 5. Stop on incompatible or ambiguous contracts, transports, state ownership, errors, composition, or framework integration.
 6. Treat previously scaffolded files as ordinary maintained code, never generator-owned artifacts.
 
-Foundation scaffolding is atomic within its resolved role set. A vertical feature is atomic across its complete view-to-network flow.
+Foundation scaffolding is atomic within its resolved role set. A feature operation is atomic across its complete view-to-network flow.
 
 ## Verification and Report
 

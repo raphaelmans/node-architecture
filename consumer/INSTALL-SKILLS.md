@@ -75,11 +75,11 @@ Scaffolding remains an action of the installed `$server` router:
 
 ```text
 $server scaffold foundation
-$server scaffold <feature>/<operation>
-$server scaffold <feature>/<operation> using canonical layout
+$server scaffold <module>/<operation>
+$server scaffold <module>/<operation> using canonical layout
 ```
 
-It applies the generic foundation and capability contract to listed and unlisted runtimes/frameworks. The skill completes repository, authoritative-source, and dependency preflight before writing; documented Node.js adapters are specializations rather than an allowlist, and it does not bootstrap an arbitrary application or framework merely to fit an example.
+It applies the generic foundation and public-capability contract to listed and unlisted runtimes/frameworks. The skill completes repository, authoritative-source, and dependency preflight before writing; documented Node.js adapters are specializations rather than an allowlist, and it does not bootstrap an arbitrary application or framework merely to fit an example.
 
 ## Monorepo Scaffolding
 
@@ -96,6 +96,6 @@ It owns package creation, manifests, exports, dependency edges, shared task coor
 
 The installer intentionally refuses to overwrite an existing skill. Review local changes, remove or archive the old installed directory deliberately, and reinstall from the desired repository revision.
 
-The source architecture docs remain under `client/core/`, `client/frameworks/`, `server/core/`, `server/runtime/`, `monorepo/core/`, and `monorepo/build-systems/`. Installed references are curated derivatives and are checked for source drift in this repository.
+The source architecture docs remain under `client/core/`, `client/frameworks/`, `server/core/`, `server/runtimes/`, `monorepo/core/`, and `monorepo/build-systems/`. Installed references are curated derivatives and are checked for source drift in this repository.
 
 Standalone HTML companions and historical guides are not bundled into the skills. They remain available in the source repository.
