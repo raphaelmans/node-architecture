@@ -46,7 +46,7 @@ skillshare install raphaelmans/node-architecture -s client,server
 skillshare sync
 ```
 
-Add `-p` to install into a project's `.skillshare/` instead of the global source, `-b <branch>` to install an unreleased revision, and `--track` to keep the repository clone so `skillshare update` can pull later revisions. Only the four `*/skill/` packages are installable; maintenance tooling and historical guides are not discovered.
+Add `-p` to install into a project's `.skillshare/` instead of the global source and `-b <branch>` to install an unreleased revision. `skillshare check` and `skillshare update` work on these installs without `--track`. Avoid `--track`: it audits the whole repository, and code samples in the canonical and legacy docs (role maps keyed `admin:`, logger options keyed `ignore:`) match skillshare's prompt-override pattern, so the tracked install is blocked. Only the four `*/skill/` packages are installable; maintenance tooling and historical guides are not discovered.
 
 ## Repository-Local Installation
 
