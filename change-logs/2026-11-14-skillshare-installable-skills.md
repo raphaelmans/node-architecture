@@ -4,7 +4,7 @@ Date: 2026-11-14
 
 ## Changes
 
-- Replaced the `packages/ui/<system>` placeholder with `packages/ui/<design-system>` in the client and monorepo canonical docs and the `$client` `workspace` and `$monorepo` `packages` references. Skillshare's install audit reads `<system>` as an agent directive tag and reported it as a HIGH prompt-injection finding.
+- Replaced the `packages/ui/` placeholder named `system` in angle brackets with `packages/ui/<design-system>` in the client and monorepo canonical docs and the `$client` `workspace` and `$monorepo` `packages` references. Skillshare's install audit reads that placeholder as an agent directive tag and reported it as a HIGH prompt-injection finding.
 - Added the missing `development/skill/agents/openai.yaml` and gave the `$development` description a "Use when" trigger, which skillshare's description lint requires.
 - Declared the maintainer-only Turborepo project skill in `.skillshare/config.yaml` with a `skills.lock.json` pin, so `skillshare install -p` can restore it on a fresh clone. Previously the downloaded skill was gitignored but not declared, leaving the committed `.agents/skills/turborepo` and `.claude/skills/turborepo` links dangling and `skillshare doctor -p` reporting two broken symlinks. Stopped tracking the machine-local `.skillshare/skills/.metadata.json`.
 - Added `scripts/validate-skills.py`, a standard-library check of what installers rely on, and documented it with an isolated skillshare test in `CONTRIBUTING.md`.
