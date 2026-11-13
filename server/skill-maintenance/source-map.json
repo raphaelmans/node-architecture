@@ -14,7 +14,7 @@
         "server/runtimes/nodejs/libraries/openapi/README.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "b71cf97834f382610818c66195c73bc1d32be4563281cbaaa0687852b6dcfad3"
+      "fingerprint": "b2957d339eb987dbe930bf8e945fabf7c51ab53c46f8ec1a2bd7ee5c9e84729d"
     },
     "data-flow": {
       "reference": "server/skill/references/data-flow.md",
@@ -56,7 +56,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "c135cd221faedd5f3203b4d3932e21786b65174c6f95ecf775c3e8bbe3c21d00"
+      "fingerprint": "673d54dcb64d71920ad87d489120eb7132287a7d781e634def79adf4d9990a77"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",

@@ -36,6 +36,18 @@ The explicit destination names matter because the source folders are named `skil
 
 The installer places the package under the active Codex skills directory. The skill becomes available on the next turn.
 
+## Skillshare Installation
+
+[skillshare](https://github.com/runkids/skillshare) discovers each skill by its `SKILL.md` name, so the installed names are already `client`, `server`, `monorepo`, and `development`:
+
+```text
+skillshare install raphaelmans/node-architecture --all
+skillshare install raphaelmans/node-architecture -s client,server
+skillshare sync
+```
+
+Add `-p` to install into a project's `.skillshare/` instead of the global source, `-b <branch>` to install an unreleased revision, and `--track` to keep the repository clone so `skillshare update` can pull later revisions. Only the four `*/skill/` packages are installable; maintenance tooling and historical guides are not discovered.
+
 ## Repository-Local Installation
 
 For tools that discover project skills under `.agents/skills/`, place the complete source directory at:
@@ -52,6 +64,11 @@ For tools that discover project skills under `.agents/skills/`, place the comple
   references/
 
 .agents/skills/monorepo/
+  SKILL.md
+  agents/openai.yaml
+  references/
+
+.agents/skills/development/
   SKILL.md
   agents/openai.yaml
   references/
@@ -94,7 +111,7 @@ It owns package creation, manifests, exports, dependency edges, shared task coor
 
 ## Updating
 
-The installer intentionally refuses to overwrite an existing skill. Review local changes, remove or archive the old installed directory deliberately, and reinstall from the desired repository revision.
+The Codex installer intentionally refuses to overwrite an existing skill. Review local changes, remove or archive the old installed directory deliberately, and reinstall from the desired repository revision. With skillshare, run `skillshare update <name>` (or `skillshare update --all`) followed by `skillshare sync`; review local edits first because an update replaces the installed files.
 
 The source architecture docs remain under `client/core/`, `client/frameworks/`, `server/core/`, `server/runtimes/`, `monorepo/core/`, and `monorepo/build-systems/`. Installed references are curated derivatives and are checked for source drift in this repository.
 

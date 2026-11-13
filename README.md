@@ -50,6 +50,7 @@ node-architecture/
   docs/adr/     architecture decision records
   assets/       supplemental artifacts
   change-logs/  documentation change history
+  scripts/      repository-wide checks, such as installable skill validation
 ```
 
 ## Quick Start

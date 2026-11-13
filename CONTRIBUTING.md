@@ -135,6 +135,7 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 - [ ] Added/updated changelog for non-trivial changes
 - [ ] Verified no contradictory guidance across related docs
 - [ ] Used glossary terms as defined; updated `CONTEXT.md` and the ADR index when the change adds a term or decision
+- [ ] `python3 scripts/validate-skills.py` passes after any skill change
 - [ ] Portable skills retain library roles, rationale, and official links without freezing vendor syntax or version-specific recipes
 
 ## If You Are Unsure Where A Rule Belongs
@@ -147,6 +148,30 @@ Use this rule of thumb:
 - Works across monorepo build systems/package managers: put it in `monorepo/core/*`
 - Depends on a build-system version: keep only a thin mapping under `monorepo/build-systems/*` and retrieve current official behavior at execution time
 
+## Validating Installable Skills
+
+Each `*/skill/` directory is installed on its own, so it must be a complete, self-contained package. After changing a skill, run:
+
+```text
+python3 scripts/validate-skills.py
+```
+
+It checks frontmatter (install name, description length and trigger phrase, no angle brackets), `agents/openai.yaml`, that every relative link resolves inside the skill directory, that no stray files or symlinks would be installed, that no unexpected `SKILL.md` is discoverable, and that no placeholder looks like an agent directive tag (for example `<system>`), which skillshare's install audit reports as high-severity prompt injection. Use descriptive placeholders such as `<design-system>`.
+
+For an end-to-end check, install into an isolated skillshare home rather than your real configuration:
+
+```text
+export HOME="$(mktemp -d)" XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_STATE_HOME="$HOME/.local/state" XDG_CACHE_HOME="$HOME/.cache"
+mkdir -p "$HOME/.claude" "$HOME/.agents"
+skillshare init --no-copy --targets claude,codex --no-git --no-skill
+skillshare install <repository> --all && skillshare sync
+skillshare doctor && skillshare audit && skillshare analyze --no-tui
+```
+
+`<repository>` is `file://` followed by this checkout's absolute path (committed changes only), or `raphaelmans/node-architecture -b <branch>` for a pushed branch. A plain local path is copied as one skill, so it does not test discovery. Expect exactly `client`, `server`, `monorepo`, and `development`, no audit finding above LOW, and no lint warnings.
+
+This repository is also a skillshare project: `.skillshare/config.yaml` declares the maintainer-only Turborepo skill linked into `.agents/skills/` and `.claude/skills/`. After cloning, run `skillshare install -p && skillshare sync -p` to restore it; the downloaded skill itself is not committed.
+
 ## Maintaining the Client Skill
 
 The client docs remain canonical. The `$client` skill reorganizes their guidance into concern-based skill slices and conditionally loaded convention leaves for portable, progressive loading.
@@ -156,7 +181,7 @@ When changing a mapped client source document:
 1. Run `python3 client/skill-maintenance/check-source-drift.py`.
 2. Review every slice or convention leaf reported as stale and update its reference when the source change affects the derived guidance.
 3. Refresh only reviewed references with `python3 client/skill-maintenance/check-source-drift.py refresh <slice-or-leaf> [<slice-or-leaf> ...]`.
-4. Run the drift check again and validate `client/skill/` with the official skill validator.
+4. Run the drift check again and validate `client/skill/` with `python3 scripts/validate-skills.py` and the official skill validator.
 
 Do not refresh a fingerprint without reviewing the associated reference. Update `client/skill-maintenance/source-map.json` when a source document starts or stops informing a slice or convention leaf. Maintenance tooling stays outside `client/skill/` so it is not copied into consumer installations.
 
@@ -169,7 +194,7 @@ When changing a mapped server source document:
 1. Run `python3 server/skill-maintenance/check-source-drift.py`.
 2. Review every slice or convention leaf reported as stale and update its reference when the source change affects the derived guidance.
 3. Refresh reviewed references with `python3 server/skill-maintenance/check-source-drift.py refresh <slice-or-leaf> [<slice-or-leaf> ...]`.
-4. Run the drift check again and validate `server/skill/` with the official skill validator.
+4. Run the drift check again and validate `server/skill/` with `python3 scripts/validate-skills.py` and the official skill validator.
 
 Do not refresh a fingerprint without reviewing the associated reference. Update `server/skill-maintenance/source-map.json` when a source document starts or stops informing a slice or convention leaf. Every canonical `server/**/*.md` guide outside `server/skill/` must remain mapped to at least one slice or convention leaf. When changing the checker itself, run `python3 -m unittest server/skill-maintenance/test_source_drift.py`. Maintenance tooling stays outside `server/skill/` so it is not copied into consumer installations.
 
@@ -182,10 +207,10 @@ When changing a mapped monorepo source document:
 1. Run `python3 monorepo/skill-maintenance/check-source-drift.py`.
 2. Review every stale slice against the changed source.
 3. Refresh one reviewed slice with `python3 monorepo/skill-maintenance/check-source-drift.py refresh <slice>`.
-4. Run the drift check again and validate `monorepo/skill/` with the official skill validator.
+4. Run the drift check again and validate `monorepo/skill/` with `python3 scripts/validate-skills.py` and the official skill validator.
 
 Do not refresh a fingerprint without reviewing its reference. Every canonical `monorepo/**/*.md` guide outside `monorepo/skill/` must remain mapped to at least one slice. Maintenance tooling stays outside the portable skill.
 
 ## Maintaining the Development Skill
 
-Edit `development/core/` and the applicable framework, runtime, or tool guide first. Review the corresponding portable reference, then run `python3 development/skill-maintenance/check-source-drift.py refresh <slice>` and the check again without arguments. Every canonical development guide must be mapped. Validate `development/skill/` with the official skill validator. Review client/server and workspace cross-routing when changing ownership; keep vendor syntax in execution-time source resolution.
+Edit `development/core/` and the applicable framework, runtime, or tool guide first. Review the corresponding portable reference, then run `python3 development/skill-maintenance/check-source-drift.py refresh <slice>` and the check again without arguments. Every canonical development guide must be mapped. Validate `development/skill/` with `python3 scripts/validate-skills.py` and the official skill validator. Review client/server and workspace cross-routing when changing ownership; keep vendor syntax in execution-time source resolution.

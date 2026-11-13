@@ -1,0 +1,4 @@
+interface:
+  display_name: "Development Setup"
+  short_description: "Initialize architecture index and local dev origins"
+  default_prompt: "Use $development to initialize the ARCHITECTURE.md reference index or to set up, review, or troubleshoot local startup, stable origins, and concurrent worktrees using version-matched official documentation."

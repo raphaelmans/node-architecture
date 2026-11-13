@@ -71,7 +71,7 @@ packages/
   domain/<module>/              optional cross-runtime pure rules
   capabilities/<module>/        portable server application behavior and ports
   adapters/<module>-<provider>/ concrete infrastructure adapters
-  ui/<system>/                  multi-client presentation packages
+  ui/<design-system>/           multi-client presentation packages
   config/<tool>/                shared tool configuration
 ```
 
