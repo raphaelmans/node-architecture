@@ -2,7 +2,7 @@
 
 nuqs is the documented Next.js specialization for typed, shareable query state. Use it for bookmarkable, non-sensitive filters, search, sorting, pagination, tabs, and navigation-like modal state.
 
-The broader pathname, route-policy, and boundary convention lives in [Opinionated Next.js Routing Convention](./routing-convention.md). For deeper historical examples, see `legacy/client/06-nuqs-url-state.md`.
+The broader pathname, route-policy, and boundary convention lives in [Opinionated Next.js Routing Convention](./routing-convention.md).
 
 Before implementation, detect the installed nuqs and Next.js versions and retrieve their current official documentation. The examples below illustrate the current documented shape; vendor API names and options remain version-sensitive.
 

@@ -42,7 +42,7 @@
         "server/runtimes/README.md",
         "server/runtimes/nodejs/README.md"
       ],
-      "fingerprint": "2ad3250aa928be3f5471bd41c263719a1092322e5cc5263f4faacb9e237cbf26"
+      "fingerprint": "fc8bdc455bfc80740f39b66a4a7610c81c14aeeac4c6752cafd72b0d3daf948a"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -56,7 +56,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "673d54dcb64d71920ad87d489120eb7132287a7d781e634def79adf4d9990a77"
+      "fingerprint": "6b6192a349d92761c411c331d84b6dbc3ab4a02b00f85b1f60a36fdc040289bc"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -106,7 +106,7 @@
         "server/runtimes/nodejs/frameworks/nextjs/scaffolding.md",
         "server/runtimes/nodejs/scaffolding.md"
       ],
-      "fingerprint": "91fed728b82d7d7b74dd5ee972ce004de9bfa072795ddf66d0cb580e81367d3e"
+      "fingerprint": "b18bba09c586f257861211bc7f96225474e055a203914e80e30412af84c8b890"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -124,7 +124,7 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "b37fa05697544af9ed0dc807ae9a8c652f79dd62cc863ca428f7b4d810055ce2"
+      "fingerprint": "e900f041bae2e576bb707469cd38f04b2fe651512661f76e687cd33d231c5c77"
     },
     "security": {
       "reference": "server/skill/references/security.md",
@@ -140,7 +140,7 @@
         "server/runtimes/nodejs/frameworks/nextjs/formdata-transport.md",
         "server/runtimes/nodejs/frameworks/nextjs/next-config-security.md"
       ],
-      "fingerprint": "322ab6f9c5b509f94181030f7c69f1d71894e0f666d5c6895f30d485ca795537"
+      "fingerprint": "ca0bbd7f52109c17f0971e804dca6d5e430e6bd3f5da8ffcabfea16092068c85"
     },
     "telemetry": {
       "reference": "server/skill/references/telemetry.md",

@@ -16,13 +16,12 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | [client/skill/SKILL.md](./client/skill/SKILL.md) | Installable `$client` router derived from the client docs |
 | [server/skill/SKILL.md](./server/skill/SKILL.md) | Installable `$server` router derived from the server docs |
 | [monorepo/skill/SKILL.md](./monorepo/skill/SKILL.md) | Installable `$monorepo` router derived from the monorepo docs |
-| [legacy/README.md](./legacy/README.md) | Historical, non-canonical reference material |
 | [consumer/INSTALL-SKILLS.md](./consumer/INSTALL-SKILLS.md) | Install and update the architecture skills in another repository |
 | [consumer/README.md](./consumer/README.md) | Consumer source model and which references to compose for access and persistence work |
 | [CONTEXT.md](./CONTEXT.md) | Glossary of the canonical terms every doc and skill uses |
 | [docs/adr/README.md](./docs/adr/README.md) | Architecture decision records |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Source-doc and derived-skill maintenance rules |
-| [copy-guides.sh](./copy-guides.sh) | Disabled legacy entrypoint with migration guidance |
+| [copy-guides.sh](./copy-guides.sh) | Disabled guide-copy entrypoint with migration guidance |
 | [assets/server-architecture-guide.html](./assets/server-architecture-guide.html) | Standalone interactive server architecture guide |
 | [assets/client-architecture-guide.html](./assets/client-architecture-guide.html) | Standalone interactive client architecture guide |
 
@@ -45,7 +44,6 @@ node-architecture/
   server/       canonical backend docs + portable skill + maintenance metadata
   monorepo/     canonical workspace docs + thin build-system mappings + portable skill
   development/  architecture initialization + local startup contracts + framework mappings + skill
-  legacy/       historical references, not source of truth
   consumer/     skill installation and migration guidance
   docs/adr/     architecture decision records
   assets/       supplemental artifacts
@@ -62,7 +60,6 @@ node-architecture/
    [client/core/README.md](./client/core/README.md), [server/core/README.md](./server/core/README.md), [monorepo/core/README.md](./monorepo/core/README.md), or [development/README.md](./development/README.md).
 3. Use the terms defined in [CONTEXT.md](./CONTEXT.md).
 4. Keep framework/runtime details inside framework/runtime folders; keep core docs agnostic.
-5. Treat [legacy/](./legacy/README.md) as reference-only material.
 
 ### Installing the Architecture Skills
 

@@ -123,7 +123,6 @@ When adding any new stack/framework/runtime, validate these contracts remain con
 
 - Prefer additive updates over broad rewrites.
 - Keep examples concrete but avoid forcing one project-specific path unless required.
-- Mark legacy/reference-only content explicitly as non-canonical.
 - Treat framework and vendor examples as dated implementation evidence, not version authority for portable skills. A library link supports discovery; it does not make the linked page's current syntax part of the architecture contract.
 
 ## Pull Request Checklist
@@ -156,7 +155,7 @@ Each `*/skill/` directory is installed on its own, so it must be a complete, sel
 python3 scripts/validate-skills.py
 ```
 
-It checks frontmatter (install name, description length and trigger phrase, no angle brackets), `agents/openai.yaml`, that every relative link resolves inside the skill directory, that no stray files or symlinks would be installed, that no unexpected `SKILL.md` is discoverable, and that no placeholder looks like an agent directive tag (for example `<system>`), which skillshare's install audit reports as high-severity prompt injection. Use descriptive placeholders such as `<design-system>`.
+It checks frontmatter (install name, description length and trigger phrase, no angle brackets), `agents/openai.yaml`, that every relative link resolves inside the skill directory, that no stray files or symlinks would be installed, that no unexpected `SKILL.md` is discoverable, and that no placeholder looks like an agent directive tag (for example `<system>`), which skillshare's install audit reports as high-severity prompt injection. Use descriptive placeholders such as `<design-system>`. It also scans the whole repository for skillshare's critical prompt-injection patterns, because a tracked install audits every file: a code-sample line starting with `admin:`, `ignore:`, `system:`, `override:`, or `root:` blocks it, so quote such object keys (`"admin":`).
 
 For an end-to-end check, install into an isolated skillshare home rather than your real configuration:
 

@@ -4,7 +4,7 @@
 
 Client roles apply in both canonical repository topologies. Single-project examples use `src/*`; monorepo placement follows the shared [monorepo architecture](../monorepo/core/architecture.md) without changing client dependency direction.
 
-See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
+See [../README.md](../README.md) for the source-repo overview.
 
 Interactive companion: [Client Architecture Field Guide](../assets/client-architecture-guide.html).
 
@@ -95,7 +95,6 @@ This documentation emphasizes:
 
 - [Client Architecture Field Guide](../assets/client-architecture-guide.html) for the standalone interactive system, flow, state, telemetry, runtime, testing, and structure guide
 - [client/diagrams.md](./diagrams.md) for ASCII diagrams
-- [Legacy Client Overview](../legacy/client/overview.md) for non-canonical historical references
 
 ## Quick Start
 
@@ -103,7 +102,6 @@ This documentation emphasizes:
 2. Read [./core/README.md](./core/README.md) and [./core/conventions.md](./core/conventions.md).
 3. Add a documented framework specialization when available; otherwise derive it from repository evidence and current official resources.
 4. When the client lives in a workspace, resolve its app/package boundaries through [Monorepo Package Boundaries](../monorepo/core/package-boundaries.md).
-5. Use [../legacy/client/overview.md](../legacy/client/overview.md) only for historical examples.
 
 ## Core Principles
 

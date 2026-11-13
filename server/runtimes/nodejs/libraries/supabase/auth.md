@@ -1766,9 +1766,9 @@ export interface Session {
 export type UserRole = "admin" | "member" | "viewer";
 
 export const ROLE_PERMISSIONS = {
-  admin: ["read", "write", "delete", "manage_users"] as const,
-  member: ["read", "write"] as const,
-  viewer: ["read"] as const,
+  "admin": ["read", "write", "delete", "manage_users"] as const,
+  "member": ["read", "write"] as const,
+  "viewer": ["read"] as const,
 };
 
 export type Permission = (typeof ROLE_PERMISSIONS)[keyof typeof ROLE_PERMISSIONS][number];

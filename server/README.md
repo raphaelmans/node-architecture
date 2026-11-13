@@ -4,7 +4,7 @@
 
 Server roles apply in both canonical repository topologies. Single-project examples use `src/lib/*`; monorepo placement follows the shared [monorepo architecture](../monorepo/core/architecture.md) without changing inward dependency direction.
 
-See [../README.md](../README.md) for the source-repo overview and [../legacy/README.md](../legacy/README.md) for historical references.
+See [../README.md](../README.md) for the source-repo overview.
 
 Interactive companion: [Server Architecture Field Guide](../assets/server-architecture-guide.html).
 
@@ -94,7 +94,6 @@ This documentation emphasizes:
 2. Use [./core/scaffolding.md](./core/scaffolding.md) or `$server scaffold ...` when bootstrapping missing foundations or a complete capability in any listed or unlisted runtime.
 3. Read [./core/conventions.md](./core/conventions.md), [./core/controllers.md](./core/controllers.md), and [./core/error-handling.md](./core/error-handling.md) before adding new endpoints or repositories.
 4. Add a documented runtime specialization when available; otherwise derive it from repository evidence and current official resources.
-5. Use [../legacy/server/overview.md](../legacy/server/overview.md) only for historical context.
 
 ## Layer Decision Flow
 
@@ -137,8 +136,3 @@ Client and server import public request/response contracts from one resolved sha
 - Shared transport middleware maps `AppError.kind` once and preserves the domain error as `cause` where the transport supports it.
 - tRPC docs use `message`, `data.appCode`, `data.requestId`, and optional safe `data.details`.
 - 5xx responses never expose raw provider, SQL, stack, or constraint details.
-
-## Historical Reference
-
-Legacy backend material lives under [../legacy/server/overview.md](../legacy/server/overview.md).
-It is reference-only and not canonical.

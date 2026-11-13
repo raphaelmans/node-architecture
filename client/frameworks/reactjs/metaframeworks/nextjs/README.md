@@ -31,4 +31,3 @@ Read order before using this folder:
 | [Client Composition Root](../../../../core/composition-root.md) | Factories and browser/request lifetimes |
 | [React Server-State Cookbook](../../server-state-patterns-react.md) | Hook-owned cache effects plus coordinator sequencing through named sync operations |
 | [Query Keys](./query-keys.md) | Query key conventions (tRPC + non-tRPC) |
-| [Form Standards (Legacy)](../../../../../legacy/client/09-standard-form-components.md) | Historical StandardForm reference |

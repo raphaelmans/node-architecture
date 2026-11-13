@@ -1,6 +1,6 @@
 # Install Architecture Skills
 
-The legacy `guides/` copy workflow is disabled. Client, server, and cross-package workspace architecture are distributed as the `$client`, `$server`, and `$monorepo` skills.
+The former `guides/` copy workflow is disabled. Client, server, and cross-package workspace architecture are distributed as the `$client`, `$server`, and `$monorepo` skills.
 
 ## Codex Installation
 
@@ -46,7 +46,7 @@ skillshare install raphaelmans/node-architecture -s client,server
 skillshare sync
 ```
 
-Add `-p` to install into a project's `.skillshare/` instead of the global source and `-b <branch>` to install an unreleased revision. `skillshare check` and `skillshare update` work on these installs without `--track`. Avoid `--track`: it audits the whole repository, and code samples in the canonical and legacy docs (role maps keyed `admin:`, logger options keyed `ignore:`) match skillshare's prompt-override pattern, so the tracked install is blocked. Only the four `*/skill/` packages are installable; maintenance tooling and historical guides are not discovered.
+Add `-p` to install into a project's `.skillshare/` instead of the global source and `-b <branch>` to install an unreleased revision. `skillshare check` and `skillshare update` work on these installs. To keep a full repository clone that `skillshare update` pulls, install with `--track` instead (without `--all` or `-s`); a tracked install audits every file in the repository, which `scripts/validate-skills.py` keeps free of findings that would block it. Only the four `*/skill/` packages are installable; maintenance tooling is not discovered.
 
 ## Repository-Local Installation
 

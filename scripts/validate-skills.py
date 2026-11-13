@@ -3,7 +3,8 @@
 
 Checks what skill installers (Codex skill-installer, Claude Code, skillshare) rely on:
 frontmatter shape, install name, description limits, agent metadata, self-contained
-relative links, and content that skillshare's install audit treats as high severity.
+relative links, content that skillshare's install audit treats as high severity, and
+repository-wide content that its CRITICAL rules would block in a tracked install.
 Standard library only. Exit status 1 when any error is found.
 """
 
@@ -23,10 +24,21 @@ TRIGGER_RE = re.compile(r"(?i)(use\s+(this\s+)?(skill\s+)?when|trigger\s+when|ac
 # Mirrors skillshare's built-in audit rule prompt-injection-2 (HIGH): placeholders such as
 # `<system>` read as agent directive tags, so use descriptive placeholders instead.
 DIRECTIVE_TAG_RE = re.compile(r"(?i)</?(system|instructions|override|prompt|rules)\b[^>]*>")
+# Mirrors skillshare's CRITICAL prompt-injection rules. A tracked install (`--track`) audits
+# every file in the repository, so these apply repository-wide; quote object keys such as
+# `"admin":` in code samples rather than starting a line with `admin:`.
+CRITICAL_RULES = {
+    "prompt-injection-0": re.compile(r"(?i)(ignore\s+(all\s+)?previous\s+instructions|disregard\s+(all\s+)?rules|you\s+are\s+now\b|forget\s+everything|override\s+safety)"),
+    "prompt-injection-1": re.compile(r"(?im)^\s*(SYSTEM|OVERRIDE|IGNORE|ADMIN|ROOT):"),
+    "prompt-injection-3": re.compile(r"(?im)^\s*(DEV(ELOPER)?[\s_]*MODE|JAILBREAK|DAN[\s_.]*MODE)\b"),
+}
+# Skillshare's own project configuration is not audited as skill content.
+REPO_SCAN_EXCLUDES = {".git", ".skillshare", "node_modules"}
+REPO_SCAN_SUFFIXES = {".md", ".yaml", ".yml", ".json", ".py", ".sh", ".txt", ".html", ".ts", ".tsx", ".js"}
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 FENCE_RE = re.compile(r"```.*?```", re.S)
 # Directories that hold tooling state or installed third-party skills, not repository skills.
-DISCOVERY_EXCLUDES = {".git", ".skillshare", ".agents", ".claude", ".opencode", "legacy", "node_modules"}
+DISCOVERY_EXCLUDES = {".git", ".skillshare", ".agents", ".claude", ".opencode", "node_modules"}
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str] | None, str]:
@@ -135,8 +147,30 @@ def check_discovery() -> list[str]:
     return errors
 
 
+def check_repository_content() -> list[str]:
+    errors = []
+    for path in sorted(REPO_ROOT.rglob("*")):
+        rel = path.relative_to(REPO_ROOT)
+        if set(rel.parts) & REPO_SCAN_EXCLUDES or path.is_symlink() or not path.is_file():
+            continue
+        if path.suffix not in REPO_SCAN_SUFFIXES and path.name not in {"LICENSE"}:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        if path.resolve() == Path(__file__).resolve():
+            continue
+        for rule, pattern in CRITICAL_RULES.items():
+            for match in pattern.finditer(text):
+                lineno = text.count("\n", 0, match.start()) + 1
+                errors.append(f"{rel}:{lineno}: matches skillshare CRITICAL rule {rule} ({match.group(0).strip()!r}); tracked installs are blocked")
+    return errors
+
+
 def main() -> int:
     errors = check_discovery()
+    errors.extend(check_repository_content())
     for name, rel in SKILLS.items():
         errors.extend(check_skill(name, rel))
     if errors:

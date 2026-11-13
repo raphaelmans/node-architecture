@@ -24,6 +24,6 @@ Do not refresh fingerprints without reviewing the derived guidance. Source hashe
 
 Every canonical server Markdown guide must remain mapped in `server/skill-maintenance/source-map.json`.
 
-## Legacy Copier
+## Disabled Guide Copier
 
 `copy-guides.sh` is intentionally disabled and exits without modifying the requested target. Do not restore copying as an undocumented compatibility path.
