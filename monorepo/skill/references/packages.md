@@ -10,7 +10,7 @@ Use this slice for package activation, imports, exports, task ownership, environ
 | Domain | Pure rules genuinely cross client/server runtime or package boundaries | `packages/domain/<module>/` |
 | Capabilities | A server-backed operation needs transport-independent application behavior | `packages/capabilities/<module>/`, even with one deployable consumer |
 | Adapters | Persistence/provider behavior is required | `packages/adapters/<module>-<provider>/`, even with one deployable consumer |
-| UI | Multiple client applications share presentation components | `packages/ui/<system>/` |
+| UI | Multiple client applications share presentation components | `packages/ui/<design-system>/` |
 | Config | Multiple packages share tool configuration | `packages/config/<tool>/` |
 
 Activate only roles needed by current behavior. Explicit user scope or cohesive existing module ownership may keep roles app-local; do not split that module for a new operation. Do not create unused roles, one package per operation, or one package per onion layer.

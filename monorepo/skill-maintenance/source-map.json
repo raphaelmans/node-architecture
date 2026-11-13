@@ -10,7 +10,7 @@
         "monorepo/core/README.md",
         "monorepo/core/architecture.md"
       ],
-      "fingerprint": "f80a2a5d187aa536ed9e2ae3408fbb4451142d9be28d8dfeb5601dcc2accd4ba"
+      "fingerprint": "c66d8bbd4ebbd5f6e53abfdeaf297027feae7e0b51c7e63b491fddb67fbc7116"
     },
     "packages": {
       "reference": "monorepo/skill/references/packages.md",
@@ -19,7 +19,7 @@
         "monorepo/core/environment.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "bb4bf654fdf6268b619864714cd344d160ce00a3562280a826ff346cbf8f0a87"
+      "fingerprint": "c74519fafbcabfdc39adcf1a2a379b9bc9aedce7c962c8b4a8b9db7076983774"
     },
     "scaffolding": {
       "reference": "monorepo/skill/references/scaffolding.md",
@@ -29,7 +29,7 @@
         "monorepo/core/scaffolding.md",
         "monorepo/build-systems/turborepo/scaffolding.md"
       ],
-      "fingerprint": "42ae6b009102401e663032cc2530d4df9f730aca53efa4979cfdb17b4f478771"
+      "fingerprint": "6e9f7153fa14ce5358cf539a40952a1c33bff1f6ef4d27f2a06c7dc71e7c3bcd"
     },
     "turborepo": {
       "reference": "monorepo/skill/references/turborepo.md",

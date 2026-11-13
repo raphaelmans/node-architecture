@@ -75,8 +75,6 @@ Then move to framework/metaframework docs.
 - [ ] No contradictory guidance introduced across `client/core/*`.
 - [ ] Non-trivial doc changes include a `change-logs/*` entry.
 
-## Canonical vs Drafts
+## Canonical Sources
 
 - `client/core/*` and `client/frameworks/*` are canonical.
-- `legacy/client/*` is reference-only and may be outdated.
-- Never copy legacy patterns into canonical docs without re-validating ownership/boundaries.

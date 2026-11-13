@@ -438,9 +438,9 @@ export const authRouter = router({
 // shared/kernel/auth.ts
 
 export const ROLE_PERMISSIONS = {
-  admin: ['read', 'write', 'delete', 'manage_users', 'manage_settings'],
-  member: ['read', 'write'],
-  viewer: ['read'],
+  'admin': ['read', 'write', 'delete', 'manage_users', 'manage_settings'],
+  'member': ['read', 'write'],
+  'viewer': ['read'],
 } as const;
 
 export type Permission = (typeof ROLE_PERMISSIONS)[keyof typeof ROLE_PERMISSIONS][number];

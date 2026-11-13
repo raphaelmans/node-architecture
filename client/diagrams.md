@@ -58,10 +58,6 @@ client/
           query-keys.md            # moved to client/core/query-keys.md (keep as redirect)
           testing-vitest.md
 
-legacy/
-  client/                         # detailed historical references (non-canonical)
-    01-zod-schema-architecture.md
-    ...
 ```
 
 ---

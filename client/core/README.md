@@ -54,12 +54,11 @@ Then read framework details:
 - Importing `debug`, Sentry, or an analytics vendor directly inside feature code.
 - Routing product analytics through operational logs or reporting the same error at multiple layers.
 - Creating hidden singletons inside feature modules or injecting the complete runtime container.
-- Copying patterns from `legacy/client/*` as if canonical.
 
 Rule:
 
 - New and modified files follow core contracts.
-- Legacy files can migrate incrementally.
+- Existing files that predate a contract can migrate incrementally.
 
 ## Core Index
 

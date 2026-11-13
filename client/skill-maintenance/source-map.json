@@ -18,7 +18,7 @@
         "client/core/testing.md",
         "client/core/validation-zod.md"
       ],
-      "fingerprint": "d5d609fcdae501ae32165ec13de90e6910a23edafe2acf036843494350be4ac1"
+      "fingerprint": "c01fb3ff43e18ce88b4aa0e69fdf36e1ae8df60adffc2d388561e33686801be6"
     },
     "foundations": {
       "reference": "client/skill/references/foundations.md",
@@ -34,7 +34,7 @@
         "client/core/onboarding.md",
         "client/diagrams.md"
       ],
-      "fingerprint": "fe99be35bf2682071febd225f0be27f58b4297a2f5958dfb632f599747851583"
+      "fingerprint": "aa0abd4bcbc7849c8bf383659b84936a6f9c724c1e7ead451207f1932d9f4895"
     },
     "workspace": {
       "reference": "client/skill/references/workspace.md",
@@ -49,7 +49,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "b7542b77df881eb22c36f7786abb4ec4bfa624a9835fc21528ff3f295173981a"
+      "fingerprint": "4c1300e34d15351728d58c3d03f993f476013ff223a6cfd512f64a71f7ad4081"
     },
     "contracts": {
       "reference": "client/skill/references/contracts.md",
@@ -63,7 +63,7 @@
         "client/frameworks/reactjs/forms-react-hook-form.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "6664c6618e0523374c42e52ec36bf356e9655092e3534779ec84719f18d6f773"
+      "fingerprint": "2740739f70e69dcaf2c7dc0feab71a89611a6f43b3b714d3ffb3ce9d7b8d20fe"
     },
     "data-flow": {
       "reference": "client/skill/references/data-flow.md",
@@ -90,7 +90,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "1b5bed9d29db7271f67b905d0b86e9b1f4dab156a282b2d0f364e1ef08c7defe"
+      "fingerprint": "f76489649c49e34c11c47232bedadc450b5d52e5698699522a90a2ab40034385"
     },
     "telemetry": {
       "reference": "client/skill/references/telemetry.md",
@@ -122,7 +122,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md"
       ],
-      "fingerprint": "cbffbc81bd0ccb52fe0d5ec1b24aab7d535a425c507c99cdc8c81e64902c520a"
+      "fingerprint": "0ca4677bca8823390a1c90c4df91d4c63ba15ef0616247bd357fbcdfcb252457"
     },
     "react": {
       "reference": "client/skill/references/react.md",
@@ -157,7 +157,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/trpc.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "b525d25b027137eaada6ead87ebe07c754344be593614da5345d6227ddb6d92c"
+      "fingerprint": "49d3a6ef8b81131ad6f0b118d2a69a72d53ba7270bdaaf8425c525a52e05c365"
     }
   },
   "leaves": {
@@ -198,7 +198,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/routing-ssr-params.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/url-state-nuqs.md"
       ],
-      "fingerprint": "61de0ae6a5c9b8f3400c63664a9fc3d064dc6b61a555d817edbf6a58e5e18434"
+      "fingerprint": "3d404f16dca40ec50b0ae34d625164c38b46614767cc6cde0ccabc0dc47a98d5"
     },
     "react/shadcn": {
       "parents": [

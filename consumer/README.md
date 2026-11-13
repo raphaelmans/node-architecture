@@ -16,7 +16,7 @@ Then use [Architecture Initialization](./ARCHITECTURE-INIT.md) with `/developmen
 - `server/skill/references/` contains the matching server derivatives.
 - The sibling `client/skill-maintenance/` and `server/skill-maintenance/` directories flag references that require review after source-doc changes; they are not installed with the skills.
 
-Maintainers follow [Updating Architecture Guidance](./UPDATE-ARCHITECTURE.md) when sources change. The legacy integration files in this directory, [AGENTS.md alignment](./AGENTS-MD-ALIGNMENT.md) and [OpenCode integration](./OPENCODE-INTEGRATION.md), now provide migration pointers only; they are no longer copied into consumer repositories.
+Maintainers follow [Updating Architecture Guidance](./UPDATE-ARCHITECTURE.md) when sources change. The older integration files in this directory, [AGENTS.md alignment](./AGENTS-MD-ALIGNMENT.md) and [OpenCode integration](./OPENCODE-INTEGRATION.md), now provide migration pointers only; they are no longer copied into consumer repositories.
 
 ## Access and Persistence Leaves
 

@@ -103,5 +103,3 @@ Avoid ambiguous pairs such as separate client and server `CreateUserDTO` interfa
 - [Server API Contracts: Zod-First](../../server/core/api-contracts-zod-first.md)
 - [Client API Architecture](./client-api-architecture.md)
 - [Domain Logic](./domain-logic.md)
-
-For detailed historical examples, see `legacy/client/01-zod-schema-architecture.md`.
