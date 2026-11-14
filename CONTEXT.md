@@ -128,6 +128,36 @@ _Avoid_: Transport authorization
 An entrypoint whose protocol is owned by an adopted provider and is mounted natively rather than routed through an application controller.
 _Avoid_: Business route, controller bypass
 
+### AI and workflows
+
+**Model gateway**:
+The shared application-owned boundary in a deployable for model requests made by business modules, independent of the provider that fulfils them. Modules own what they ask; the gateway owns how it is sent. An agent's own reasoning cycle is distinct from these application requests.
+_Avoid_: AI service, LLM client, per-module provider client
+
+**Agent tool**:
+A framework adapter that exposes one capability to a model or MCP client. It is one more caller of that capability, not a second implementation of it.
+_Avoid_: Tool as use case, agent-only operation
+
+**Workflow step**:
+A stage of a workflow engine's sequence whose business work enters one application operation through its controller. A stage may instead perform only execution control or data mapping.
+_Avoid_: Use case, job handler with business logic
+
+**Persisted scope**:
+The organization or other access scope carried in a workflow's stored input, from which each step rebuilds its dependencies.
+_Avoid_: Ambient scope, active organization, request context
+
+**Execution identity**:
+The actor a workflow step acts as: a system principal acting for the run's recorded initiator, rebuilt from persisted scope and re-authorized by each business operation.
+_Avoid_: Replayed session, engine identity, system user with full access
+
+**Application run record**:
+The application-owned record of a workflow run's progress, decisions, and results, required whenever a run must be found again. Its identity is the run identity that callers and the engine share.
+_Avoid_: Engine snapshot, workflow run as source of truth
+
+**Review suspension**:
+A point at which a workflow run stops until a person's decision is supplied through a protected operation.
+_Avoid_: Approval flag, paused job
+
 ### Persistence
 
 **Application record**:

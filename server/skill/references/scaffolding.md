@@ -167,6 +167,8 @@ Never perform unsafe external network effects inside a retryable transaction.
 
 ## Known and Derived Specializations
 
+For AI tools or workflow business steps, load [AI boundaries](operations/ai-boundaries.md) and the selected runtime leaf. Preserve the controller boundary for internal operations as well as public ones; pure engine control steps require no controller.
+
 - For Node.js, load `scaffolding` + `runtimes` and apply the canonical Node.js scaffolding guide plus the detected adapter guide.
 - For Next.js, Express, or Hono, verify the actual installed versions and load their documented adapter specialization.
 - For any other runtime/framework, keep `scaffolding` loaded, add the architecture slices the operation activates, inspect repository conventions, retrieve official sources, and derive the integration. Never stop merely because the stack lacks a named slice.

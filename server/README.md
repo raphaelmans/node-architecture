@@ -47,6 +47,7 @@ This documentation emphasizes:
 | [Conventions](./core/conventions.md) | Layer responsibilities, DI patterns, kernel rules |
 | [Tenancy](./core/tenancy.md) | Product workspaces, memberships, invitations, tenant/resource isolation |
 | [Authorization](./core/authorization.md) | Application policy and enforceable data boundaries |
+| [AI Boundaries](./core/ai-boundaries.md) | Agent tools and workflow steps as adapters; model gateway; application-owned run state |
 | [RBAC](./core/rbac.md) | Better Auth-aligned roles and permissions; application-owned branch scopes |
 | [Configuration Boundaries](./core/configuration.md) | Private build/server runtime schemas and narrow injection |
 | [Framework-Neutral Controllers](./core/controllers.md) | Portable capability boundary shared by Next.js, Express, Hono, tRPC, OpenAPI, and other adapters |
@@ -82,6 +83,8 @@ This documentation emphasizes:
 | [Authentication](./runtimes/nodejs/libraries/trpc/authentication.md) | Session/JWT management, middleware, RBAC |
 | [Supabase](./runtimes/nodejs/libraries/supabase/README.md) | Auth, storage, and database integration patterns |
 | [Drizzle](./runtimes/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [AI SDK](./runtimes/nodejs/libraries/ai-sdk/README.md) | Model gateway adapter, injected models, and the UI stream transport |
+| [Mastra](./runtimes/nodejs/libraries/mastra/README.md) | Agents, tools, MCP servers, and workflows as adapters over application operations |
 | [Better Auth](./runtimes/nodejs/libraries/better-auth/README.md) | Native auth routes, session/actor mapping, organization policy, and independent database-adapter selection |
 | [Next.js](./runtimes/nodejs/frameworks/nextjs/README.md) | Route handlers, typed environment configuration, caching, security, and other server runtime specifics |
 | [Express](./runtimes/nodejs/frameworks/express/README.md) | Thin Express routes and central error middleware over shared controllers |

@@ -11,6 +11,10 @@ Use this slice for background jobs, outbox delivery, domain event records, webho
 
 Do not describe a documented design as production-ready until the consuming project proves migrations, workers, retry policy, idempotency, monitoring, and operational ownership.
 
+## Model Calls, Agent Tools, and Workflow Engines
+
+Load [the AI boundaries leaf](operations/ai-boundaries.md) when work calls a model, exposes operations to an agent or MCP client, or runs on a workflow engine. A workflow engine sequences and suspends work; the operation each step performs, its atomicity, and its run state remain application-owned.
+
 ## Outbox and Jobs
 
 Persist the business change and outbox/job record in one database transaction. Dispatch only after commit. Workers must claim jobs safely, use bounded exponential backoff with jitter, classify retryable failures, and move exhausted jobs to an inspectable terminal state.

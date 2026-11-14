@@ -93,6 +93,12 @@ Load the [Supabase convention leaf](runtimes/supabase.md) for concrete integrati
 
 Load [the Better Auth leaf](runtimes/better-auth.md) for native handlers, session-to-actor mapping, organization integration, migration ownership, and client coordination. Select its supported database adapter independently of business repositories. Better Auth + Drizzle does not activate Supabase. Preserve native auth responses; translate provider results only at app-facing integration boundaries.
 
+## AI SDK and Mastra
+
+Load [the AI SDK leaf](runtimes/ai-sdk.md) for the model gateway adapter, injected models, and the UI stream route, and [the Mastra leaf](runtimes/mastra.md) for agents, tools, MCP servers, auth bridging, and workflows. Both apply the stack-neutral [AI boundaries leaf](operations/ai-boundaries.md): tools and workflow steps are adapters over the same controllers and services as HTTP. The two libraries are independent; load only what is present.
+
+For AI integration, keep agent, tool, and workflow adapters distinct and route business calls through controllers. Module-owned Zod contracts are the shared authority; native execution and validation remain framework responsibilities. Consult the official coding skill alongside our selected leaf while keeping our architecture policy authoritative.
+
 ## Pino
 
 Implement the kernel `AppLogger` port without exposing Pino types inward. Merge active correlation at the adapter, configure recursive/nested redaction, and ensure sink failure cannot change application behavior.

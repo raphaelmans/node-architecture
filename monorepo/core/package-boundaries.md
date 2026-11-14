@@ -10,7 +10,7 @@ Separate role activation from physical placement. A role must be required by cur
 | Capability | A server-backed operation needs transport-independent application behavior | `packages/capabilities/<module>/` for a new module, even with one deployable consumer |
 | Adapter | Persistence or an external provider is required | `packages/adapters/<module>-<provider>/` for a new module, even with one deployable consumer |
 | Domain | Pure rules are genuinely shared across client/server runtimes or packages | `packages/domain/<module>/` |
-| UI | Presentation components are shared by multiple client applications | `packages/ui/<system>/` |
+| UI | Presentation components are shared by multiple client applications | `packages/ui/<ui-system>/` |
 | Config | Multiple packages need the same tool configuration | `packages/config/<tool>/` |
 
 Explicit user scope may keep activated roles inside a deployable app. A cohesive existing app-local module remains app-local for incremental work unless migration is explicitly requested. Do not create a package for an unused role, possible future behavior, folder symmetry, or one operation per package.

@@ -18,7 +18,7 @@
         "client/core/testing.md",
         "client/core/validation-zod.md"
       ],
-      "fingerprint": "d5d609fcdae501ae32165ec13de90e6910a23edafe2acf036843494350be4ac1"
+      "fingerprint": "7800f9b5413e185b580b8d20abac95b89a741d23681d411ffdaff2d5b6f8cfb5"
     },
     "foundations": {
       "reference": "client/skill/references/foundations.md",
@@ -34,7 +34,7 @@
         "client/core/onboarding.md",
         "client/diagrams.md"
       ],
-      "fingerprint": "fe99be35bf2682071febd225f0be27f58b4297a2f5958dfb632f599747851583"
+      "fingerprint": "4de30a74c90853ae0615fc36eb211d1acdb59706f337d1c40529e87e2ce7f920"
     },
     "workspace": {
       "reference": "client/skill/references/workspace.md",
@@ -49,7 +49,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "b7542b77df881eb22c36f7786abb4ec4bfa624a9835fc21528ff3f295173981a"
+      "fingerprint": "127dace3f2cae904494e0eb0147702cd08687f8e8ab343b381d2c892936bb688"
     },
     "contracts": {
       "reference": "client/skill/references/contracts.md",
@@ -63,7 +63,7 @@
         "client/frameworks/reactjs/forms-react-hook-form.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "6664c6618e0523374c42e52ec36bf356e9655092e3534779ec84719f18d6f773"
+      "fingerprint": "c95d6f60774c9dd2aa4044e69935e34d728a5fb274215f74478f3f81679f41b2"
     },
     "data-flow": {
       "reference": "client/skill/references/data-flow.md",
@@ -122,7 +122,7 @@
         "client/frameworks/reactjs/metaframeworks/nextjs/realtime-supabase.md",
         "client/frameworks/reactjs/metaframeworks/nextjs/testing-vitest.md"
       ],
-      "fingerprint": "cbffbc81bd0ccb52fe0d5ec1b24aab7d535a425c507c99cdc8c81e64902c520a"
+      "fingerprint": "e6e597256d07d45e6072ba32b9d476b57bdfda50d830fe0b4d7c5fcd7cb09db9"
     },
     "react": {
       "reference": "client/skill/references/react.md",

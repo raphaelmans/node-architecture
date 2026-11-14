@@ -31,7 +31,7 @@ src/
 | Client routes/features/common infrastructure | `src/*` | `apps/<client>/src/*` |
 | Shared wire contracts | `src/lib/modules/<module>/shared/contracts/*` | `packages/contracts/<module>/*` when the contract crosses packages |
 | Shared pure domain rules | `src/lib/modules/<module>/shared/*` | `packages/domain/<module>/*` only when genuinely cross-runtime/package |
-| Shared UI | `src/components/*` | `packages/ui/<system>/*` only when multiple client apps consume it |
+| Shared UI | `src/components/*` | `packages/ui/<ui-system>/*` only when multiple client apps consume it |
 | Client composition root | `src/common/runtime/*` | Remains owned by `apps/<client>` |
 
 Do not extract app-local feature code merely because a workspace exists. Cross-package creation, manifests, exports, and dependency edges follow the [monorepo scaffolding contract](../../monorepo/core/scaffolding.md).

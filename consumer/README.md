@@ -31,6 +31,7 @@ These are references inside the existing skills, not separately installed plugin
 | Next.js permission UX and protected rendering | React access control + `$client` nextjs + [Next.js access control](../client/skill/references/nextjs/access-control.md) |
 | Drizzle persistence | `$server` runtimes + data-flow + [Drizzle](../server/skill/references/runtimes/drizzle.md) |
 | Better Auth integration | `$server` runtimes + security + [Better Auth](../server/skill/references/runtimes/better-auth.md); add the chosen database adapter and organization leaves only when needed |
+| Model calls, agent or MCP tools, workflow steps | `$server` operations + security + [AI boundaries](../server/skill/references/operations/ai-boundaries.md); add [AI SDK](../server/skill/references/runtimes/ai-sdk.md) or [Mastra](../server/skill/references/runtimes/mastra.md) only when selected |
 | Supabase integration/direct persistence | `$server` runtimes + [Supabase](../server/skill/references/runtimes/supabase.md); add data-flow/security as needed |
 
 Better Auth, Drizzle, and Supabase are independent siblings: load only the selected integrations. Better Auth + Drizzle requires no Supabase leaf. The access model follows Better Auth conventions without automatically installing it or assuming its teams provide branch-level roles. There is no PostgreSQL leaf; vendor docs own database mechanics. Product workspaces do not activate the `$client`/`$server` `workspace` topology slice unless package topology is involved.

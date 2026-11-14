@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Brief · method call tree</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:var(--font-sans,system-ui);color:var(--foreground);line-height:1.5}button{font:inherit;cursor:pointer}p{margin:0 0 12px}small,.muted{color:var(--muted-foreground)}.intro{font-size:15px;margin-bottom:16px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground);margin-bottom:6px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 12px}
+nav button,.choices button{border:1px solid var(--border);background:var(--secondary);color:var(--secondary-foreground);border-radius:var(--radius,8px);padding:8px 11px;font-size:12px}
+button[aria-pressed=true]{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+button:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.card{background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius,10px);padding:16px;margin-bottom:12px}
+h2{font-size:18px;line-height:1.3;margin:0 0 7px}h3{font-size:13px;margin:0 0 7px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;font-size:11px;color:var(--muted-foreground)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--chart-1)}
+.dot.app{background:var(--chart-2)}.dot.ai{background:var(--chart-3)}.dot.db{background:var(--chart-4)}
+.tree{border-top:1px solid var(--border);padding-top:9px;margin-top:12px}
+.row{display:flex;gap:8px;padding:6px 0 6px calc(var(--d)*18px);position:relative;min-width:0}
+.row:before{content:"↳";flex:0 0 12px;color:var(--muted-foreground)}
+.row[data-d="0"]:before{content:"●";color:var(--chart-1)}
+.row code{font-family:var(--font-mono,monospace);font-size:12px;overflow-wrap:anywhere;display:block}
+.row .note{font-size:11px;color:var(--muted-foreground);line-height:1.4;margin-top:2px}
+.row .label{font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--chart-2);display:inline-block;margin-bottom:2px}
+.row.ai .label{color:var(--chart-3)}.row.db .label{color:var(--chart-4)}.row.edge .label{color:var(--chart-1)}
+.break{margin:9px 0;padding:8px 10px;border-left:2px solid var(--chart-1);font-size:11px;background:var(--secondary);color:var(--secondary-foreground)}
+.choices{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.outcome{border-left:3px solid var(--chart-2);padding:10px 13px;background:var(--secondary);color:var(--secondary-foreground);font-size:13px;margin-top:12px}
+.meta{font-size:11px;color:var(--muted-foreground);margin-top:12px}
+.footer{display:grid;grid-template-columns:1fr 1fr;gap:12px}.footer p{font-size:12px;margin:0}
+@media(max-width:480px){.row{padding-left:calc(var(--d)*10px)}.row code{font-size:11px}nav button{padding:8px;font-size:11px}.footer{grid-template-columns:1fr}.card{padding:16px}}
+</style></head><body>
+<p class="intro"><strong>Daily Brief</strong> turns relevant news into a personal brief and prepared interview opportunities. Company context and target audience guide the result.</p>
+<div class="eyebrow">Proposed playbook mapping · based on Ample source</div>
+<nav aria-label="Explore the method calls">
+<button data-tab="start" aria-pressed="false">1 · Start</button>
+<button data-tab="news" aria-pressed="true">2 · Search → save</button>
+<button data-tab="write" aria-pressed="false">3 · Interviews</button>
+<button data-tab="publish" aria-pressed="false">4 · Publish</button>
+<button data-tab="current" aria-pressed="false">Existing code</button>
+<button data-tab="zod" aria-pressed="false">Zod contracts</button>
+</nav>
+<section class="card" aria-live="polite">
+<h2 id="heading"></h2><p id="summary" class="muted" style="font-size:13px"></p>
+<div class="legend"><span><i class="dot"></i>Framework adapter</span><span><i class="dot app"></i>Application</span><span><i class="dot ai"></i>Provider / AI</span><span><i class="dot db"></i>Persistence</span></div>
+<div id="scenarios" hidden><h3>Follow one news candidate</h3><div class="choices" aria-label="Candidate outcome">
+<button data-case="new" aria-pressed="true">New story</button>
+<button data-case="exact" aria-pressed="false">Exact duplicate</button>
+<button data-case="similar" aria-pressed="false">Similar story</button>
+<button data-case="failed" aria-pressed="false">Embedding fails</button>
+</div></div>
+<div class="tree" id="tree"></div><div class="outcome" id="outcome"></div>
+<p class="meta">Read top to bottom. Indentation shows who calls whom. Async stages run separately; this is a call tree, not one suspended JavaScript stack. Proposed method names are illustrative.</p>
+</section>
+<div class="footer">
+<section class="card"><h3>Duplicate rules</h3><p><strong>Story identity:</strong> have we stored this source before?<br><strong>Opportunity identity:</strong> has this recipient already been offered this story for this audience?</p></section>
+<section class="card"><h3>Where AI fits</h3><p>Modules own canonical Zod contracts. Tools and workflow business steps call controllers, then use cases/services. Mastra owns execution; services use the model gateway and repositories.</p></section>
+</div>
+<p class="meta">Source: Work/ample · ef4d0338 · inspected 14 Nov 2026. The external app is unchanged. Its personal and target-customer workflows currently disable email.</p>
+<script>
+const row=(d,method,owner,note="",kind="app")=>({d,method,owner,note,kind});
+const gap=(text)=>({gap:text});
+const baseNews=[
+row(0,"discoverNewsStep.execute({ runId, scope })","Mastra step","Receives persisted scope and a narrow controller factory.","edge"),
+row(1,"DiscoverBriefNewsUseCase.execute(runId, runActor)","Use case","Re-authorizes the run's initiator, then coordinates discovery."),
+row(2,"BriefContextService.load(runId, scope)","Service","Company, recipient, audience, date and search policy."),
+row(2,"NewsDiscoveryService.search(context, variant)","Service","Personal: customer + industry + competitor. Targeted: customer only."),
+row(3,"NewsSearchPort.search(query)","Provider port","An injected search adapter talks to the search provider.","ai"),
+row(2,"BriefDraftService.saveCandidates(runId, items)","Service","Raw items and source evidence; returns candidate ids.","db"),
+gap("Engine iteration · one step per candidate, bounded concurrency"),
+row(0,"resolveNewsCandidateStep.execute({ runId, scope, candidateId })","Mastra step","A failure retries this candidate only.","edge"),
+row(1,"ResolveNewsCandidateUseCase.execute(candidateId, runActor)","Use case","Normalize, check identity, embed, decide, record."),
+row(2,"NewsNormalizationService.normalize(item)","Service","Produces a validated NewsCandidate and preserves source evidence."),
+row(3,"ModelGateway.generateStructured(...)","Model gateway · only if needed","Use AI for extraction only when deterministic field mapping is insufficient.","ai"),
+row(2,"NewsIdentityService.findExact(sourceKey, scope)","Service","Runs before any embedding call."),
+row(3,"NewsRepository.findBySourceKey(sourceKey, scope)","Repository","Stable source identity; title alone is insufficient.","db")
+];
+const embed=[
+row(2,"NewsEmbeddingService.embed(candidate)","Service","Exact miss only. Canonical text → vector; retain model and version."),
+row(3,"ModelGateway.embed(text, model)","Model gateway","AI SDK adapter → embedding provider. No database transaction is open.","ai")
+];
+const identity=[
+row(2,"NewsIdentityService.findSimilar(candidate, vector, scope)","Service","Retrieves evidence for the duplicate policy."),
+row(3,"NewsRepository.findSimilar(vector, modelVersion, scope)","Repository","Compatible vectors retrieve possible matches.","db"),
+row(3,"DuplicatePolicy.decide(candidate, matches)","Domain rule","Observe mode records evidence; enforce mode needs a calibrated threshold.")
+];
+const accept=[row(2,"NewsCatalogService.accept(candidate, vector, scope)","Service","A new accepted story requires a successful embedding."),
+row(3,"NewsRepository.insertOrGetBySourceKey(...)","Repository · atomic write","Store the story and embedding together; handle exact-key races.","db")];
+const cases={
+new:{rows:[...embed,...identity,...accept,
+row(2,"BriefDraftService.recordDisposition(runId, candidateId, 'new')","Service","Link the accepted story to this run; return identifiers.")],
+out:"New story accepted. The next stage can prepare an interview. Exact-key uniqueness protects retries; vector search alone cannot guarantee semantic uniqueness across different URLs."},
+exact:{rows:[row(2,"reuse existing storyId","Application decision","No embedding call and no second news story."),
+row(2,"BriefDraftService.recordDisposition(runId, candidateId, 'exactDuplicate')","Service","The existing story may still be new to this recipient and audience.")],
+out:"Reuse the stored story at the cost of one indexed read. A separate recipient + audience + story check decides whether another interview opportunity is allowed."},
+similar:{rows:[...embed,...identity,...accept,
+row(2,"BriefDraftService.recordDisposition(runId, candidateId, 'new', nearestMatch)","Service","Observe mode: accepted, with the nearest match and score recorded.")],
+out:"Launch default is observe mode: similarity is recorded, not acted on, so no news is dropped on an untested threshold. After calibration, enforce mode links a same-event candidate as another source of the existing story. No candidate waits in a review queue."},
+failed:{rows:[row(2,"NewsEmbeddingService.embed(candidate)","Service","The embedding provider call fails."),
+row(3,"ModelGateway.embed(text, model)","Model gateway","Translated provider failure; nothing is written.","ai"),
+row(2,"step fails → engine retries this candidate","Workflow retry","Search and other candidates are not repeated.","edge"),
+row(2,"BriefDraftService.recordDisposition(runId, candidateId, 'failed')","Service · after retries are exhausted","The run continues with the remaining candidates.")],
+out:"No accepted story for this candidate. Raw candidates saved by discovery are recovery data; accepted catalog data waits until embedding succeeds."}
+};
+const views={
+zod:{title:"One contract definition, many callers",summary:"Zod is our TypeScript contract standard. Schemas belong to application modules; Mastra adapters import them. Same semantic contract means the same schema.",rows:[
+row(0,"daily-brief/shared/contracts/","Public wire contracts","StartDailyBriefInputSchema and response schemas are browser-safe."),
+row(1,"HTTP + tool adapters use the same schema","Boundary validation","Native validation may fulfill the boundary; do not duplicate it."),
+row(1,"StartDailyBriefController.execute(typedInput, actor)","Controller","Maps accepted input to the command; calls one use case."),
+row(0,"daily-brief/schemas/","Internal operation contracts","BriefStepInputSchema carries run and scope identifiers."),
+row(1,"workflow business step → controller → use case","Protected application call","No direct service lookup or repository exposure."),
+row(0,"news/schemas/NewsCandidateSchema","Generated-output contract","The news module owns the candidate shape and extraction prompt."),
+row(1,"ModelGateway.generateStructured(prompt, schema)","Model gateway","Accept only a validated result; separate fallback and rejected output.","ai"),
+row(1,"NewsIdentityService.findSimilar(candidate, ...)","Business policy","Schema-valid does not mean factual, authorized, or unique."),
+row(0,"repositories/","Private storage mapping","Application values map to rows; ORM tables do not define wire schemas.","db"),
+row(1,"Database constraints","Concurrent integrity","Enforce stable source/opportunity identities at commit.","db")],out:"Keep agents/, tools/ and workflows/ separate under the Mastra adapter surface. Centralized Zod means one definition per contract in its owning module, not one global file or business schemas owned by Mastra."},
+start:{title:"Request the brief, then return its run id",summary:"The UI and an optional agent tool reuse the same public operation. Starting the engine happens after the database commit.",rows:[
+row(0,"HTTP adapter / requestDailyBrief tool","Framework adapter","Resolve the authenticated actor; validate input.","edge"),
+row(1,"StartDailyBriefController.execute(input, actor)","Controller","Map the public contract; call one use case."),
+row(2,"StartDailyBriefUseCase.execute(command, actor)","Use case","Authorize recipient, company and selected audience."),
+row(3,"BriefRunService.createOrGet(requestKey, scope)","Service · in transaction","Persist the application run and its verified scope."),
+row(3,"OutboxService.enqueueOnce(startBrief, runId)","Service · same transaction","Commit the run and dispatch intent atomically."),
+row(1,"return { runId, status }","Controller result","Client reads progress from application records."),
+gap("After commit · a separate worker execution"),
+row(0,"WorkflowDispatchWorker.handle(startBrief)","Worker adapter","Repeat delivery must reuse the same run.","edge"),
+row(1,"WorkflowRunner.start(runId, persistedScope)","Workflow port → Mastra","Application run id = engine run id.","edge"),
+gap("First workflow stage"),
+row(0,"loadContextStep.execute({ runId, scope })","Mastra step","","edge"),
+row(1,"PrepareBriefContextUseCase.execute(...)","Use case","Load authorized company/audience inputs."),
+row(2,"CompanySummaryService.summarize(company)","Service","Owns the prompt and output schema."),
+row(3,"ModelGateway.generateStructured(...)","Model gateway","Injected AI SDK adapter performs the model call.","ai"),
+row(2,"BriefDraftService.saveContext(runId, context)","Service","Persist the context; pass its id to later steps.")
+],out:"The run can outlive the HTTP request. Steps act as an execution identity for the recorded initiator; each operation re-authorizes access and checks the allowed run transition."},
+write:{title:"Turn accepted news into interview opportunities",summary:"Generate only after story acceptance. The primary customer audience grounds topics; industry and competitor news can still appear in the brief.",rows:[
+row(0,"prepareInterviewsStep.execute({ runId, scope })","Mastra step","","edge"),
+row(1,"PrepareBriefInterviewsUseCase.execute(runId, runActor)","Use case","Coordinates the interview preparation operation."),
+row(2,"BriefDraftService.getAcceptedStories(runId, scope)","Service","Read accepted stories and their source links."),
+row(2,"InterviewOpportunityService.excludeAlreadyOffered(...)","Service","Recipient + target audience + canonical story."),
+row(3,"OpportunityRepository.findExisting(...)","Repository","Another recipient may legitimately receive the same story.","db"),
+row(2,"InterviewTopicService.generate(context, eligibleStories)","Service","Draft a title, angle, rationale and questions."),
+row(3,"ModelGateway.generateStructured(...)","Model gateway","Validate against the module's topic schema.","ai"),
+row(2,"InterviewDraftService.generate(topics)","Service","Prepare interview descriptions and question segments."),
+row(3,"ModelGateway.generateStructured(...)","Model gateway","Provider SDK types stay outside the module.","ai"),
+row(2,"BriefDraftService.saveInterviews(runId, drafts)","Service","Persist validated drafts for restart and retry."),
+gap("Next workflow stage"),
+row(0,"composeBriefStep.execute({ runId, scope })","Mastra step","","edge"),
+row(1,"ComposeDailyBriefUseCase.execute(runId, runActor)","Use case","Create brief copy from accepted news and prepared interviews."),
+row(2,"BriefCopyService.compose(news, interviews)","Service","Model gateway generates validated copy; save the draft.")
+],out:"No eligible stories is a valid outcome. Complete with a clear empty/no-new-opportunities result instead of assuming a first invitation exists."},
+publish:{title:"Publish once; deliver separately",summary:"Application records are the user-visible result. All external model and search calls have already finished.",rows:[
+row(0,"publishBriefStep.execute({ runId, scope })","Mastra step","","edge"),
+row(1,"PublishDailyBriefUseCase.execute(runId, runActor)","Use case","Re-authorizes, then owns a short transaction or equivalent atomic operation."),
+row(2,"InterviewOpportunityService.createOnce(...)","Service","Recheck recipient + audience + story uniqueness against races."),
+row(2,"InterviewService.persistDraftsAndInvitations(...)","Service","Save only opportunities newly accepted by the atomic operation."),
+row(2,"DailyBriefService.publish(runId, links, copy)","Service","Save the dated brief and its source/interview links."),
+row(2,"BriefRunService.markCompleted(runId, result)","Service","Progress is application state, not engine snapshot data."),
+row(2,"OutboxService.enqueueOnce(briefEmail, runId)","Service · optional","Only when email delivery is enabled; commit with publication."),
+gap("After commit · independent delivery execution"),
+row(0,"DeliverBriefEmailUseCase.execute(deliveryId)","Use case","Claim the delivery; record its outcome separately."),
+row(1,"EmailPort.send(content, stableDeliveryKey)","Provider port","A failure retries delivery, not brief generation.","ai"),
+gap("Independent client read"),
+row(0,"daily-brief feature → query adapter → featureApi","Client feature","Network request to the public read operation.","edge"),
+row(1,"GetDailyBriefController.execute(input, actor)","Controller","One query service call."),
+row(2,"DailyBriefQueryService.getAuthorizedBrief(...)","Service","Repository reads the brief, progress and delivery state.")
+],out:"The current source disables email in both inspected variants. Preserve that choice. An outbox supports recovery; exactly-once external delivery also depends on the provider and reconciliation."},
+current:{title:"What Ample does today",summary:"Observed at ef4d0338. This is the personal workflow reached by the inspected HTTP trigger; the target-customer variant uses the same generation steps with customer-only news.",rows:[
+row(0,"POST /api/daily-brief/trigger","HTTP route","Starts background work and returns an accepted response.","edge"),
+row(1,"personalDailyBriefWorkflow","Mastra workflow","","edge"),
+row(2,"createDailyRunStep → createDailyRunTool","Step → tool","Creates a daily invitation run through servicesBuilder().","edge"),
+row(2,"fetchCompanyStep → fetchCompanyTool","Step → tool","Loads company, recipient and customer profiles.","edge"),
+row(2,"genCompanyContextStep → genCompanyContextTool","Step → tool","Calls the concrete Gemini service.","edge"),
+row(2,"genCompanyNewsStep → genCompanyNewsTool","Step → tool","Three searches in parallel, seven-day lookback, limit three each.","edge"),
+row(2,"genInterviewTopicsStep → genInterviewTopicsTool","Step → tool","Calls the concrete xAI service.","edge"),
+row(2,"genInterviewAndSegmentsStep → its tool","Step → tool","Calls the concrete Gemini service.","edge"),
+row(2,"genConsolidatedEmailInvitationContentStep → its tool","Step → tool","Generates email copy.","edge"),
+row(2,"persistAndEmailStep → persistAndEmailTool","Step → tool","The tool itself coordinates many application services.","edge"),
+row(3,"hasInterviewForSourceSlug(...)","Duplicate precheck","Title-derived key includes recipient and customer profile."),
+row(3,"NewsStoryService.upsertByTitle(...)","Service","Writes the story BEFORE embedding."),
+row(4,"NewsStoryRepo.upsertByTitle(...)","Repository","Database conflict handling on title.","db"),
+row(4,"generateNewsStoryEmbeddingAsync(...)","Background effect","Embeds after the write; failures are logged and swallowed.","ai"),
+row(3,"create interview, match, segment and invitation","Several services","Then update run metadata; email is disabled in these variants.")
+],out:"The proposed mapping routes business calls through controllers, moves orchestration into use cases, centralizes module-owned Zod contracts, awaits embeddings, and separates publication from optional delivery. It is not a description of code already migrated."}
+};
+function controllerCalls(rows, tab){
+if(tab==="current"||tab==="zod")return rows;
+const names=["PrepareBriefContext","DiscoverBriefNews","ResolveNewsCandidate","PrepareBriefInterviews","ComposeDailyBrief","PublishDailyBrief"];
+let shifted=false;const result=[];
+for(const original of rows){
+ if(original.gap){result.push(original);continue;}
+ const r={...original};if(r.d===0)shifted=false;
+ const name=names.find(n=>r.method.startsWith(n+"UseCase.execute"));
+ if(name){result.push(row(r.d,name+"Controller.execute(input, runActor)","Controller","Maps the operation contract; delegates to one use case."));shifted=true;}
+ if(shifted)r.d+=1;result.push(r);
+}
+return result;
+}
+let selected="news", scenario="new";
+function render(){
+const isNews=selected==="news";
+const view=isNews?{title:"Search, then resolve each candidate",summary:"Discovery runs once; each candidate is its own retryable step. Every business step calls one controller, which delegates to one use case. Services own business rules; repositories and provider adapters cross external boundaries.",rows:[...baseNews,...cases[scenario].rows],out:cases[scenario].out}:views[selected];
+document.getElementById("heading").textContent=view.title;document.getElementById("summary").textContent=view.summary;
+document.getElementById("scenarios").hidden=!isNews;
+const tree=document.getElementById("tree");tree.replaceChildren();
+controllerCalls(view.rows,selected).forEach(r=>{const el=document.createElement("div");if(r.gap){el.className="break";el.textContent=r.gap}else{
+el.className="row "+r.kind;el.style.setProperty("--d",r.d);el.dataset.d=r.d;
+const body=document.createElement("div"),label=document.createElement("span"),method=document.createElement("code"),note=document.createElement("div");
+label.className="label";label.textContent=r.owner;method.textContent=r.method;note.className="note";note.textContent=r.note;
+body.append(label,method,note);el.append(body)}tree.append(el)});
+document.getElementById("outcome").textContent=view.out;
+document.querySelectorAll("[data-tab]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===selected)));
+document.querySelectorAll("[data-case]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.case===scenario)));
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.tab;render()}));
+document.querySelectorAll("[data-case]").forEach(b=>b.addEventListener("click",()=>{scenario=b.dataset.case;render()}));
+render();
+</script></body></html>

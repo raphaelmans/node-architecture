@@ -255,6 +255,7 @@ src/
 | [Conventions](./conventions.md)             | Layer responsibilities, DI, kernel rules    |
 | [Tenancy](./tenancy.md) | Organization membership, invitations, product workspaces, scope isolation |
 | [Authorization](./authorization.md) | Authoritative capability policy and persistence enforcement |
+| [AI Boundaries](./ai-boundaries.md) | Model gateway, agent tools, and workflow steps as outer-ring adapters |
 | [RBAC](./rbac.md) | Better Auth-aligned roles/permissions with application-owned resource scopes |
 | [Configuration Boundaries](./configuration.md) | Private build/server runtime surfaces, schema authority, and narrow injection |
 | [Framework-Neutral Controllers](./controllers.md) | Portable boundary between framework adapters and application logic |
@@ -282,6 +283,8 @@ src/
 | [Authentication](../runtimes/nodejs/libraries/trpc/authentication.md) | Session management, authorization |
 | [Supabase](../runtimes/nodejs/libraries/supabase/README.md)           | Vendor integration patterns       |
 | [Drizzle](../runtimes/nodejs/libraries/drizzle/README.md) | Independent repository and transaction implementation |
+| [AI SDK](../runtimes/nodejs/libraries/ai-sdk/README.md) | Model gateway adapter and stream transport |
+| [Mastra](../runtimes/nodejs/libraries/mastra/README.md) | Agent, tool, MCP, and workflow adapters |
 | [Better Auth](../runtimes/nodejs/libraries/better-auth/README.md) | Native auth integration and session/access boundaries; Supabase is optional |
 | [Next.js](../runtimes/nodejs/frameworks/nextjs/README.md)         | Framework route handling          |
 | [Express](../runtimes/nodejs/frameworks/express/README.md)       | Express adapter boundary          |

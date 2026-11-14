@@ -16,5 +16,7 @@ Application-owned capabilities use that flow. Provider-native authentication/plu
 - [Supabase Data Access](./supabase/data-access.md)
 - [Drizzle Repository Convention](./drizzle/README.md)
 - [Better Auth Integration Convention](./better-auth/README.md)
+- [AI SDK Integration Convention](./ai-sdk/README.md)
+- [Mastra Integration Convention](./mastra/README.md)
 
-Better Auth, Drizzle, and Supabase are independent choices. Load only the selected integrations; Better Auth + Drizzle needs no Supabase layer. Database hosting, authentication, and business-data access need not use the same adapter.
+Better Auth, Drizzle, and Supabase are independent choices. Load only the selected integrations; Better Auth + Drizzle needs no Supabase layer. Database hosting, authentication, and business-data access need not use the same adapter. The AI SDK and Mastra are likewise independent: direct model calls need no agent framework, and both follow the core [AI boundaries](../../../core/ai-boundaries.md).

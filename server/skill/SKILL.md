@@ -29,11 +29,11 @@ Route server work through modular architecture slices. Load only the references 
 | `workspace` | single-project/monorepo topology, capability/adapter packages, app composition, or cross-package coordination | [references/workspace.md](references/workspace.md) |
 | `contracts` | Zod wire contracts, commands/view models, envelopes, pagination, public errors, endpoint naming, OpenAPI generation | [references/contracts.md](references/contracts.md) |
 | `data-flow` | adapter-to-controller flow, reads/writes, transactions, persistence, IDs, repository boundaries, result mapping | [references/data-flow.md](references/data-flow.md) |
-| `operations` | jobs, outbox, events, rate limiting, cron, webhooks, retries, idempotency, side-effect timing | [references/operations.md](references/operations.md) |
+| `operations` | jobs, outbox, events, rate limiting, cron, webhooks, retries, idempotency, side-effect timing, model calls, agent tools, workflow steps | [references/operations.md](references/operations.md) |
 | `security` | authentication, sessions, authorization, cookies, redirects, keys, RLS, secrets, security headers | [references/security.md](references/security.md) |
 | `telemetry` | `AppLogger`, Pino, OpenTelemetry, correlation, event naming, product analytics, privacy | [references/telemetry.md](references/telemetry.md) |
 | `testing` | adapter/controller/application/repository tests, database concurrency, webhook fixtures, transport parity | [references/testing.md](references/testing.md) |
-| `runtimes` | Node.js and framework/runtime-specific configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Drizzle, Supabase | [references/runtimes.md](references/runtimes.md) |
+| `runtimes` | Node.js and framework/runtime-specific configuration, tRPC, OpenAPI, Next.js, Express, Hono, NestJS, FormData, caching, Drizzle, Supabase, AI SDK, Mastra | [references/runtimes.md](references/runtimes.md) |
 
 ## Convention Leaves
 
@@ -46,9 +46,14 @@ Load only leaves matching the task, along with their parent slices. A leaf refin
 | `security` | `security/rbac` | roles, resource/action permissions, delegated grants, scoped assignments | [RBAC](references/security/rbac.md) |
 | `runtimes` + `data-flow` | `runtimes/drizzle` | Drizzle repositories, row mapping, transactions, migration ownership | [Drizzle](references/runtimes/drizzle.md) |
 | `runtimes` + `security` | `runtimes/better-auth` | Better Auth native routes, sessions, organization integration, database adapters, migration ownership | [Better Auth](references/runtimes/better-auth.md) |
+| `operations` + `security` | `operations/ai-boundaries` | model calls, agent or MCP tools, workflow-engine steps, run state, review suspension | [AI boundaries](references/operations/ai-boundaries.md) |
+| `runtimes` | `runtimes/ai-sdk` | AI SDK model gateway, structured output, embeddings, injected models, UI stream route | [AI SDK](references/runtimes/ai-sdk.md) |
+| `runtimes` + `operations` | `runtimes/mastra` | Mastra agents, tools, MCP servers, auth bridge, workflows, suspend/resume | [Mastra](references/runtimes/mastra.md) |
 | `runtimes`; add `data-flow` for persistence or `security` for access | `runtimes/supabase` | direct Supabase repositories/functions or Auth/Storage/Realtime integration | [Supabase](references/runtimes/supabase.md) |
 
 Product `workspace` means tenancy here; select the existing `workspace` slice only for repository/package topology. For organization RBAC, combine tenancy + authorization + RBAC. Load neither, one, or both persistence leaves based on the actual stack; Supabase does not require Drizzle. For React/Next.js UI, coordinate with installed `$client` access-control leaves when available. Next.js server routes and Node.js servers use the same server capability rules through their existing runtime adapters.
+
+AI work on any stack loads `operations/ai-boundaries`; add the AI SDK or Mastra leaf only when that library is present. Agent tools and workflow steps are adapters over the same controllers and services as HTTP.
 
 Better Auth is an independent integration leaf. For Better Auth + Drizzle, load those two leaves with their parents and the selected framework mapping; do not load Supabase unless it is also used. Add tenancy/authorization/RBAC for organization features rather than loading them for login-only work.
 
@@ -67,6 +72,7 @@ When the user explicitly names slices, load those slices. Add another slice only
 - Implement a Stripe webhook: `contracts` + `operations` + `security` + `telemetry` + `testing` + `runtimes`
 - Add Supabase authentication: `security` + `runtimes` + `testing`; add `data-flow` when application roles or user provisioning use the database
 - Add Better Auth: `security` + `runtimes` + `runtimes/better-auth` + `testing`; add the selected database adapter and client/framework leaves as needed
+- Add a Mastra tool or workflow: `operations` + `security` + `operations/ai-boundaries` + `runtimes` + `runtimes/mastra` + `testing`; add `runtimes/ai-sdk` for direct model calls and the capability slices the operation activates
 - Audit logs and analytics: `telemetry`; add `operations` for outbox-backed reliable delivery
 - Explain portable environment validation: `foundations`; add `runtimes` when applying it to Next.js, NestJS, Express, Hono, or another detected specialization
 

@@ -46,6 +46,8 @@ Every application-owned public capability enters through a framework-neutral con
 
 ## Decision Flow
 
+AI tools and workflow business steps use controllers even for internal operations; see [AI boundaries](operations/ai-boundaries.md). Pure workflow mapping/suspension needs no controller. An internal controller does not imply an HTTP route or browser-shared contract.
+
 ```text
 Is this a public transport capability?
   yes -> add/reuse a controller

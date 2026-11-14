@@ -23,6 +23,8 @@ A controller is not a Next.js route, tRPC procedure, Express/Hono handler, or Ne
 
 Every externally exposed application-owned HTTP/RPC capability MUST enter application code through a framework-neutral controller. Internal workers may call a use case/service directly when they are not presenting the same public capability; reuse the controller when they intentionally reuse that public input/output boundary.
 
+AI tools and workflow steps that perform business work follow the stricter [AI adapter boundary](./ai-boundaries.md): they call a controller even for an internal operation. Pure engine mapping, branching, and suspension do not need a controller. An internal operation controller does not imply an HTTP endpoint or a browser-shared contract. [ADR 0009](../../docs/adr/0009-route-ai-adapters-through-controllers.md) records why.
+
 ## Provider-Managed Endpoints
 
 A selected authentication provider's native protocol and enabled plugin endpoints may be mounted through its documented handler. The provider owns their wire format, cookies, redirects, and lifecycle; do not recreate these endpoints as application controllers or rewrite them into the business API envelope. [Better Auth](../runtimes/nodejs/libraries/better-auth/README.md) is a concrete mapping of this boundary, and [ADR 0005](../../docs/adr/0005-mount-provider-managed-endpoints-natively.md) records why it exists.
@@ -41,7 +43,7 @@ This exception is limited to provider-managed behavior. Custom business operatio
 Controllers MUST:
 
 - use plain TypeScript inputs and outputs;
-- accept types inferred from module-owned shared contracts;
+- accept types inferred from module-owned contracts: shared wire contracts for public capabilities, or server-only operation contracts for internal controllers;
 - depend on interfaces for the use case or service they call;
 - call exactly one use case or one service per operation;
 - map internal entities/results to the shared public response shape;

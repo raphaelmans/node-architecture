@@ -16,7 +16,7 @@ client role                  single project                 monorepo when activa
 routes/features/common       src/*                          apps/<client>/src/*
 wire contracts               module shared/contracts       packages/contracts/<module>
 cross-runtime pure rules     module shared domain           packages/domain/<module>
-shared UI                    components                     packages/ui/<system>
+shared UI                    components                     packages/ui/<ui-system>
 composition root             app-owned runtime              remains app-owned
 configuration boundary      app-owned build/runtime         remains app-owned
 ```

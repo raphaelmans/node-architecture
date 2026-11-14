@@ -25,6 +25,8 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | [copy-guides.sh](./copy-guides.sh) | Disabled legacy entrypoint with migration guidance |
 | [assets/server-architecture-guide.html](./assets/server-architecture-guide.html) | Standalone interactive server architecture guide |
 | [assets/client-architecture-guide.html](./assets/client-architecture-guide.html) | Standalone interactive client architecture guide |
+| [Daily Brief worked example](./docs/examples/daily-brief.md) | Source-backed AI product feature and proposed method call tree under the playbook |
+| [Mastra reconciliation proposal](./docs/proposals/2026-11-14-mastra-reconciliation.md) | Official concept review, Zod ownership, controller boundaries, and proposed native integration policy |
 
 ## Technology Stack
 
@@ -34,6 +36,7 @@ This repo documents patterns and conventions, not package versions. Check the ta
 | Client | Next.js/React, TanStack Query, Zod, adapter-based API/telemetry ports, `debug`, optional Sentry |
 | Monorepo | Tool-agnostic workspace conventions with a thin, version-resolved Turborepo specialization |
 | Testing | Vitest (unit), Playwright (E2E) |
+| AI | AI SDK model gateway; Mastra agents, tools, MCP servers, and workflows as adapters over application operations |
 | Auth | Better Auth, Supabase Auth, or custom auth behind application-owned session and access boundaries |
 | Storage | Supabase Storage or custom storage |
 

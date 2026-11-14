@@ -19,6 +19,8 @@ request
 
 Do not pass a framework request, generic context, logger, trace ID, or service container through this chain.
 
+AI tools and workflow business steps enter through controllers too. They never expose repositories or select services. Keep internal operation contracts server-only unless they actually cross a client/server boundary.
+
 ## Reads and Writes
 
 For concrete persistence, load only the selected [Drizzle](runtimes/drizzle.md) or [Supabase](runtimes/supabase.md) leaf. Application-owned repository interfaces and records must not be derived from ORM or generated Supabase row types; map at the adapter boundary.

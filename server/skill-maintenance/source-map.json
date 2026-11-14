@@ -14,7 +14,7 @@
         "server/runtimes/nodejs/libraries/openapi/README.md",
         "monorepo/core/package-boundaries.md"
       ],
-      "fingerprint": "b71cf97834f382610818c66195c73bc1d32be4563281cbaaa0687852b6dcfad3"
+      "fingerprint": "390e335a833dfd00676d71d9089d03f9e9f4961cd672af5d74a96533bdc64fe2"
     },
     "data-flow": {
       "reference": "server/skill/references/data-flow.md",
@@ -28,7 +28,7 @@
         "server/runtimes/nodejs/libraries/supabase/integration.md",
         "server/runtimes/nodejs/libraries/trpc/integration.md"
       ],
-      "fingerprint": "b022a21a569ab3b0bc5d74b201637982a912cd7c23648f382b9e00d69954ee50"
+      "fingerprint": "befce7f662c8467be03e3c54ccce4defb825fdd6b864c647840e01d547f2cc5e"
     },
     "foundations": {
       "reference": "server/skill/references/foundations.md",
@@ -42,7 +42,7 @@
         "server/runtimes/README.md",
         "server/runtimes/nodejs/README.md"
       ],
-      "fingerprint": "2ad3250aa928be3f5471bd41c263719a1092322e5cc5263f4faacb9e237cbf26"
+      "fingerprint": "dae2a39fb4b7c07ec1bbfff2cf3783676c2d3ec534225af5526c3b6697f5725c"
     },
     "workspace": {
       "reference": "server/skill/references/workspace.md",
@@ -56,7 +56,7 @@
         "monorepo/core/package-boundaries.md",
         "monorepo/core/scaffolding.md"
       ],
-      "fingerprint": "c135cd221faedd5f3203b4d3932e21786b65174c6f95ecf775c3e8bbe3c21d00"
+      "fingerprint": "aa3902c1b2f8ffc2ad8e02c3c0002b0d0c3ab8ac17ef9626249fbdfc84bcbd7a"
     },
     "operations": {
       "reference": "server/skill/references/operations.md",
@@ -106,7 +106,7 @@
         "server/runtimes/nodejs/frameworks/nextjs/scaffolding.md",
         "server/runtimes/nodejs/scaffolding.md"
       ],
-      "fingerprint": "91fed728b82d7d7b74dd5ee972ce004de9bfa072795ddf66d0cb580e81367d3e"
+      "fingerprint": "77905a8eabfd85e4a3bfd5f12604d4a5a9ba46219c1fd9c06df2df473ca0a551"
     },
     "scaffolding": {
       "reference": "server/skill/references/scaffolding.md",
@@ -124,7 +124,7 @@
         "server/core/testing-service-layer.md",
         "server/core/transaction.md"
       ],
-      "fingerprint": "b37fa05697544af9ed0dc807ae9a8c652f79dd62cc863ca428f7b4d810055ce2"
+      "fingerprint": "86160b3d2a80ca3650b7bbfcfb165f8c54921bc088cf6d197262ba8452eaf9f8"
     },
     "security": {
       "reference": "server/skill/references/security.md",
@@ -187,7 +187,7 @@
         "server/runtimes/nodejs/libraries/better-auth/README.md",
         "server/core/controllers.md"
       ],
-      "fingerprint": "d8c9d5f914d141e1297597ae62049ee308058871c79e2e4e79dfccc451579bb8"
+      "fingerprint": "6c578816211e347949e9159de2910bb6863774df7b22f5eb79422855f97802f9"
     },
     "foundations/tenancy": {
       "parents": [
@@ -243,6 +243,40 @@
         "server/runtimes/nodejs/libraries/supabase/README.md"
       ],
       "fingerprint": "4f470b954850d7317ef0c1e95043e23989094699d4bfc4c15f57de5b49ce72cf"
+    },
+    "operations/ai-boundaries": {
+      "parents": [
+        "operations",
+        "security"
+      ],
+      "reference": "server/skill/references/operations/ai-boundaries.md",
+      "sources": [
+        "server/core/ai-boundaries.md"
+      ],
+      "fingerprint": "e7d05720b402505b2c3570e67a492ba8f64f217943e0bda71e670df699ed7c9c"
+    },
+    "runtimes/ai-sdk": {
+      "parents": [
+        "runtimes"
+      ],
+      "reference": "server/skill/references/runtimes/ai-sdk.md",
+      "sources": [
+        "server/runtimes/nodejs/libraries/ai-sdk/README.md",
+        "server/core/ai-boundaries.md"
+      ],
+      "fingerprint": "47b09709d31381ebf9c83712ca147186c0ff77aad9784553921f92123bacc728"
+    },
+    "runtimes/mastra": {
+      "parents": [
+        "runtimes",
+        "operations"
+      ],
+      "reference": "server/skill/references/runtimes/mastra.md",
+      "sources": [
+        "server/runtimes/nodejs/libraries/mastra/README.md",
+        "server/core/ai-boundaries.md"
+      ],
+      "fingerprint": "0c5f3644663cd1a8801d14b800d730c72098343e334ec50bd0e1244eb6e4aa3a"
     }
   }
 }
